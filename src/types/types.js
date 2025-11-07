@@ -1,0 +1,203 @@
+/**
+ * Core type definitions for Cooped extension
+ * Designed with future scalability in mind (mobile app, co-op features, cloud sync)
+ */
+
+/**
+ * @typedef {Object} UserStats
+ * @property {number} challengesCompleted - Total challenges successfully completed
+ * @property {number} currentStreak - Current consecutive days with activity
+ * @property {number} longestStreak - Longest streak ever achieved
+ * @property {number} totalTimeBlocked - Total milliseconds blocked from distracting sites
+ * @property {number} experience - Total XP earned
+ * @property {number} level - Current user level
+ * @property {number} lastActivityDate - Timestamp of last activity (for streak calculation)
+ */
+
+/**
+ * @typedef {Object} User
+ * @property {string} id - Unique user identifier (future: for cloud sync)
+ * @property {UserStats} stats - User statistics
+ * @property {number} createdAt - Account creation timestamp
+ */
+
+/**
+ * @typedef {Object} MascotCustomization
+ * @property {string} [hatId] - ID of equipped hat
+ * @property {string} [accessoryId] - ID of equipped accessory
+ * @property {string} [backgroundColor] - Background color hex code
+ */
+
+/**
+ * @typedef {Object} Mascot
+ * @property {number} currentStage - Current evolution stage (0-based)
+ * @property {string[]} unlocks - Array of unlocked item IDs
+ * @property {MascotCustomization} customizations - Current appearance settings
+ * @property {string} name - Mascot's custom name (future feature)
+ */
+
+/**
+ * @typedef {Object} Settings
+ * @property {string[]} blockedSites - Array of URL patterns to block
+ * @property {('easy'|'medium'|'hard')} challengeDifficulty - Challenge difficulty level
+ * @property {string[]} enabledChallengeTypes - Array of enabled challenge type IDs
+ * @property {boolean} soundEnabled - Whether sound effects are enabled
+ * @property {boolean} animationsEnabled - Whether animations are enabled
+ * @property {number} gracePeriodSeconds - Seconds before challenge appears (future)
+ * @property {boolean} coopMode - Enable co-op features (future)
+ * @property {string} [teamId] - Team ID if in co-op mode (future)
+ */
+
+/**
+ * @typedef {Object} Session
+ * @property {string} id - Unique session identifier
+ * @property {number} timestamp - When the session occurred
+ * @property {string} site - URL or domain that was blocked
+ * @property {string} challengeType - Type of challenge presented
+ * @property {boolean} success - Whether user completed the challenge
+ * @property {number} timeSpent - Milliseconds spent on challenge
+ * @property {number} experienceGained - XP earned from this session
+ * @property {boolean} [syncedToCloud] - Whether synced to cloud (future)
+ */
+
+/**
+ * @typedef {Object} Challenge
+ * @property {string} id - Unique challenge identifier
+ * @property {string} type - Challenge type (trivia, math, word, memory, typing)
+ * @property {string} question - The challenge question/prompt
+ * @property {string} answer - Correct answer (case-insensitive)
+ * @property {string[]} [options] - Multiple choice options (if applicable)
+ * @property {('easy'|'medium'|'hard')} difficulty - Challenge difficulty
+ * @property {string} [category] - Subject category (future: for targeted learning)
+ * @property {number} [timeLimit] - Time limit in seconds (future)
+ * @property {string} [hint] - Optional hint text (future)
+ */
+
+/**
+ * @typedef {Object} MascotStage
+ * @property {number} stage - Stage number
+ * @property {string} name - Stage name (e.g., "Chick", "Teen Chicken", "Wise Rooster")
+ * @property {string} description - Stage description
+ * @property {number} requiredExperience - XP needed to reach this stage
+ * @property {string} imageUrl - Path to mascot image for this stage
+ * @property {string[]} unlockedItems - Items unlocked at this stage
+ */
+
+/**
+ * @typedef {Object} AppState
+ * @property {User} user - User data
+ * @property {Mascot} mascot - Mascot data
+ * @property {Settings} settings - User settings
+ * @property {Session[]} sessions - Recent sessions (limited to last 100)
+ */
+
+/**
+ * Default application state
+ */
+export const DEFAULT_STATE = {
+  user: {
+    id: null, // Generated on first install
+    stats: {
+      challengesCompleted: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      totalTimeBlocked: 0,
+      experience: 0,
+      level: 1,
+      lastActivityDate: Date.now()
+    },
+    createdAt: Date.now()
+  },
+  mascot: {
+    currentStage: 0,
+    unlocks: [],
+    customizations: {
+      backgroundColor: '#87CEEB'
+    },
+    name: 'Clucky'
+  },
+  settings: {
+    blockedSites: [
+      '*://www.facebook.com/*',
+      '*://www.instagram.com/*',
+      '*://www.twitter.com/*',
+      '*://www.reddit.com/*',
+      '*://www.youtube.com/*',
+      '*://www.tiktok.com/*'
+    ],
+    challengeDifficulty: 'medium',
+    enabledChallengeTypes: ['trivia', 'math', 'word'],
+    soundEnabled: true,
+    animationsEnabled: true,
+    gracePeriodSeconds: 0,
+    coopMode: false,
+    teamId: null
+  },
+  sessions: []
+};
+
+/**
+ * Mascot evolution stages
+ */
+export const MASCOT_STAGES = [
+  {
+    stage: 0,
+    name: 'Egg',
+    description: 'Your journey begins! Complete challenges to hatch.',
+    requiredExperience: 0,
+    imageUrl: 'src/assets/mascot/stage0-egg.png',
+    unlockedItems: []
+  },
+  {
+    stage: 1,
+    name: 'Chick',
+    description: 'A curious little chick ready to learn!',
+    requiredExperience: 100,
+    imageUrl: 'src/assets/mascot/stage1-chick.png',
+    unlockedItems: ['hat-basic']
+  },
+  {
+    stage: 2,
+    name: 'Young Chicken',
+    description: 'Growing stronger and smarter every day.',
+    requiredExperience: 500,
+    imageUrl: 'src/assets/mascot/stage2-young.png',
+    unlockedItems: ['hat-scholar', 'accessory-book']
+  },
+  {
+    stage: 3,
+    name: 'Smart Chicken',
+    description: 'A knowledgeable chicken with focus and determination.',
+    requiredExperience: 1500,
+    imageUrl: 'src/assets/mascot/stage3-smart.png',
+    unlockedItems: ['hat-graduation', 'accessory-glasses']
+  },
+  {
+    stage: 4,
+    name: 'Wise Rooster',
+    description: 'The ultimate form! A master of focus and wisdom.',
+    requiredExperience: 5000,
+    imageUrl: 'src/assets/mascot/stage4-wise.png',
+    unlockedItems: ['hat-crown', 'accessory-cape', 'bg-galaxy']
+  }
+];
+
+/**
+ * XP rewards by difficulty
+ */
+export const XP_REWARDS = {
+  easy: 10,
+  medium: 25,
+  hard: 50
+};
+
+/**
+ * Storage keys
+ */
+export const STORAGE_KEYS = {
+  APP_STATE: 'cooped_app_state',
+  USER: 'cooped_user',
+  MASCOT: 'cooped_mascot',
+  SETTINGS: 'cooped_settings',
+  SESSIONS: 'cooped_sessions'
+};

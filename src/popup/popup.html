@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cooped - Stay Focused</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header with logo -->
+    <header class="header">
+      <h1 class="title">🐔 Cooped</h1>
+      <p class="tagline">Stay focused, one challenge at a time</p>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="mascot">Mascot</button>
+      <button class="tab-btn" data-tab="stats">Stats</button>
+      <button class="tab-btn" data-tab="settings">Settings</button>
+    </nav>
+
+    <!-- Mascot Tab -->
+    <div class="tab-content active" id="mascot-tab">
+      <div class="mascot-container">
+        <div class="mascot-display">
+          <div class="mascot-stage-name" id="mascot-stage-name">Egg</div>
+          <div class="mascot-image-wrapper">
+            <img id="mascot-image" src="../assets/mascot/stage0-egg.png" alt="Mascot">
+          </div>
+          <div class="mascot-name" id="mascot-name">Clucky</div>
+        </div>
+
+        <div class="progress-section">
+          <div class="level-info">
+            <span class="level-label">Level <span id="user-level">1</span></span>
+            <span class="xp-label"><span id="current-xp">0</span> / <span id="next-level-xp">100</span> XP</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+          </div>
+          <div class="next-stage-info" id="next-stage-info">
+            Next stage: <strong>Chick</strong> at 100 XP
+          </div>
+        </div>
+
+        <div class="mascot-message" id="mascot-message">
+          Keep completing challenges to help me grow!
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats Tab -->
+    <div class="tab-content" id="stats-tab">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-value" id="challenges-completed">0</div>
+          <div class="stat-label">Challenges Completed</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon">🔥</div>
+          <div class="stat-value" id="current-streak">0</div>
+          <div class="stat-label">Day Streak</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon">🏆</div>
+          <div class="stat-value" id="longest-streak">0</div>
+          <div class="stat-label">Longest Streak</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon">⏱️</div>
+          <div class="stat-value" id="time-saved">0h 0m</div>
+          <div class="stat-label">Time Blocked</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon">⭐</div>
+          <div class="stat-value" id="total-xp">0</div>
+          <div class="stat-label">Total XP</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon">📊</div>
+          <div class="stat-value" id="success-rate">0%</div>
+          <div class="stat-label">Success Rate</div>
+        </div>
+      </div>
+
+      <div class="recent-activity">
+        <h3>Recent Activity</h3>
+        <div class="activity-list" id="activity-list">
+          <p class="no-activity">No recent activity</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div class="tab-content" id="settings-tab">
+      <div class="settings-section">
+        <h3>Blocked Sites</h3>
+        <p class="help-text">Add websites that distract you. Use wildcards like *://www.example.com/*</p>
+        <div class="blocked-sites-list" id="blocked-sites-list"></div>
+        <div class="add-site-form">
+          <input type="text" id="new-site-input" placeholder="*://www.example.com/*">
+          <button id="add-site-btn" class="btn-primary">Add Site</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Challenge Settings</h3>
+
+        <div class="setting-item">
+          <label for="difficulty-select">Difficulty</label>
+          <select id="difficulty-select" class="setting-select">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <label>Challenge Types</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" class="challenge-type-checkbox" value="trivia" checked>
+              Trivia Questions
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" class="challenge-type-checkbox" value="math" checked>
+              Math Problems
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" class="challenge-type-checkbox" value="word" checked>
+              Word Puzzles
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" class="challenge-type-checkbox" value="memory">
+              Memory Games
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" class="challenge-type-checkbox" value="typing">
+              Typing Challenges
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <label class="toggle-label">
+            <input type="checkbox" id="sound-toggle" checked>
+            <span>Enable Sound Effects</span>
+          </label>
+        </div>
+
+        <div class="setting-item">
+          <label class="toggle-label">
+            <input type="checkbox" id="animations-toggle" checked>
+            <span>Enable Animations</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Data Management</h3>
+        <button id="export-data-btn" class="btn-secondary">Export Data</button>
+        <button id="reset-data-btn" class="btn-danger">Reset All Data</button>
+      </div>
+
+      <div class="settings-footer">
+        <p>Cooped v1.0.0</p>
+        <p class="help-text">Made with focus and determination 🐔</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
