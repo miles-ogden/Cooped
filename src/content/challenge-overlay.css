@@ -113,6 +113,15 @@
   color: #6a1b9a;
 }
 
+.cooped-skips-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #bbdefb;
+  color: #1565c0;
+}
+
 .cooped-challenge-content {
   margin-bottom: 30px;
 }
@@ -179,6 +188,34 @@
   cursor: not-allowed;
 }
 
+.cooped-btn-secondary {
+  background: #f5f5f5;
+  color: #666;
+  border: 2px solid #e0e0e0;
+}
+
+.cooped-btn-secondary:hover:not(:disabled) {
+  background: #e0e0e0;
+  border-color: #bdbdbd;
+}
+
+.cooped-btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cooped-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.cooped-actions .cooped-btn {
+  flex: 1;
+  padding: 12px 20px;
+  font-size: 14px;
+}
+
 .cooped-feedback {
   display: none;
   padding: 15px;
@@ -206,6 +243,12 @@
   border: 2px solid #ffeb3b;
 }
 
+.cooped-feedback-info {
+  background: #e3f2fd;
+  color: #1565c0;
+  border: 2px solid #2196f3;
+}
+
 .cooped-footer {
   text-align: center;
   padding-top: 20px;
@@ -229,6 +272,80 @@
   margin: 0;
 }
 
+/* Interval Selection Overlay Styles */
+#cooped-interval-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: coopedFadeIn 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.cooped-interval-modal {
+  background: white;
+  border-radius: 20px;
+  padding: 40px;
+  max-width: 600px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: coopedSlideUp 0.4s ease;
+}
+
+.cooped-interval-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 15px;
+  margin: 30px 0;
+}
+
+.cooped-interval-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 25px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 15px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  color: #666;
+}
+
+.cooped-interval-btn:hover {
+  border-color: #667eea;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  transform: translateY(-3px);
+  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+}
+
+.cooped-interval-btn:active {
+  transform: translateY(-1px);
+}
+
+.cooped-interval-time {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.cooped-interval-desc {
+  display: block;
+  font-size: 12px;
+  color: #999;
+  font-weight: 500;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .cooped-modal {
@@ -248,8 +365,24 @@
     flex-direction: column;
   }
 
+  .cooped-actions {
+    flex-direction: column;
+  }
+
   .cooped-mascot {
     font-size: 48px;
+  }
+
+  .cooped-challenge-info {
+    flex-wrap: wrap;
+  }
+
+  .cooped-interval-options {
+    grid-template-columns: 1fr;
+  }
+
+  .cooped-interval-btn {
+    padding: 20px 15px;
   }
 }
 

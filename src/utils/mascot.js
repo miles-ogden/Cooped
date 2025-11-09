@@ -68,17 +68,29 @@ export function getProgressToNextStage(experience, currentStageNum) {
  * @param {string} difficulty - Challenge difficulty
  * @param {boolean} success - Whether challenge was completed
  * @param {number} timeSpent - Time spent on challenge in milliseconds
- * @returns {number}
+ * @returns {number} - Can be negative for failures
  */
 export function calculateXPReward(difficulty, success, timeSpent) {
-  if (!success) return 0;
-
   const baseXP = XP_REWARDS[difficulty] || XP_REWARDS.medium;
 
-  // Bonus for completing quickly (within 30 seconds)
-  const speedBonus = timeSpent < 30000 ? Math.floor(baseXP * 0.2) : 0;
+  if (!success) {
+    return -Math.floor(baseXP * 0.5);
+  }
 
-  return baseXP + speedBonus;
+  const speedThresholds = {
+    easy: 45000,
+    medium: 30000,
+    hard: 20000
+  };
+
+  const threshold = speedThresholds[difficulty] || speedThresholds.medium;
+
+  if (timeSpent < threshold) {
+    const speedBonus = Math.floor(baseXP * 0.3);
+    return baseXP + speedBonus;
+  }
+
+  return Math.floor(baseXP * 0.5);
 }
 
 /**
@@ -222,6 +234,58 @@ export function getMascotMessage(context, stageNum = 0) {
  */
 export function getAllStages() {
   return MASCOT_STAGES;
+}
+
+/**
+ * Calculate adaptive difficulty based on user level
+ * Difficulty scales up as user progresses through mascot stages
+ * @param {number} currentStage - Current mascot stage (0-4)
+ * @param {number} experience - Total user experience
+ * @returns {string} - 'easy', 'medium', or 'hard'
+ */
+export function getAdaptiveDifficulty(currentStage, experience) {
+  // Stage progression mapping
+  if (currentStage === 0) {
+    // Egg stage: Always easy
+    return 'easy';
+  } else if (currentStage === 1) {
+    // Chick stage: Easy to Medium
+    // More experienced chicks get medium
+    return experience > 150 ? 'medium' : 'easy';
+  } else if (currentStage === 2) {
+    // Young Chicken: Medium to Hard
+    // Early progression: medium, later: hard
+    return experience > 900 ? 'hard' : 'medium';
+  } else if (currentStage === 3) {
+    // Smart Chicken: Hard (mostly)
+    // Still some medium for variety
+    return experience > 2200 ? 'hard' : 'medium';
+  } else if (currentStage >= 4) {
+    // Wise Rooster: Hard challenges
+    return 'hard';
+  }
+
+  return 'medium'; // Default fallback
+}
+
+/**
+ * Get adaptive difficulty with variety
+ * Returns mostly the adaptive difficulty but with occasional easier questions for learning
+ * @param {number} currentStage - Current mascot stage
+ * @param {number} experience - Total user experience
+ * @returns {string} - 'easy', 'medium', or 'hard'
+ */
+export function getAdaptiveDifficultyWithVariety(currentStage, experience) {
+  const baseDifficulty = getAdaptiveDifficulty(currentStage, experience);
+
+  // 10% chance to get an easier challenge for learning
+  // This prevents burnout and helps reinforce fundamentals
+  if (Math.random() < 0.1) {
+    if (baseDifficulty === 'hard') return 'medium';
+    if (baseDifficulty === 'medium') return 'easy';
+  }
+
+  return baseDifficulty;
 }
 
 /**
