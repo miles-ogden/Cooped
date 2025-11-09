@@ -6,12 +6,17 @@
 /**
  * @typedef {Object} UserStats
  * @property {number} challengesCompleted - Total challenges successfully completed
- * @property {number} currentStreak - Current consecutive days with activity
+ * @property {number} currentStreak - Current consecutive days with activity (fire emoji counter)
  * @property {number} longestStreak - Longest streak ever achieved
  * @property {number} totalTimeBlocked - Total milliseconds blocked from distracting sites
- * @property {number} experience - Total XP earned
- * @property {number} level - Current user level
+ * @property {number} experience - Total XP earned (legacy)
+ * @property {number} level - Current user level (legacy)
  * @property {number} lastActivityDate - Timestamp of last activity (for streak calculation)
+ * @property {number} points - Current points (converts to eggs weekly)
+ * @property {number} eggs - Current egg balance (premium currency)
+ * @property {number} lastEggConversion - Timestamp of last egg conversion (Sunday 9 AM PST)
+ * @property {string} rank - Current rank tier (Egg, Chick, Pecker, Chicken, HEN)
+ * @property {number} lastDayChecked - Last calendar day checked for avoidance bonus (midnight UTC)
  */
 
 /**
@@ -41,6 +46,7 @@
  * @property {string[]} blockedSites - Array of URL patterns to block
  * @property {('easy'|'medium'|'hard')} challengeDifficulty - Challenge difficulty level
  * @property {string[]} enabledChallengeTypes - Array of enabled challenge type IDs
+ * @property {string[]} enabledCategories - Array of enabled learning categories
  * @property {boolean} soundEnabled - Whether sound effects are enabled
  * @property {boolean} animationsEnabled - Whether animations are enabled
  * @property {number} gracePeriodSeconds - Seconds before challenge appears (future)
@@ -104,7 +110,12 @@ export const DEFAULT_STATE = {
       totalTimeBlocked: 0,
       experience: 0,
       level: 1,
-      lastActivityDate: Date.now()
+      lastActivityDate: Date.now(),
+      points: 0,
+      eggs: 0,
+      lastEggConversion: Date.now(),
+      rank: 'Egg',
+      lastDayChecked: Math.floor(Date.now() / (24 * 60 * 60 * 1000))
     },
     createdAt: Date.now()
   },
@@ -127,6 +138,7 @@ export const DEFAULT_STATE = {
     ],
     challengeDifficulty: 'medium',
     enabledChallengeTypes: ['trivia', 'math', 'word'],
+    enabledCategories: ['general-knowledge', 'vocabulary', 'history', 'math'],
     soundEnabled: true,
     animationsEnabled: true,
     gracePeriodSeconds: 0,
@@ -192,6 +204,89 @@ export const XP_REWARDS = {
 };
 
 /**
+ * Challenge categories for learning paths
+ */
+export const CHALLENGE_CATEGORIES = {
+  GENERAL_KNOWLEDGE: 'general-knowledge',
+  VOCABULARY: 'vocabulary',
+  HISTORY: 'history',
+  MATH: 'math'
+};
+
+/**
+ * Category metadata
+ */
+export const CATEGORY_INFO = {
+  'general-knowledge': {
+    name: 'General Knowledge',
+    description: 'Mix of facts from history, science, geography, and more',
+    emoji: '🧠',
+    color: '#667eea'
+  },
+  'vocabulary': {
+    name: 'Vocabulary',
+    description: 'Word definitions, synonyms, and language learning',
+    emoji: '📚',
+    color: '#764ba2'
+  },
+  'history': {
+    name: 'History',
+    description: 'Historical events, dates, and famous figures',
+    emoji: '⏰',
+    color: '#f093fb'
+  },
+  'math': {
+    name: 'Math',
+    description: 'Arithmetic, algebra, and problem-solving',
+    emoji: '🔢',
+    color: '#4facfe'
+  }
+};
+
+/**
+ * Rank tiers - progress based on challenges answered
+ */
+export const RANK_TIERS = [
+  { name: 'Egg', minChallenges: 0, emoji: '🥚' },
+  { name: 'Chick', minChallenges: 20, emoji: '🐣' },
+  { name: 'Pecker', minChallenges: 50, emoji: '🐦' },
+  { name: 'Chicken', minChallenges: 100, emoji: '🐔' },
+  { name: 'HEN', minChallenges: 200, emoji: '🐓' }
+];
+
+/**
+ * Cosmetics catalog - each costs 5 eggs
+ */
+export const COSMETICS_CATALOG = [
+  // Backgrounds
+  { id: 'bg-sunset', name: 'Sunset Background', type: 'background', price: 5, emoji: '🌅' },
+  { id: 'bg-ocean', name: 'Ocean Background', type: 'background', price: 5, emoji: '🌊' },
+  { id: 'bg-forest', name: 'Forest Background', type: 'background', price: 5, emoji: '🌲' },
+  { id: 'bg-space', name: 'Space Background', type: 'background', price: 5, emoji: '⭐' },
+
+  // Hats
+  { id: 'hat-crown', name: 'Golden Crown', type: 'hat', price: 5, emoji: '👑' },
+  { id: 'hat-party', name: 'Party Hat', type: 'hat', price: 5, emoji: '🎉' },
+  { id: 'hat-wizard', name: 'Wizard Hat', type: 'hat', price: 5, emoji: '🧙' },
+  { id: 'hat-flower', name: 'Flower Crown', type: 'hat', price: 5, emoji: '🌸' },
+
+  // Scarves
+  { id: 'scarf-red', name: 'Red Scarf', type: 'scarf', price: 5, emoji: '🔴' },
+  { id: 'scarf-blue', name: 'Blue Scarf', type: 'scarf', price: 5, emoji: '🔵' },
+  { id: 'scarf-rainbow', name: 'Rainbow Scarf', type: 'scarf', price: 5, emoji: '🌈' },
+
+  // Shoes
+  { id: 'shoes-sparkle', name: 'Sparkly Shoes', type: 'shoes', price: 5, emoji: '✨' },
+  { id: 'shoes-cowboy', name: 'Cowboy Boots', type: 'shoes', price: 5, emoji: '🤠' },
+  { id: 'shoes-roller', name: 'Roller Skates', type: 'shoes', price: 5, emoji: '🛼' },
+
+  // Nests
+  { id: 'nest-golden', name: 'Golden Nest', type: 'nest', price: 5, emoji: '✨' },
+  { id: 'nest-cozy', name: 'Cozy Nest', type: 'nest', price: 5, emoji: '🏠' },
+  { id: 'nest-rainbow', name: 'Rainbow Nest', type: 'nest', price: 5, emoji: '🌈' }
+];
+
+/**
  * Storage keys
  */
 export const STORAGE_KEYS = {
@@ -199,5 +294,7 @@ export const STORAGE_KEYS = {
   USER: 'cooped_user',
   MASCOT: 'cooped_mascot',
   SETTINGS: 'cooped_settings',
-  SESSIONS: 'cooped_sessions'
+  SESSIONS: 'cooped_sessions',
+  SITE_INTERVALS: 'cooped_site_intervals',
+  ACTIVE_TIME_SESSION: 'cooped_active_time_session'
 };

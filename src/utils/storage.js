@@ -221,3 +221,397 @@ export async function clearAllData() {
   await chrome.storage.local.clear();
   return await initializeStorage();
 }
+
+/**
+ * Save the current challenge in progress
+ * Prevents users from bypassing challenges via page refresh
+ * Uses a separate storage key to track in-progress challenges
+ * @param {Object} challenge - Challenge object to save
+ * @param {string} url - URL where challenge is displayed
+ */
+export async function saveCurrentChallenge(challenge, url) {
+  try {
+    const challengeData = {
+      challenge,
+      url,
+      startTime: Date.now()
+    };
+    await chrome.storage.local.set({ 'cooped_current_challenge': challengeData });
+    console.log('Cooped: Challenge saved to storage');
+  } catch (error) {
+    console.error('Cooped: Error saving challenge:', error);
+  }
+}
+
+/**
+ * Get the currently saved challenge (if any)
+ * @returns {Promise<Object|null>}
+ */
+export async function getCurrentChallenge() {
+  try {
+    const result = await chrome.storage.local.get('cooped_current_challenge');
+    return result.cooped_current_challenge || null;
+  } catch (error) {
+    console.error('Cooped: Error retrieving challenge:', error);
+    return null;
+  }
+}
+
+/**
+ * Clear the saved challenge
+ * Called after successful completion or when navigating away
+ */
+export async function clearCurrentChallenge() {
+  try {
+    await chrome.storage.local.remove('cooped_current_challenge');
+    console.log('Cooped: Cleared saved challenge');
+  } catch (error) {
+    console.error('Cooped: Error clearing challenge:', error);
+  }
+}
+
+/**
+ * Save an interval timer for a specific site
+ * Prevents the same site from being challenged again until the interval expires
+ * @param {string} hostname - Domain name (e.g., 'youtube.com')
+ * @param {number} intervalMinutes - Minutes to wait before showing challenge again
+ */
+export async function setSiteInterval(hostname, intervalMinutes) {
+  try {
+    const result = await chrome.storage.local.get('cooped_site_intervals');
+    const intervals = result.cooped_site_intervals || {};
+
+    const expiryTime = Date.now() + (intervalMinutes * 60 * 1000);
+    intervals[hostname] = {
+      hostname,
+      intervalMinutes,
+      expiryTime,
+      startTime: Date.now()
+    };
+
+    await chrome.storage.local.set({ 'cooped_site_intervals': intervals });
+    console.log(`Cooped: Set ${intervalMinutes} minute interval for ${hostname}`);
+  } catch (error) {
+    console.error('Cooped: Error setting site interval:', error);
+  }
+}
+
+/**
+ * Check if a site is currently in an interval (challenge cooldown)
+ * @param {string} hostname - Domain name to check
+ * @returns {Promise<{isActive: boolean, minutesRemaining: number}>}
+ */
+export async function checkSiteInterval(hostname) {
+  try {
+    const result = await chrome.storage.local.get('cooped_site_intervals');
+    const intervals = result.cooped_site_intervals || {};
+    const interval = intervals[hostname];
+
+    if (!interval) {
+      return { isActive: false, minutesRemaining: 0 };
+    }
+
+    const now = Date.now();
+    if (now < interval.expiryTime) {
+      const minutesRemaining = Math.ceil((interval.expiryTime - now) / (60 * 1000));
+      return { isActive: true, minutesRemaining };
+    } else {
+      // Interval expired, clean it up
+      delete intervals[hostname];
+      await chrome.storage.local.set({ 'cooped_site_intervals': intervals });
+      return { isActive: false, minutesRemaining: 0 };
+    }
+  } catch (error) {
+    console.error('Cooped: Error checking site interval:', error);
+    return { isActive: false, minutesRemaining: 0 };
+  }
+}
+
+/**
+ * Clear an interval timer for a specific site
+ * @param {string} hostname - Domain name
+ */
+export async function clearSiteInterval(hostname) {
+  try {
+    const result = await chrome.storage.local.get('cooped_site_intervals');
+    const intervals = result.cooped_site_intervals || {};
+
+    delete intervals[hostname];
+    await chrome.storage.local.set({ 'cooped_site_intervals': intervals });
+    console.log(`Cooped: Cleared interval for ${hostname}`);
+  } catch (error) {
+    console.error('Cooped: Error clearing site interval:', error);
+  }
+}
+
+/**
+ * Get all active site intervals
+ * @returns {Promise<Object>} Object with hostnames as keys and interval data as values
+ */
+export async function getAllSiteIntervals() {
+  try {
+    const result = await chrome.storage.local.get('cooped_site_intervals');
+    return result.cooped_site_intervals || {};
+  } catch (error) {
+    console.error('Cooped: Error getting site intervals:', error);
+    return {};
+  }
+}
+
+/**
+ * Add points to user account
+ * @param {number} amount - Points to add (can be negative for penalties)
+ * @returns {Promise<number>} New points total
+ */
+export async function addPoints(amount) {
+  try {
+    const state = await getAppState();
+    state.user.stats.points += amount;
+    await chrome.storage.local.set({ [STORAGE_KEYS.APP_STATE]: state });
+    console.log(`Cooped: Added ${amount} points. Total: ${state.user.stats.points}`);
+    return state.user.stats.points;
+  } catch (error) {
+    console.error('Cooped: Error adding points:', error);
+    return 0;
+  }
+}
+
+/**
+ * Add eggs to user account
+ * @param {number} amount - Eggs to add (can be negative for purchases)
+ * @returns {Promise<number>} New egg balance
+ */
+export async function addEggs(amount) {
+  try {
+    const state = await getAppState();
+    state.user.stats.eggs = Math.max(0, state.user.stats.eggs + amount);
+    await chrome.storage.local.set({ [STORAGE_KEYS.APP_STATE]: state });
+    console.log(`Cooped: Added ${amount} eggs. Total: ${state.user.stats.eggs}`);
+    return state.user.stats.eggs;
+  } catch (error) {
+    console.error('Cooped: Error adding eggs:', error);
+    return 0;
+  }
+}
+
+/**
+ * Get current points and eggs balance
+ * @returns {Promise<{points: number, eggs: number}>}
+ */
+export async function getBalance() {
+  try {
+    const state = await getAppState();
+    return {
+      points: state.user.stats.points || 0,
+      eggs: state.user.stats.eggs || 0
+    };
+  } catch (error) {
+    console.error('Cooped: Error getting balance:', error);
+    return { points: 0, eggs: 0 };
+  }
+}
+
+/**
+ * Calculate rank tier based on challenges answered
+ * @param {number} challengesCompleted - Total challenges completed
+ * @returns {string} Rank name
+ */
+export function calculateRank(challengesCompleted) {
+  const { RANK_TIERS } = require('../types/types.js');
+  let rank = 'Egg';
+  for (let i = RANK_TIERS.length - 1; i >= 0; i--) {
+    if (challengesCompleted >= RANK_TIERS[i].minChallenges) {
+      rank = RANK_TIERS[i].name;
+      break;
+    }
+  }
+  return rank;
+}
+
+/**
+ * Update user rank based on challenges completed
+ * @returns {Promise<string>} New rank
+ */
+export async function updateRank() {
+  try {
+    const state = await getAppState();
+    const newRank = calculateRank(state.user.stats.challengesCompleted);
+    state.user.stats.rank = newRank;
+    await chrome.storage.local.set({ [STORAGE_KEYS.APP_STATE]: state });
+    return newRank;
+  } catch (error) {
+    console.error('Cooped: Error updating rank:', error);
+    return 'Egg';
+  }
+}
+
+/**
+ * Check and apply daily avoidance bonus (+150 points)
+ * Only gives bonus once per calendar day
+ * @returns {Promise<{bonusApplied: boolean, totalPoints: number}>}
+ */
+export async function checkDailyAvoidanceBonus() {
+  try {
+    const state = await getAppState();
+    const today = Math.floor(Date.now() / (24 * 60 * 60 * 1000));
+    const lastDayChecked = state.user.stats.lastDayChecked || 0;
+
+    if (today > lastDayChecked) {
+      // New day! Award 150 points for avoiding sites
+      state.user.stats.points += 150;
+      state.user.stats.lastDayChecked = today;
+      await chrome.storage.local.set({ [STORAGE_KEYS.APP_STATE]: state });
+      console.log(`Cooped: Daily avoidance bonus awarded! (+150 points)`);
+      return { bonusApplied: true, totalPoints: state.user.stats.points };
+    }
+
+    return { bonusApplied: false, totalPoints: state.user.stats.points };
+  } catch (error) {
+    console.error('Cooped: Error checking daily bonus:', error);
+    return { bonusApplied: false, totalPoints: 0 };
+  }
+}
+
+/**
+ * Start time tracking session for a blocked site
+ * Called when user skips challenge or stays on site after answering
+ * @param {string} hostname - Domain name
+ * @returns {Promise<{sessionId: string, startTime: number}>}
+ */
+export async function startTimeTrackingSession(hostname) {
+  try {
+    const sessionId = `time_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const timeSession = {
+      sessionId,
+      hostname,
+      startTime: Date.now(),
+      timeSpent: 0
+    };
+
+    await chrome.storage.local.set({ [STORAGE_KEYS.ACTIVE_TIME_SESSION]: timeSession });
+    console.log(`Cooped: Started time tracking for ${hostname}`);
+    return { sessionId, startTime: timeSession.startTime };
+  } catch (error) {
+    console.error('Cooped: Error starting time session:', error);
+    return { sessionId: null, startTime: 0 };
+  }
+}
+
+/**
+ * End time tracking session and return minutes spent
+ * @returns {Promise<{minutesSpent: number, pointsPenalty: number}>}
+ */
+export async function endTimeTrackingSession() {
+  try {
+    const result = await chrome.storage.local.get(STORAGE_KEYS.ACTIVE_TIME_SESSION);
+    const timeSession = result[STORAGE_KEYS.ACTIVE_TIME_SESSION];
+
+    if (!timeSession) {
+      return { minutesSpent: 0, pointsPenalty: 0 };
+    }
+
+    const timeSpentMs = Date.now() - timeSession.startTime;
+    const minutesSpent = Math.floor(timeSpentMs / (60 * 1000));
+    const pointsPenalty = minutesSpent * 1; // -1 point per minute
+
+    // Clean up the session
+    await chrome.storage.local.remove(STORAGE_KEYS.ACTIVE_TIME_SESSION);
+
+    console.log(`Cooped: Time tracking ended. ${minutesSpent} mins, -${pointsPenalty} pts`);
+    return { minutesSpent, pointsPenalty };
+  } catch (error) {
+    console.error('Cooped: Error ending time session:', error);
+    return { minutesSpent: 0, pointsPenalty: 0 };
+  }
+}
+
+/**
+ * Process challenge result and apply points
+ * @param {boolean} correct - Whether answer was correct
+ * @param {number} timeOnSite - Minutes spent on site (0 if no time tracked)
+ * @returns {Promise<{pointsChange: number, newTotal: number}>}
+ */
+export async function processChallengeResult(correct, timeOnSite = 0) {
+  try {
+    let pointsChange = 0;
+
+    if (correct) {
+      pointsChange = -15; // Correct answer costs 15 points
+    } else {
+      pointsChange = -25; // Wrong answer costs 25 points
+    }
+
+    // Add time penalty (-1 per minute)
+    pointsChange -= timeOnSite;
+
+    const newPoints = await addPoints(pointsChange);
+    console.log(`Cooped: Challenge result - ${pointsChange} points. Total: ${newPoints}`);
+
+    return { pointsChange, newTotal: newPoints };
+  } catch (error) {
+    console.error('Cooped: Error processing challenge result:', error);
+    return { pointsChange: 0, newTotal: 0 };
+  }
+}
+
+/**
+ * Update streak based on challenge result
+ * Streak survives if: answer correct AND time on site < 5 minutes
+ * Otherwise: streak breaks (resets to 0)
+ * Streak shows 🔥 emoji after 2+ consecutive days
+ * @param {boolean} correct - Whether answer was correct
+ * @param {number} timeOnSite - Minutes spent on site
+ * @returns {Promise<{streakDays: number, streakAlive: boolean, fireEmoji: string}>}
+ */
+export async function updateStreak(correct, timeOnSite = 0) {
+  try {
+    const state = await getAppState();
+    const streakSurvives = correct && timeOnSite < 5;
+
+    if (streakSurvives) {
+      // Increment streak
+      state.user.stats.currentStreak++;
+      state.user.stats.longestStreak = Math.max(
+        state.user.stats.longestStreak,
+        state.user.stats.currentStreak
+      );
+    } else {
+      // Break streak
+      state.user.stats.currentStreak = 0;
+    }
+
+    state.user.stats.lastActivityDate = Date.now();
+    await chrome.storage.local.set({ [STORAGE_KEYS.APP_STATE]: state });
+
+    // Show fire emoji if streak >= 2
+    const fireEmoji = state.user.stats.currentStreak >= 2 ? '🔥' : '';
+
+    console.log(
+      `Cooped: Streak updated. Days: ${state.user.stats.currentStreak} ${fireEmoji}`
+    );
+
+    return {
+      streakDays: state.user.stats.currentStreak,
+      streakAlive: streakSurvives,
+      fireEmoji
+    };
+  } catch (error) {
+    console.error('Cooped: Error updating streak:', error);
+    return { streakDays: 0, streakAlive: false, fireEmoji: '' };
+  }
+}
+
+/**
+ * Apply skip penalty (costs 1 egg)
+ * @returns {Promise<{eggsCost: number, newBalance: number}>}
+ */
+export async function applySkipPenalty() {
+  try {
+    const newBalance = await addEggs(-1);
+    console.log(`Cooped: Skip penalty applied. -1 egg. New balance: ${newBalance}`);
+    return { eggsCost: 1, newBalance };
+  } catch (error) {
+    console.error('Cooped: Error applying skip penalty:', error);
+    return { eggsCost: 1, newBalance: 0 };
+  }
+}

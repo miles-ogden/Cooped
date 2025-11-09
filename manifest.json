@@ -21,7 +21,8 @@
       "matches": ["<all_urls>"],
       "js": ["src/content/content-script.js"],
       "css": ["src/content/challenge-overlay.css"],
-      "run_at": "document_start"
+      "run_at": "document_start",
+      "type": "module"
     }
   ],
   "action": {
@@ -41,7 +42,15 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["src/assets/mascot/*.png", "src/assets/icons/*.png"],
+      "resources": [
+        "src/assets/mascot/*.png",
+        "src/assets/icons/*.png",
+        "challenges/challenge-bank.js",
+        "src/utils/api.js",
+        "src/utils/storage.js",
+        "src/utils/mascot.js",
+        "src/types/types.js"
+      ],
       "matches": ["<all_urls>"]
     }
   ]

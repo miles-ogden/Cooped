@@ -1,7 +1,9 @@
 /**
  * Challenge bank with various types of puzzles and questions
- * Each challenge type has multiple difficulties
+ * Hybrid system: fetches from OpenTriviaDB API first, falls back to local questions
  */
+
+import { fetchQuestionsFromAPI, checkAPIAnswer, isBooleanQuestion, getBooleanHint } from '../src/utils/api.js';
 
 export const CHALLENGE_TYPES = {
   TRIVIA: 'trivia',
@@ -15,42 +17,42 @@ export const CHALLENGE_TYPES = {
  * Trivia challenges - General knowledge questions
  */
 const triviaEasy = [
-  { question: 'What is the capital of France?', answer: 'Paris', category: 'Geography' },
-  { question: 'How many days are in a week?', answer: '7', category: 'General' },
-  { question: 'What color is the sky on a clear day?', answer: 'Blue', category: 'Science' },
-  { question: 'What is 2 + 2?', answer: '4', category: 'Math' },
-  { question: 'What animal says "meow"?', answer: 'Cat', category: 'Animals' },
-  { question: 'What planet do we live on?', answer: 'Earth', category: 'Science' },
-  { question: 'How many legs does a spider have?', answer: '8', category: 'Animals' },
-  { question: 'What is the opposite of hot?', answer: 'Cold', category: 'General' },
-  { question: 'What do bees make?', answer: 'Honey', category: 'Nature' },
-  { question: 'What color are emeralds?', answer: 'Green', category: 'General' }
+  { question: 'What is the capital of France?', answer: 'Paris', category: 'general-knowledge' },
+  { question: 'How many days are in a week?', answer: '7', category: 'general-knowledge' },
+  { question: 'What color is the sky on a clear day?', answer: 'Blue', category: 'general-knowledge' },
+  { question: 'What is 2 + 2?', answer: '4', category: 'math' },
+  { question: 'What animal says "meow"?', answer: 'Cat', category: 'general-knowledge' },
+  { question: 'What planet do we live on?', answer: 'Earth', category: 'general-knowledge' },
+  { question: 'How many legs does a spider have?', answer: '8', category: 'general-knowledge' },
+  { question: 'What is the opposite of hot?', answer: 'Cold', category: 'vocabulary' },
+  { question: 'What do bees make?', answer: 'Honey', category: 'general-knowledge' },
+  { question: 'What color are emeralds?', answer: 'Green', category: 'general-knowledge' }
 ];
 
 const triviaMedium = [
-  { question: 'What is the largest ocean on Earth?', answer: 'Pacific', category: 'Geography' },
-  { question: 'Who painted the Mona Lisa?', answer: 'Leonardo da Vinci', category: 'Art' },
-  { question: 'What is the chemical symbol for gold?', answer: 'Au', category: 'Science' },
-  { question: 'In what year did World War II end?', answer: '1945', category: 'History' },
-  { question: 'What is the smallest prime number?', answer: '2', category: 'Math' },
-  { question: 'What is the largest mammal in the world?', answer: 'Blue Whale', category: 'Animals' },
-  { question: 'How many continents are there?', answer: '7', category: 'Geography' },
-  { question: 'What is the speed of light in km/s?', answer: '300000', category: 'Science' },
-  { question: 'Who wrote "Romeo and Juliet"?', answer: 'Shakespeare', category: 'Literature' },
-  { question: 'What is the capital of Japan?', answer: 'Tokyo', category: 'Geography' }
+  { question: 'What is the largest ocean on Earth?', answer: 'Pacific', category: 'general-knowledge' },
+  { question: 'Who painted the Mona Lisa?', answer: 'Leonardo da Vinci', category: 'history' },
+  { question: 'What is the chemical symbol for gold?', answer: 'Au', category: 'general-knowledge' },
+  { question: 'In what year did World War II end?', answer: '1945', category: 'history' },
+  { question: 'What is the smallest prime number?', answer: '2', category: 'math' },
+  { question: 'What is the largest mammal in the world?', answer: 'Blue Whale', category: 'general-knowledge' },
+  { question: 'How many continents are there?', answer: '7', category: 'general-knowledge' },
+  { question: 'What is the speed of light in km/s?', answer: '300000', category: 'general-knowledge' },
+  { question: 'Who wrote "Romeo and Juliet"?', answer: 'Shakespeare', category: 'vocabulary' },
+  { question: 'What is the capital of Japan?', answer: 'Tokyo', category: 'general-knowledge' }
 ];
 
 const triviaHard = [
-  { question: 'What is the Planck constant approximately? (in J⋅s)', answer: '6.626e-34', category: 'Physics' },
-  { question: 'Who was the first computer programmer?', answer: 'Ada Lovelace', category: 'Technology' },
-  { question: 'What is the oldest known civilization?', answer: 'Sumerian', category: 'History' },
-  { question: 'What is the rarest blood type?', answer: 'AB negative', category: 'Science' },
-  { question: 'In what year was the World Wide Web invented?', answer: '1989', category: 'Technology' },
-  { question: 'What is the largest desert in the world?', answer: 'Antarctic', category: 'Geography' },
-  { question: 'Who discovered penicillin?', answer: 'Alexander Fleming', category: 'Science' },
-  { question: 'What is the longest river in the world?', answer: 'Nile', category: 'Geography' },
-  { question: 'What programming language was created by Guido van Rossum?', answer: 'Python', category: 'Technology' },
-  { question: 'What is the study of mushrooms called?', answer: 'Mycology', category: 'Science' }
+  { question: 'What is the Planck constant approximately? (in J⋅s)', answer: '6.626e-34', category: 'general-knowledge' },
+  { question: 'Who was the first computer programmer?', answer: 'Ada Lovelace', category: 'history' },
+  { question: 'What is the oldest known civilization?', answer: 'Sumerian', category: 'history' },
+  { question: 'What is the rarest blood type?', answer: 'AB negative', category: 'general-knowledge' },
+  { question: 'In what year was the World Wide Web invented?', answer: '1989', category: 'history' },
+  { question: 'What is the largest desert in the world?', answer: 'Antarctic', category: 'general-knowledge' },
+  { question: 'Who discovered penicillin?', answer: 'Alexander Fleming', category: 'history' },
+  { question: 'What is the longest river in the world?', answer: 'Nile', category: 'general-knowledge' },
+  { question: 'What programming language was created by Guido van Rossum?', answer: 'Python', category: 'general-knowledge' },
+  { question: 'What is the study of mushrooms called?', answer: 'Mycology', category: 'vocabulary' }
 ];
 
 /**
@@ -187,9 +189,47 @@ const memoryHard = [
 ];
 
 /**
- * Get random challenge by type and difficulty
+ * Get random challenge - tries API first, falls back to local questions
+ * @param {string} type - Challenge type
+ * @param {string} difficulty - Challenge difficulty
+ * @param {string[]} [enabledCategories] - Optional array of enabled categories to filter by
+ * @returns {Promise<Object>} Challenge object
  */
-export function getRandomChallenge(type, difficulty) {
+export async function getRandomChallenge(type, difficulty, enabledCategories = null) {
+  // For trivia questions, try to fetch from API
+  if (type === CHALLENGE_TYPES.TRIVIA && enabledCategories && enabledCategories.length > 0) {
+    try {
+      // Pick a random enabled category
+      const category = enabledCategories[Math.floor(Math.random() * enabledCategories.length)];
+
+      // Try to fetch from OpenTrivia API
+      const apiQuestions = await fetchQuestionsFromAPI(category, difficulty, 1);
+
+      if (apiQuestions && apiQuestions.length > 0) {
+        const challenge = apiQuestions[0];
+        return {
+          ...challenge,
+          isBooleanQuestion: isBooleanQuestion(challenge.question, challenge.answer),
+          booleanHint: getBooleanHint(challenge.answer)
+        };
+      }
+    } catch (error) {
+      console.log('Cooped: API fetch failed, using local questions:', error);
+      // Fall through to local questions
+    }
+  }
+
+  // Fall back to local questions
+  return getRandomChallengeLocal(type, difficulty, enabledCategories);
+}
+
+/**
+ * Get random challenge from local storage
+ * @param {string} type - Challenge type
+ * @param {string} difficulty - Challenge difficulty
+ * @param {string[]} [enabledCategories] - Optional array of enabled categories to filter by
+ */
+function getRandomChallengeLocal(type, difficulty, enabledCategories = null) {
   let pool = [];
 
   switch (type) {
@@ -222,6 +262,46 @@ export function getRandomChallenge(type, difficulty) {
       pool = triviaMedium;
   }
 
+  // Filter by enabled categories if provided
+  if (enabledCategories && enabledCategories.length > 0) {
+    pool = pool.filter(challenge =>
+      enabledCategories.includes(challenge.category || type)
+    );
+  }
+
+  // Fallback to original pool if filtered pool is empty
+  if (pool.length === 0) {
+    switch (type) {
+      case CHALLENGE_TYPES.TRIVIA:
+        pool = difficulty === 'easy' ? triviaEasy
+          : difficulty === 'medium' ? triviaMedium
+          : triviaHard;
+        break;
+      case CHALLENGE_TYPES.MATH:
+        pool = difficulty === 'easy' ? mathEasy
+          : difficulty === 'medium' ? mathMedium
+          : mathHard;
+        break;
+      case CHALLENGE_TYPES.WORD:
+        pool = difficulty === 'easy' ? wordEasy
+          : difficulty === 'medium' ? wordMedium
+          : wordHard;
+        break;
+      case CHALLENGE_TYPES.TYPING:
+        pool = difficulty === 'easy' ? typingEasy
+          : difficulty === 'medium' ? typingMedium
+          : typingHard;
+        break;
+      case CHALLENGE_TYPES.MEMORY:
+        pool = difficulty === 'easy' ? memoryEasy
+          : difficulty === 'medium' ? memoryMedium
+          : memoryHard;
+        break;
+      default:
+        pool = triviaMedium;
+    }
+  }
+
   const challenge = pool[Math.floor(Math.random() * pool.length)];
 
   return {
@@ -231,16 +311,19 @@ export function getRandomChallenge(type, difficulty) {
     question: challenge.question,
     answer: challenge.answer,
     category: challenge.category || type,
-    timeLimit: difficulty === 'easy' ? 60 : difficulty === 'medium' ? 45 : 30
+    timeLimit: difficulty === 'easy' ? 60 : difficulty === 'medium' ? 45 : 30,
+    source: 'local'
   };
 }
 
 /**
- * Check if answer is correct (case-insensitive, trimmed)
+ * Check if answer is correct
+ * Handles both local and API questions with lenient matching
+ * @param {string} userAnswer - User's input
+ * @param {string} correctAnswer - Correct answer
+ * @returns {boolean} Whether answer is correct
  */
 export function checkAnswer(userAnswer, correctAnswer) {
-  const normalized1 = userAnswer.toString().trim().toLowerCase();
-  const normalized2 = correctAnswer.toString().trim().toLowerCase();
-
-  return normalized1 === normalized2;
+  // Use the API answer checker which handles all edge cases
+  return checkAPIAnswer(userAnswer, correctAnswer);
 }
