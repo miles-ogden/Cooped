@@ -381,12 +381,9 @@ async function showChallengeOverlay(messageData) {
 
   // Create overlay
   const overlay = createOverlayElement(currentChallenge);
-  overlay.style.top = '-9999px';
-  overlay.style.left = '-9999px';
-
   document.body.appendChild(overlay);
 
-  // Focus on input
+  // Focus on input after render
   setTimeout(() => {
     const input = document.getElementById('cooped-answer-input');
     if (input) input.focus();
