@@ -129,11 +129,9 @@ export const DEFAULT_STATE = {
   },
   settings: {
     blockedSites: [
-      '*://www.facebook.com/*',
-      '*://www.instagram.com/*',
-      '*://www.twitter.com/*',
-      '*://www.reddit.com/*',
       '*://www.youtube.com/*',
+      '*://www.instagram.com/*',
+      '*://www.facebook.com/*',
       '*://www.tiktok.com/*'
     ],
     challengeDifficulty: 'medium',
@@ -285,6 +283,32 @@ export const COSMETICS_CATALOG = [
   { id: 'nest-cozy', name: 'Cozy Nest', type: 'nest', price: 5, emoji: '🏠' },
   { id: 'nest-rainbow', name: 'Rainbow Nest', type: 'nest', price: 5, emoji: '🌈' }
 ];
+
+/**
+ * Website metadata for displaying icons and names
+ */
+export const WEBSITE_METADATA = {
+  'youtube.com': {
+    name: 'YouTube',
+    emoji: '▶️',
+    color: '#FF0000'
+  },
+  'instagram.com': {
+    name: 'Instagram',
+    emoji: '📷',
+    color: '#E4405F'
+  },
+  'facebook.com': {
+    name: 'Facebook',
+    emoji: '👥',
+    color: '#1877F2'
+  },
+  'tiktok.com': {
+    name: 'TikTok',
+    emoji: '🎵',
+    color: '#000000'
+  }
+};
 
 /**
  * Storage keys

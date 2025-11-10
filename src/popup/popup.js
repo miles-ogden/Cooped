@@ -2,14 +2,61 @@
  * Popup UI logic for Cooped extension
  */
 
-import { getAppState, updateSettings, addBlockedSite, removeBlockedSite, getRecentSessions, clearAllData, exportData } from '../utils/storage.js';
-import { getCurrentStage, getProgressToNextStage, getNextStage, getMascotImageUrl } from '../utils/mascot.js';
+import { getAppState, updateSettings, addBlockedSite, removeBlockedSite, clearAllData, exportData, setDoNotBotherMe, checkDoNotBotherMe, disableDoNotBotherMe } from '../utils/storage.js';
+import { getCurrentStage, getProgressToNextStage, getNextStage } from '../utils/mascot.js';
+import { WEBSITE_METADATA } from '../types/types.js';
 
 // Initialize popup when DOM loads
 document.addEventListener('DOMContentLoaded', async () => {
   await loadAppData();
+  await initExtensionState();
   setupEventListeners();
 });
+
+/**
+ * Initialize extension state from storage
+ */
+async function initExtensionState() {
+  const result = await chrome.storage.local.get(['extensionEnabled']);
+  const isEnabled = result.extensionEnabled !== false; // Default to enabled
+
+  // Set toggle to match stored state
+  const toggle = document.getElementById('extension-toggle');
+  if (toggle) {
+    toggle.checked = isEnabled;
+  }
+
+  // Apply night mode if extension is disabled
+  if (!isEnabled) {
+    applyNightMode();
+  }
+}
+
+/**
+ * Apply night mode styling to the popup
+ */
+function applyNightMode() {
+  document.body.classList.add('night-mode');
+  const chickenImage = document.getElementById('chicken-image');
+  if (chickenImage) {
+    chickenImage.src = '../../assets/chicken_sleeping.png';
+    chickenImage.classList.add('sleeping');
+  }
+}
+
+/**
+ * Remove night mode styling from the popup
+ */
+function removeNightMode() {
+  document.body.classList.remove('night-mode');
+  const chickenImage = document.getElementById('chicken-image');
+  if (chickenImage) {
+    chickenImage.classList.remove('sleeping');
+    // Reload the image based on current stage
+    const stage = getCurrentStage(0); // Will be updated by loadAppData
+    chickenImage.src = getMascotImagePath(stage.stage);
+  }
+}
 
 /**
  * Load and display all app data
@@ -17,105 +64,68 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadAppData() {
   const state = await getAppState();
 
-  // Update mascot tab
-  updateMascotDisplay(state);
+  // Update main display with egg count, rank, and XP
+  updateMainDisplay(state);
 
-  // Update stats tab
-  updateStatsDisplay(state);
-
-  // Update settings tab
+  // Update settings panel content
   updateSettingsDisplay(state);
 }
 
 /**
- * Update mascot tab display
+ * Update main display (egg count, rank, XP progress)
  */
-function updateMascotDisplay(state) {
-  const { user, mascot } = state;
+function updateMainDisplay(state) {
+  const { user } = state;
   const currentStage = getCurrentStage(user.stats.experience);
   const nextStage = getNextStage(currentStage.stage);
   const progress = getProgressToNextStage(user.stats.experience, currentStage.stage);
 
-  // Update stage name and image
-  document.getElementById('mascot-stage-name').textContent = currentStage.name;
-  document.getElementById('mascot-name').textContent = mascot.name;
+  // Update egg count in header
+  document.getElementById('egg-count').textContent = user.stats.eggs || 0;
 
-  // Update mascot image (for now, show placeholder)
-  const mascotImage = document.getElementById('mascot-image');
-  mascotImage.alt = currentStage.name;
-  // Note: Actual images would be loaded here
-  // mascotImage.src = getMascotImageUrl(currentStage.stage);
+  // Update chicken image
+  const chickenImage = document.getElementById('chicken-image');
+  chickenImage.src = getMascotImagePath(currentStage.stage);
+  chickenImage.alt = currentStage.name;
 
-  // Update progress bar
-  document.getElementById('user-level').textContent = user.stats.level;
+  // Update current rank
+  document.getElementById('current-rank').textContent = `${currentStage.name} ${currentStage.emoji}`;
+
+  // Update XP display
   document.getElementById('current-xp').textContent = user.stats.experience;
 
   if (nextStage) {
     document.getElementById('next-level-xp').textContent = nextStage.requiredExperience;
-    document.getElementById('next-stage-info').innerHTML = `Next stage: <strong>${nextStage.name}</strong> at ${nextStage.requiredExperience} XP`;
-    document.getElementById('progress-fill').style.width = `${progress.percentage}%`;
+    document.getElementById('next-stage-name').textContent = nextStage.name;
+
+    // Calculate and update progress bar
+    const xpInCurrentLevel = user.stats.experience - (currentStage.requiredExperience || 0);
+    const xpNeededForLevel = (nextStage.requiredExperience || 0) - (currentStage.requiredExperience || 0);
+    const progressPercentage = xpNeededForLevel > 0 ? (xpInCurrentLevel / xpNeededForLevel) * 100 : 0;
+    document.getElementById('xp-fill').style.width = `${Math.min(progressPercentage, 100)}%`;
   } else {
     document.getElementById('next-level-xp').textContent = user.stats.experience;
-    document.getElementById('next-stage-info').textContent = 'Max stage reached!';
-    document.getElementById('progress-fill').style.width = '100%';
+    document.getElementById('next-stage-name').textContent = 'Max Level';
+    document.getElementById('xp-fill').style.width = '100%';
   }
-
-  // Update mascot message
-  document.getElementById('mascot-message').textContent = currentStage.description;
 }
 
 /**
- * Update stats tab display
+ * Get mascot image path based on stage
  */
-function updateStatsDisplay(state) {
-  const { user, sessions } = state;
+function getMascotImagePath(stage) {
+  // Map stages to their corresponding image files
+  const imageMap = {
+    0: '../assets/mascot/chicken_basic.png',
+    1: '../assets/mascot/chicken_basic.png',
+    2: '../assets/mascot/chicken_basic.png',
+    3: '../assets/mascot/chicken_basic.png',
+    4: '../assets/mascot/chicken_basic.png'
+  };
 
-  // Update stat cards
-  document.getElementById('challenges-completed').textContent = user.stats.challengesCompleted;
-  document.getElementById('current-streak').textContent = user.stats.currentStreak;
-  document.getElementById('longest-streak').textContent = user.stats.longestStreak;
-  document.getElementById('total-xp').textContent = user.stats.experience;
-
-  // Format time blocked
-  const hours = Math.floor(user.stats.totalTimeBlocked / (1000 * 60 * 60));
-  const minutes = Math.floor((user.stats.totalTimeBlocked % (1000 * 60 * 60)) / (1000 * 60));
-  document.getElementById('time-saved').textContent = `${hours}h ${minutes}m`;
-
-  // Calculate success rate
-  const successCount = sessions.filter(s => s.success).length;
-  const successRate = sessions.length > 0 ? Math.round((successCount / sessions.length) * 100) : 0;
-  document.getElementById('success-rate').textContent = `${successRate}%`;
-
-  // Display recent activity
-  displayRecentActivity(sessions);
+  return imageMap[stage] || '../assets/mascot/chicken_basic.png';
 }
 
-/**
- * Display recent activity list
- */
-function displayRecentActivity(sessions) {
-  const activityList = document.getElementById('activity-list');
-
-  if (sessions.length === 0) {
-    activityList.innerHTML = '<p class="no-activity">No recent activity</p>';
-    return;
-  }
-
-  activityList.innerHTML = sessions.slice(0, 5).map(session => {
-    const date = new Date(session.timestamp);
-    const timeAgo = getTimeAgo(date);
-    const statusClass = session.success ? 'success' : 'failure';
-    const statusIcon = session.success ? '✓' : '✗';
-    const domain = new URL(session.site).hostname;
-
-    return `
-      <div class="activity-item ${statusClass}">
-        <div>${statusIcon} ${session.challengeType} on ${domain}</div>
-        <div class="activity-time">${timeAgo}</div>
-      </div>
-    `;
-  }).join('');
-}
 
 /**
  * Update settings tab display
@@ -140,6 +150,42 @@ function updateSettingsDisplay(state) {
 }
 
 /**
+ * Extract domain from blocked site pattern
+ * @param {string} pattern - URL pattern like *://www.youtube.com/*
+ * @returns {string} - Domain like youtube.com
+ */
+function extractDomain(pattern) {
+  // Remove protocol wildcard (*://)
+  let domain = pattern.replace(/^\*:\/\//, '');
+  // Remove trailing wildcard (/*) if present
+  domain = domain.replace(/\/\*$/, '');
+  // Remove leading www.
+  domain = domain.replace(/^(www\.|\*\.)/, '');
+  return domain;
+}
+
+/**
+ * Get website metadata for a domain
+ * @param {string} domain - Domain like youtube.com
+ * @returns {Object} - Website metadata with name, emoji, color
+ */
+function getWebsiteMetadata(domain) {
+  // Check for exact match or any match containing the domain
+  for (const [key, metadata] of Object.entries(WEBSITE_METADATA)) {
+    if (domain.includes(key) || key.includes(domain)) {
+      return metadata;
+    }
+  }
+
+  // Default for unknown sites
+  return {
+    name: domain,
+    emoji: '🌐',
+    color: '#666666'
+  };
+}
+
+/**
  * Display blocked sites list
  */
 function displayBlockedSites(sites) {
@@ -150,12 +196,20 @@ function displayBlockedSites(sites) {
     return;
   }
 
-  listContainer.innerHTML = sites.map(site => `
-    <div class="blocked-site-item">
-      <span>${site}</span>
-      <button class="remove-site-btn" data-site="${site}">Remove</button>
-    </div>
-  `).join('');
+  listContainer.innerHTML = sites.map(site => {
+    const domain = extractDomain(site);
+    const metadata = getWebsiteMetadata(domain);
+
+    return `
+      <div class="blocked-site-item">
+        <div class="site-icon-info">
+          <span class="site-icon" style="color: ${metadata.color}; font-size: 24px;">${metadata.emoji}</span>
+          <span class="site-name">${metadata.name}</span>
+        </div>
+        <button class="remove-site-btn" data-site="${site}" title="Remove ${metadata.name}">✕</button>
+      </div>
+    `;
+  }).join('');
 
   // Add event listeners to remove buttons
   listContainer.querySelectorAll('.remove-site-btn').forEach(btn => {
@@ -171,37 +225,81 @@ function displayBlockedSites(sites) {
  * Setup event listeners
  */
 function setupEventListeners() {
-  // Tab switching
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const tabName = e.target.dataset.tab;
-      switchTab(tabName);
+  // Extension toggle (on/off with night mode)
+  const extensionToggle = document.getElementById('extension-toggle');
+  if (extensionToggle) {
+    extensionToggle.addEventListener('change', async (e) => {
+      const isEnabled = e.target.checked;
+
+      // Save state to storage
+      await chrome.storage.local.set({ extensionEnabled: isEnabled });
+
+      // Apply or remove night mode
+      if (isEnabled) {
+        removeNightMode();
+      } else {
+        applyNightMode();
+      }
     });
-  });
+  }
+
+  // Settings panel toggle
+  const settingsBtn = document.getElementById('settings-btn');
+  const closeSettingsBtn = document.getElementById('close-settings-btn');
+  const settingsPanel = document.getElementById('settings-panel');
+
+  if (settingsBtn) {
+    settingsBtn.addEventListener('click', () => {
+      settingsPanel.classList.add('open');
+    });
+  }
+
+  if (closeSettingsBtn) {
+    closeSettingsBtn.addEventListener('click', () => {
+      settingsPanel.classList.remove('open');
+    });
+  }
+
+  // Close settings panel when clicking outside of it (on main content)
+  const mainContent = document.querySelector('.main-content');
+  if (mainContent) {
+    mainContent.addEventListener('click', () => {
+      settingsPanel.classList.remove('open');
+    });
+  }
 
   // Add blocked site
-  document.getElementById('add-site-btn').addEventListener('click', async () => {
-    const input = document.getElementById('new-site-input');
-    const site = input.value.trim();
+  const addSiteBtn = document.getElementById('add-site-btn');
+  const newSiteInput = document.getElementById('new-site-input');
 
-    if (site) {
-      await addBlockedSite(site);
-      input.value = '';
-      await loadAppData();
-    }
-  });
+  if (addSiteBtn) {
+    addSiteBtn.addEventListener('click', async () => {
+      const site = newSiteInput.value.trim();
+
+      if (site) {
+        await addBlockedSite(site);
+        newSiteInput.value = '';
+        await loadAppData();
+      }
+    });
+  }
 
   // Add site on Enter key
-  document.getElementById('new-site-input').addEventListener('keypress', async (e) => {
-    if (e.key === 'Enter') {
-      document.getElementById('add-site-btn').click();
-    }
-  });
+  if (newSiteInput) {
+    newSiteInput.addEventListener('keypress', async (e) => {
+      if (e.key === 'Enter') {
+        document.getElementById('add-site-btn').click();
+      }
+    });
+  }
 
   // Difficulty change
-  document.getElementById('difficulty-select').addEventListener('change', async (e) => {
-    await updateSettings({ challengeDifficulty: e.target.value });
-  });
+  const difficultySelect = document.getElementById('difficulty-select');
+  if (difficultySelect) {
+    difficultySelect.addEventListener('change', async (e) => {
+      await updateSettings({ challengeDifficulty: e.target.value });
+    });
+  }
 
   // Challenge type checkboxes
   document.querySelectorAll('.challenge-type-checkbox').forEach(checkbox => {
@@ -221,60 +319,104 @@ function setupEventListeners() {
   });
 
   // Sound toggle
-  document.getElementById('sound-toggle').addEventListener('change', async (e) => {
-    await updateSettings({ soundEnabled: e.target.checked });
-  });
+  const soundToggle = document.getElementById('sound-toggle');
+  if (soundToggle) {
+    soundToggle.addEventListener('change', async (e) => {
+      await updateSettings({ soundEnabled: e.target.checked });
+    });
+  }
 
   // Animations toggle
-  document.getElementById('animations-toggle').addEventListener('change', async (e) => {
-    await updateSettings({ animationsEnabled: e.target.checked });
-  });
+  const animationsToggle = document.getElementById('animations-toggle');
+  if (animationsToggle) {
+    animationsToggle.addEventListener('change', async (e) => {
+      await updateSettings({ animationsEnabled: e.target.checked });
+    });
+  }
 
   // Export data
-  document.getElementById('export-data-btn').addEventListener('click', async () => {
-    const data = await exportData();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `cooped-backup-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  });
+  const exportDataBtn = document.getElementById('export-data-btn');
+  if (exportDataBtn) {
+    exportDataBtn.addEventListener('click', async () => {
+      const data = await exportData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cooped-backup-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 
   // Reset data
-  document.getElementById('reset-data-btn').addEventListener('click', async () => {
-    if (confirm('Are you sure you want to reset all data? This cannot be undone!')) {
-      await clearAllData();
-      await loadAppData();
-      alert('All data has been reset!');
+  const resetDataBtn = document.getElementById('reset-data-btn');
+  if (resetDataBtn) {
+    resetDataBtn.addEventListener('click', async () => {
+      if (confirm('Are you sure you want to reset all data? This cannot be undone!')) {
+        await clearAllData();
+        await loadAppData();
+        alert('All data has been reset!');
+      }
+    });
+  }
+
+  // Do Not Bother Me timers
+  const doNotBotherButtons = {
+    15: document.getElementById('do-not-bother-15'),
+    30: document.getElementById('do-not-bother-30'),
+    60: document.getElementById('do-not-bother-60'),
+    120: document.getElementById('do-not-bother-120')
+  };
+
+  Object.entries(doNotBotherButtons).forEach(([minutes, btn]) => {
+    if (btn) {
+      btn.addEventListener('click', async () => {
+        await setDoNotBotherMe(parseInt(minutes));
+        updateDoNotBotherStatus();
+      });
     }
   });
+
+  const disableBtn = document.getElementById('do-not-bother-disable');
+  if (disableBtn) {
+    disableBtn.addEventListener('click', async () => {
+      await disableDoNotBotherMe();
+      updateDoNotBotherStatus();
+    });
+  }
+
+  // Update Do Not Bother Me status on load
+  updateDoNotBotherStatus();
 }
 
 /**
- * Switch between tabs
+ * Update Do Not Bother Me status display
  */
-function switchTab(tabName) {
-  // Update tab buttons
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === tabName);
-  });
+async function updateDoNotBotherStatus() {
+  const status = await checkDoNotBotherMe();
+  const statusDiv = document.getElementById('do-not-bother-status');
+  const messageDiv = document.getElementById('do-not-bother-message');
+  const disableBtn = document.getElementById('do-not-bother-disable');
+  const timerButtons = [
+    document.getElementById('do-not-bother-15'),
+    document.getElementById('do-not-bother-30'),
+    document.getElementById('do-not-bother-60'),
+    document.getElementById('do-not-bother-120')
+  ];
 
-  // Update tab content
-  document.querySelectorAll('.tab-content').forEach(content => {
-    content.classList.toggle('active', content.id === `${tabName}-tab`);
-  });
-}
-
-/**
- * Get human-readable time ago string
- */
-function getTimeAgo(date) {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-
-  if (seconds < 60) return 'just now';
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
+  if (status.active) {
+    statusDiv.style.display = 'block';
+    messageDiv.textContent = `⏸️ Timer active: ${status.minutesRemaining} minute${status.minutesRemaining !== 1 ? 's' : ''} remaining`;
+    disableBtn.style.display = 'block';
+    timerButtons.forEach(btn => {
+      if (btn) btn.disabled = true;
+    });
+  } else {
+    statusDiv.style.display = 'none';
+    disableBtn.style.display = 'none';
+    timerButtons.forEach(btn => {
+      if (btn) btn.disabled = false;
+    });
+  }
 }

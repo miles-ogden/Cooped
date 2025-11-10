@@ -20,16 +20,29 @@ chrome.runtime.onInstalled.addListener(async () => {
 function isBlockedSite(url, blockedSites) {
   try {
     const urlObj = new URL(url);
+    const hostname = urlObj.hostname;
 
     return blockedSites.some(pattern => {
-      // Convert simple wildcard pattern to regex
-      // *://www.facebook.com/* -> match facebook.com domain
-      const regexPattern = pattern
-        .replace(/\*/g, '.*')
-        .replace(/\./g, '\\.');
+      // Handle wildcard patterns like *://www.youtube.com/*
+      // Extract the domain part and match against hostname
 
-      const regex = new RegExp(regexPattern);
-      return regex.test(url);
+      // Remove protocol wildcard (*://)
+      let domainPattern = pattern.replace(/^\*:\/\//, '');
+
+      // Remove trailing wildcard (/*) if present
+      domainPattern = domainPattern.replace(/\/\*$/, '');
+
+      // Remove leading www. wildcard if present
+      domainPattern = domainPattern.replace(/^\*\./, '');
+
+      // Escape regex special characters
+      const escapedPattern = domainPattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+
+      // Create regex that matches the domain exactly or as a subdomain
+      // e.g., "youtube.com" matches "youtube.com" or "www.youtube.com" or "m.youtube.com"
+      const regex = new RegExp(`(^|\\.)${escapedPattern}$`);
+
+      return regex.test(hostname);
     });
   } catch (error) {
     // Invalid URL
