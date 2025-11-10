@@ -1048,26 +1048,34 @@ function setupYouTubeTracking() {
       currentWatchVideoId = newVideoId;
       resetLongWatchTracking();
       longWatchChallengeTriggered = false;
-      await recordYouTubeActivity({
-        type: 'url_change',
-        videoId: newVideoId,
-        videoDuration: getVideoDuration(),
-        currentTime: getCurrentPlayTime(),
-        isShorts: isShortsPage
-      });
-      console.log('[ACTIVITY_RECORD] YouTube video changed to', newVideoId, '| isShortsPage:', isShortsPage, '| pathname:', window.location.pathname);
+      try {
+        await recordYouTubeActivity({
+          type: 'url_change',
+          videoId: newVideoId,
+          videoDuration: getVideoDuration(),
+          currentTime: getCurrentPlayTime(),
+          isShorts: isShortsPage
+        });
+        console.log('[ACTIVITY_RECORD] YouTube video changed to', newVideoId, '| isShortsPage:', isShortsPage, '| pathname:', window.location.pathname);
+      } catch (err) {
+        console.error('[ACTIVITY_RECORD_ERROR] Failed to record activity:', err.message);
+      }
     } else if (!newVideoId && urlChanged) {
       currentWatchVideoId = null;
       resetLongWatchTracking();
       // URL changed but we couldn't parse an ID (fallback for Shorts or unknown formats)
-      await recordYouTubeActivity({
-        type: 'url_change',
-        videoId: null,
-        videoDuration: getVideoDuration(),
-        currentTime: getCurrentPlayTime(),
-        isShorts: isShortsPage
-      });
-      console.log('[ACTIVITY_RECORD] YouTube URL changed (no ID detected):', currentUrl, '| isShortsPage:', isShortsPage, '| pathname:', window.location.pathname);
+      try {
+        await recordYouTubeActivity({
+          type: 'url_change',
+          videoId: null,
+          videoDuration: getVideoDuration(),
+          currentTime: getCurrentPlayTime(),
+          isShorts: isShortsPage
+        });
+        console.log('[ACTIVITY_RECORD] YouTube URL changed (no ID detected):', currentUrl, '| isShortsPage:', isShortsPage, '| pathname:', window.location.pathname);
+      } catch (err) {
+        console.error('[ACTIVITY_RECORD_ERROR] Failed to record activity:', err.message);
+      }
     }
   };
 
