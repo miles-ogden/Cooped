@@ -75,10 +75,16 @@ async function loadAppData() {
  * Update main display (egg count, rank, XP progress)
  */
 function updateMainDisplay(state) {
-  const { user } = state;
+  const { user, mascot } = state;
   const currentStage = getCurrentStage(user.stats.experience);
   const nextStage = getNextStage(currentStage.stage);
   const progress = getProgressToNextStage(user.stats.experience, currentStage.stage);
+
+  // Update chicken name
+  const chickenNameDisplay = document.getElementById('chicken-name-display');
+  if (chickenNameDisplay) {
+    chickenNameDisplay.textContent = mascot.name || 'Clucky';
+  }
 
   // Update egg count in header
   document.getElementById('egg-count').textContent = user.stats.eggs || 0;
@@ -229,9 +235,64 @@ function displayBlockedSites(sites) {
 }
 
 /**
+ * Setup chicken name editor with click-to-edit functionality
+ */
+function setupChickenNameEditor() {
+  const nameDisplay = document.getElementById('chicken-name-display');
+  const nameInput = document.getElementById('chicken-name-input');
+  const nameContainer = document.querySelector('.chicken-name-container');
+
+  if (!nameDisplay || !nameInput) return;
+
+  // Click on name display to edit
+  nameDisplay.addEventListener('click', () => {
+    nameInput.value = nameDisplay.textContent;
+    nameDisplay.style.display = 'none';
+    nameInput.style.display = 'inline-block';
+    nameInput.focus();
+    nameInput.select();
+  });
+
+  // Save on Enter key
+  nameInput.addEventListener('keypress', async (e) => {
+    if (e.key === 'Enter') {
+      await saveName(nameInput.value);
+    }
+  });
+
+  // Save on blur (clicking outside)
+  nameInput.addEventListener('blur', async () => {
+    await saveName(nameInput.value);
+  });
+
+  // Save the new name
+  async function saveName(newName) {
+    const trimmedName = newName.trim() || 'Clucky';
+
+    // Update UI immediately
+    nameDisplay.textContent = trimmedName;
+    nameDisplay.style.display = 'inline-block';
+    nameInput.style.display = 'none';
+
+    // Save to storage
+    try {
+      const state = await getAppState();
+      state.mascot.name = trimmedName;
+      await chrome.storage.local.set({ ['cooped_app_state']: state });
+      console.log('Cooped: Chicken name saved:', trimmedName);
+    } catch (error) {
+      console.error('Cooped: Error saving chicken name:', error);
+    }
+  }
+}
+
+/**
  * Setup event listeners
  */
 function setupEventListeners() {
+  // Chicken name editor
+  setupChickenNameEditor();
+
   // Extension toggle (on/off with night mode)
   const extensionToggle = document.getElementById('extension-toggle');
   if (extensionToggle) {

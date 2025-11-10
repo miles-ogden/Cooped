@@ -69,9 +69,21 @@ async function checkAndShowChallenge() {
     const savedChallenge = await getCurrentChallenge();
 
     if (savedChallenge) {
-      console.log('Cooped: Restoring saved challenge from previous page load');
-      showSavedChallengeOverlay(savedChallenge);
-      return;
+      const normalizeHost = (host) => (host || '').replace(/^www\./, '').toLowerCase();
+      const originalHostname = normalizeHost(new URL(savedChallenge.url).hostname);
+      const currentHostname = normalizeHost(window.location.hostname);
+      const isSameDomain =
+        currentHostname === originalHostname ||
+        currentHostname.endsWith('.' + originalHostname);
+
+      if (isSameDomain) {
+        console.log('Cooped: Restoring saved challenge from previous page load');
+        showSavedChallengeOverlay(savedChallenge);
+        return;
+      }
+
+      // Challenge belongs to a different site, clear it so it won't appear elsewhere
+      await clearCurrentChallenge();
     }
 
     // If no saved challenge, check if site is blocked
