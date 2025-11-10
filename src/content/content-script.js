@@ -1154,7 +1154,7 @@ function setupYouTubeTracking() {
     }
   });
 
-  // Check every 30 seconds for productivity triggers (long watch or short-form binge)
+  // Check every 5 seconds for productivity triggers (long watch or short-form binge)
   longWatchCheckTimer = setInterval(async () => {
     if (isOverlayActive || isMiniReminderActive || !recordYouTubeActivity) return;
 
@@ -1248,7 +1248,7 @@ function setupYouTubeTracking() {
     } catch (error) {
       console.error('Cooped: Error in long watch check:', error);
     }
-  }, 30000);
+  }, 5000); // Check every 5 seconds for faster Shorts detection
 }
 
 /**
