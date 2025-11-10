@@ -859,9 +859,9 @@ export async function checkYouTubeShorts() {
       return { watchingShortsIndicator: false, shortsCount: 0, analysisDetails: { reason: 'No activity' } };
     }
 
-    // Get last 2 minutes of activity to detect recent Shorts viewing
-    const twoMinutesAgo = Date.now() - (2 * 60 * 1000);
-    const recentActivities = activities.filter(a => a.timestamp > twoMinutesAgo);
+    // Get last 10 minutes of activity to detect rapid Shorts scrolling
+    const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
+    const recentActivities = activities.filter(a => a.timestamp > tenMinutesAgo);
 
     if (recentActivities.length === 0) {
       return { watchingShortsIndicator: false, shortsCount: 0, analysisDetails: { reason: 'No recent activity' } };
@@ -871,19 +871,19 @@ export async function checkYouTubeShorts() {
     const shortsActivities = recentActivities.filter(a => a.type === 'url_change' && a.isShorts === true);
     const allUrlChanges = recentActivities.filter(a => a.type === 'url_change');
 
-    // Simple method: If we see 2+ Shorts URL changes in last 2 minutes, they're watching Shorts
-    const watchingShortsIndicator = shortsActivities.length >= 2;
+    // Trigger if we see 8+ Shorts URL changes in last 10 minutes (rapid scrolling through Shorts)
+    const watchingShortsIndicator = shortsActivities.length >= 8;
 
     const analysisDetails = {
       shortsUrlChanges: shortsActivities.length,
       totalUrlChanges: allUrlChanges.length,
-      timeWindowMinutes: 2,
-      threshold: 2,
+      timeWindowMinutes: 10,
+      threshold: 8,
       allActivities: recentActivities.length,
       shortsActivitiesDetail: shortsActivities.map(a => ({ type: a.type, videoId: a.videoId, isShorts: a.isShorts }))
     };
 
-    console.log('[SHORTS DETECTION] Analyzing last 2 minutes:', analysisDetails, 'Trigger?', watchingShortsIndicator);
+    console.log('[SHORTS DETECTION] Analyzing last 10 minutes:', analysisDetails, 'Trigger?', watchingShortsIndicator);
 
     return { watchingShortsIndicator, shortsCount: shortsActivities.length, analysisDetails };
   } catch (error) {
