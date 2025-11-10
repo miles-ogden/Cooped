@@ -2,7 +2,7 @@
  * Popup UI logic for Cooped extension
  */
 
-import { getAppState, updateSettings, addBlockedSite, removeBlockedSite, clearAllData, exportData, setDoNotBotherMe, checkDoNotBotherMe, disableDoNotBotherMe } from '../utils/storage.js';
+import { getAppState, updateSettings, addBlockedSite, removeBlockedSite, clearAllData, exportData, setDoNotBotherMe, checkDoNotBotherMe, disableDoNotBotherMe, hardResetStorage } from '../utils/storage.js';
 import { getCurrentStage, getProgressToNextStage, getNextStage } from '../utils/mascot.js';
 import { WEBSITE_METADATA } from '../types/types.js';
 
@@ -364,6 +364,22 @@ function setupEventListeners() {
         await clearAllData();
         await loadAppData();
         alert('All data has been reset!');
+      }
+    });
+  }
+
+  // Hard reset (emergency fix for corrupted settings)
+  const hardResetBtn = document.getElementById('hard-reset-btn');
+  if (hardResetBtn) {
+    hardResetBtn.addEventListener('click', async () => {
+      if (confirm('⚠️ HARD RESET - This will clear ALL extension data and reset to defaults. Continue?')) {
+        try {
+          await hardResetStorage();
+          await loadAppData();
+          alert('✓ Hard reset complete! All settings restored to defaults.');
+        } catch (error) {
+          alert('❌ Error during hard reset: ' + error.message);
+        }
       }
     });
   }

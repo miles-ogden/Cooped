@@ -27,7 +27,19 @@ export async function initializeStorage() {
       return initialState;
     }
 
-    return existing[STORAGE_KEYS.APP_STATE];
+    // Check if blocked sites contain old sites (Twitter, Reddit) and update if needed
+    const currentState = existing[STORAGE_KEYS.APP_STATE];
+    const hasOldSites = currentState.settings.blockedSites?.some(site =>
+      site.includes('twitter.com') || site.includes('reddit.com')
+    );
+
+    if (hasOldSites) {
+      console.log('Cooped: Detected old blocked sites, resetting to default');
+      currentState.settings.blockedSites = DEFAULT_STATE.settings.blockedSites;
+      await chrome.storage.local.set({ [STORAGE_KEYS.APP_STATE]: currentState });
+    }
+
+    return currentState;
   } catch (error) {
     console.error('Cooped: Error initializing storage:', error);
     throw error;
@@ -45,6 +57,35 @@ export async function getAppState() {
   } catch (error) {
     console.error('Cooped: Error getting app state:', error);
     return DEFAULT_STATE;
+  }
+}
+
+/**
+ * Hard reset - completely clear all storage and reinitialize
+ * Use this to fix any corrupted or outdated settings
+ * @returns {Promise<AppState>}
+ */
+export async function hardResetStorage() {
+  try {
+    // Clear ALL storage
+    await chrome.storage.local.clear();
+    console.log('Cooped: All storage cleared');
+
+    // Reinitialize with fresh defaults
+    const initialState = {
+      ...DEFAULT_STATE,
+      user: {
+        ...DEFAULT_STATE.user,
+        id: generateUserId()
+      }
+    };
+
+    await chrome.storage.local.set({ [STORAGE_KEYS.APP_STATE]: initialState });
+    console.log('Cooped: Storage reinitialized with default state');
+    return initialState;
+  } catch (error) {
+    console.error('Cooped: Error during hard reset:', error);
+    throw error;
   }
 }
 

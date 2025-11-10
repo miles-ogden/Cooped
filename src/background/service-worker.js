@@ -72,7 +72,13 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     const settings = await getSettings();
 
     // Check if the URL is in the blocked list
-    if (isBlockedSite(tab.url, settings.blockedSites)) {
+    const isBlocked = isBlockedSite(tab.url, settings.blockedSites);
+
+    // Debug logging
+    const urlObj = new URL(tab.url);
+    console.log(`Cooped: URL check - hostname: ${urlObj.hostname}, blocked: ${isBlocked}, blockedSites: ${JSON.stringify(settings.blockedSites)}`);
+
+    if (isBlocked) {
       console.log('Cooped: Blocked site detected:', tab.url);
 
       // Store blocked site info for the content script to query
