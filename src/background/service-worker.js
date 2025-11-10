@@ -13,6 +13,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 /**
  * Check if URL matches any blocked site patterns
+ * STRICTLY only blocks the exact domains specified
  * @param {string} url - URL to check
  * @param {string[]} blockedSites - Array of URL patterns
  * @returns {boolean}
@@ -20,32 +21,38 @@ chrome.runtime.onInstalled.addListener(async () => {
 function isBlockedSite(url, blockedSites) {
   try {
     const urlObj = new URL(url);
-    const hostname = urlObj.hostname;
+    const hostname = urlObj.hostname.toLowerCase();
 
     return blockedSites.some(pattern => {
-      // Handle wildcard patterns like *://www.youtube.com/*
-      // Extract the domain part and match against hostname
+      // Extract domain from pattern like *://www.youtube.com/*
+      // Remove protocol: *:// -> ""
+      let domain = pattern.replace(/^\*:\/\//, '');
+      // Remove trailing path: /* -> ""
+      domain = domain.replace(/\/\*$/, '');
+      // Remove www. prefix if present: www.youtube.com -> youtube.com
+      domain = domain.replace(/^www\./, '');
+      domain = domain.toLowerCase();
 
-      // Remove protocol wildcard (*://)
-      let domainPattern = pattern.replace(/^\*:\/\//, '');
+      // STRICT matching: only match if hostname is exactly the domain or subdomain of it
+      // Examples:
+      // - youtube.com matches youtube.com, www.youtube.com, m.youtube.com
+      // - instagram.com matches instagram.com, www.instagram.com
+      // - Does NOT match google.com, facebook-cdn.com, etc.
 
-      // Remove trailing wildcard (/*) if present
-      domainPattern = domainPattern.replace(/\/\*$/, '');
+      if (hostname === domain) {
+        return true; // Exact match
+      }
 
-      // Remove leading www. wildcard if present
-      domainPattern = domainPattern.replace(/^\*\./, '');
+      // Check if hostname is a subdomain of the blocked domain
+      if (hostname.endsWith('.' + domain)) {
+        return true; // Subdomain match
+      }
 
-      // Escape regex special characters
-      const escapedPattern = domainPattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
-
-      // Create regex that matches the domain exactly or as a subdomain
-      // e.g., "youtube.com" matches "youtube.com" or "www.youtube.com" or "m.youtube.com"
-      const regex = new RegExp(`(^|\\.)${escapedPattern}$`);
-
-      return regex.test(hostname);
+      return false;
     });
   } catch (error) {
     // Invalid URL
+    console.log('Cooped: Invalid URL:', url, error);
     return false;
   }
 }

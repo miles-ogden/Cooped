@@ -8,99 +8,56 @@
 </head>
 <body>
   <div class="container">
-    <!-- Header with logo -->
+    <!-- Header with eggs and settings -->
     <header class="header">
-      <h1 class="title">🐔 Cooped</h1>
-      <p class="tagline">Stay focused, one challenge at a time</p>
+      <div class="header-content">
+        <div class="eggs-display">
+          <span class="egg-emoji">🥚</span>
+          <span class="egg-count" id="egg-count">0</span>
+        </div>
+        <div class="header-buttons">
+          <label class="toggle-switch" title="Toggle extension on/off">
+            <input type="checkbox" id="extension-toggle" checked>
+            <span class="slider"></span>
+          </label>
+          <button id="settings-btn" class="settings-btn" title="Settings">⚙️</button>
+        </div>
+      </div>
     </header>
 
-    <!-- Tab Navigation -->
-    <nav class="tabs">
-      <button class="tab-btn active" data-tab="mascot">Mascot</button>
-      <button class="tab-btn" data-tab="stats">Stats</button>
-      <button class="tab-btn" data-tab="settings">Settings</button>
-    </nav>
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Chicken Image -->
+      <div class="chicken-section">
+        <img id="chicken-image" src="../assets/mascot/chicken_basic.png" alt="Cooped Chicken" class="chicken-image">
+      </div>
 
-    <!-- Mascot Tab -->
-    <div class="tab-content active" id="mascot-tab">
-      <div class="mascot-container">
-        <div class="mascot-display">
-          <div class="mascot-stage-name" id="mascot-stage-name">Egg</div>
-          <div class="mascot-image-wrapper">
-            <img id="mascot-image" src="../assets/mascot/stage0-egg.png" alt="Mascot">
-          </div>
-          <div class="mascot-name" id="mascot-name">Clucky</div>
+      <!-- Rank Display -->
+      <div class="rank-display">
+        <span class="rank-label">Current Rank</span>
+        <span class="rank-value" id="current-rank">Egg 🥚</span>
+      </div>
+
+      <!-- XP Section -->
+      <div class="xp-section">
+        <div class="xp-header">
+          <span class="xp-label">Experience Points</span>
+          <span class="xp-value"><span id="current-xp">0</span> / <span id="next-level-xp">100</span></span>
         </div>
-
-        <div class="progress-section">
-          <div class="level-info">
-            <span class="level-label">Level <span id="user-level">1</span></span>
-            <span class="xp-label"><span id="current-xp">0</span> / <span id="next-level-xp">100</span> XP</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
-          </div>
-          <div class="next-stage-info" id="next-stage-info">
-            Next stage: <strong>Chick</strong> at 100 XP
-          </div>
+        <div class="xp-bar">
+          <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
         </div>
-
-        <div class="mascot-message" id="mascot-message">
-          Keep completing challenges to help me grow!
+        <div class="next-stage-info" id="next-stage-info">
+          Next: <strong id="next-stage-name">Chick</strong>
         </div>
       </div>
     </div>
 
-    <!-- Stats Tab -->
-    <div class="tab-content" id="stats-tab">
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon">✅</div>
-          <div class="stat-value" id="challenges-completed">0</div>
-          <div class="stat-label">Challenges Completed</div>
-        </div>
+    <!-- Settings Panel (Hidden by default) -->
+    <div class="settings-panel" id="settings-panel">
+      <button id="close-settings-btn" class="close-settings-btn">✕</button>
+      <h2>Settings</h2>
 
-        <div class="stat-card">
-          <div class="stat-icon">🔥</div>
-          <div class="stat-value" id="current-streak">0</div>
-          <div class="stat-label">Day Streak</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">🏆</div>
-          <div class="stat-value" id="longest-streak">0</div>
-          <div class="stat-label">Longest Streak</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">⏱️</div>
-          <div class="stat-value" id="time-saved">0h 0m</div>
-          <div class="stat-label">Time Blocked</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">⭐</div>
-          <div class="stat-value" id="total-xp">0</div>
-          <div class="stat-label">Total XP</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">📊</div>
-          <div class="stat-value" id="success-rate">0%</div>
-          <div class="stat-label">Success Rate</div>
-        </div>
-      </div>
-
-      <div class="recent-activity">
-        <h3>Recent Activity</h3>
-        <div class="activity-list" id="activity-list">
-          <p class="no-activity">No recent activity</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Settings Tab -->
-    <div class="tab-content" id="settings-tab">
       <div class="settings-section">
         <h3>Blocked Sites</h3>
         <p class="help-text">Add websites that distract you. Use wildcards like *://www.example.com/*</p>
@@ -127,47 +84,20 @@
           <label>Challenge Types</label>
           <div class="checkbox-group">
             <label class="checkbox-label">
-              <input type="checkbox" class="challenge-type-checkbox" value="trivia" checked>
-              Trivia Questions
-            </label>
-            <label class="checkbox-label">
               <input type="checkbox" class="challenge-type-checkbox" value="math" checked>
-              Math Problems
+              Math
             </label>
             <label class="checkbox-label">
-              <input type="checkbox" class="challenge-type-checkbox" value="word" checked>
-              Word Puzzles
+              <input type="checkbox" class="challenge-type-checkbox" value="vocabulary" checked>
+              Vocabulary
             </label>
             <label class="checkbox-label">
-              <input type="checkbox" class="challenge-type-checkbox" value="memory">
-              Memory Games
+              <input type="checkbox" class="challenge-type-checkbox" value="history" checked>
+              History
             </label>
             <label class="checkbox-label">
-              <input type="checkbox" class="challenge-type-checkbox" value="typing">
-              Typing Challenges
-            </label>
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <label>Learning Categories</label>
-          <p class="help-text">Choose topics to focus on:</p>
-          <div class="checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" class="category-checkbox" value="general-knowledge" checked>
-              🧠 General Knowledge
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" class="category-checkbox" value="vocabulary" checked>
-              📚 Vocabulary
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" class="category-checkbox" value="history" checked>
-              ⏰ History
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" class="category-checkbox" value="math" checked>
-              🔢 Math
+              <input type="checkbox" class="challenge-type-checkbox" value="general-knowledge" checked>
+              General Knowledge
             </label>
           </div>
         </div>
@@ -188,6 +118,23 @@
       </div>
 
       <div class="settings-section">
+        <h3>Do Not Bother Me</h3>
+        <p class="help-text">Pause challenges across all sites for a set time</p>
+        <div id="do-not-bother-status" style="margin-bottom: 12px; padding: 10px; background: #f5f5f5; border-radius: 6px; display: none;">
+          <p id="do-not-bother-message" style="margin: 0; font-size: 13px; color: #666;"></p>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+          <button id="do-not-bother-15" class="btn-secondary" style="width: 100%;">15 min</button>
+          <button id="do-not-bother-30" class="btn-secondary" style="width: 100%;">30 min</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+          <button id="do-not-bother-60" class="btn-secondary" style="width: 100%;">1 hour</button>
+          <button id="do-not-bother-120" class="btn-secondary" style="width: 100%;">2 hours</button>
+        </div>
+        <button id="do-not-bother-disable" class="btn-danger" style="width: 100%; display: none;">Disable Timer</button>
+      </div>
+
+      <div class="settings-section">
         <h3>Data Management</h3>
         <button id="export-data-btn" class="btn-secondary">Export Data</button>
         <button id="reset-data-btn" class="btn-danger">Reset All Data</button>
@@ -195,7 +142,6 @@
 
       <div class="settings-footer">
         <p>Cooped v1.0.0</p>
-        <p class="help-text">Made with focus and determination 🐔</p>
       </div>
     </div>
   </div>

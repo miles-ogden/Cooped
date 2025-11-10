@@ -200,10 +200,17 @@ function displayBlockedSites(sites) {
     const domain = extractDomain(site);
     const metadata = getWebsiteMetadata(domain);
 
+    // Use logo if available, otherwise fallback to emoji
+    const iconHTML = metadata.logo
+      ? `<img src="${metadata.logo}" alt="${metadata.name} logo" class="site-logo">`
+      : `<span class="site-icon" style="color: ${metadata.color}; font-size: 24px;">${metadata.emoji}</span>`;
+
     return `
       <div class="blocked-site-item">
         <div class="site-icon-info">
-          <span class="site-icon" style="color: ${metadata.color}; font-size: 24px;">${metadata.emoji}</span>
+          <div class="site-icon-container">
+            ${iconHTML}
+          </div>
           <span class="site-name">${metadata.name}</span>
         </div>
         <button class="remove-site-btn" data-site="${site}" title="Remove ${metadata.name}">✕</button>

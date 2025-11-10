@@ -290,23 +290,27 @@ export const COSMETICS_CATALOG = [
 export const WEBSITE_METADATA = {
   'youtube.com': {
     name: 'YouTube',
+    logo: '../assets/logos/youtube-logo.svg',
     emoji: '▶️',
     color: '#FF0000'
   },
   'instagram.com': {
     name: 'Instagram',
+    logo: '../assets/logos/instagram-logo.svg',
     emoji: '📷',
     color: '#E4405F'
   },
   'facebook.com': {
     name: 'Facebook',
+    logo: '../assets/logos/facebook-logo.svg',
     emoji: '👥',
     color: '#1877F2'
   },
   'tiktok.com': {
     name: 'TikTok',
+    logo: '../assets/logos/tiktok-logo.svg',
     emoji: '🎵',
-    color: '#000000'
+    color: '#25F4EE'
   }
 };
 

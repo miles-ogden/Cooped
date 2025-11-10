@@ -7,7 +7,8 @@
 let getRandomChallenge, checkAnswer, CHALLENGE_TYPES;
 let recordSession, getAppState, saveCurrentChallenge, getCurrentChallenge, clearCurrentChallenge;
 let calculateXPReward, getMascotMessage, checkLevelUp, getAdaptiveDifficultyWithVariety;
-let setSiteInterval, checkSiteInterval;
+let setSiteInterval, checkSiteInterval, addEggs, startTimeTrackingSession;
+let checkDoNotBotherMe, recordYouTubeActivity, checkLongUnpausedWatch;
 
 // Load all modules
 Promise.all([
@@ -26,6 +27,11 @@ Promise.all([
   clearCurrentChallenge = storageModule.clearCurrentChallenge;
   setSiteInterval = storageModule.setSiteInterval;
   checkSiteInterval = storageModule.checkSiteInterval;
+  addEggs = storageModule.addEggs;
+  startTimeTrackingSession = storageModule.startTimeTrackingSession;
+  checkDoNotBotherMe = storageModule.checkDoNotBotherMe;
+  recordYouTubeActivity = storageModule.recordYouTubeActivity;
+  checkLongUnpausedWatch = storageModule.checkLongUnpausedWatch;
 
   calculateXPReward = mascotModule.calculateXPReward;
   getMascotMessage = mascotModule.getMascotMessage;
@@ -51,7 +57,15 @@ async function checkAndShowChallenge() {
   if (isOverlayActive) return;
 
   try {
-    // First check if there's an existing challenge in progress
+    // First check if "Do Not Bother Me" timer is active
+    const doNotBotherCheck = await checkDoNotBotherMe();
+    if (doNotBotherCheck.active) {
+      console.log(`Cooped: Do Not Bother Me active for ${doNotBotherCheck.minutesRemaining} more minutes`);
+      // Don't show challenges during this period
+      return;
+    }
+
+    // Then check if there's an existing challenge in progress
     const savedChallenge = await getCurrentChallenge();
 
     if (savedChallenge) {
@@ -117,6 +131,11 @@ function initializeContentScript() {
 
   // Start monitoring for interval expiry
   startIntervalMonitoring();
+
+  // If on YouTube, set up video tracking
+  if (window.location.hostname.includes('youtube.com')) {
+    setupYouTubeTracking();
+  }
 }
 
 /**
@@ -208,21 +227,21 @@ function createReEngagementOverlay(challenge, blockedUrl) {
 
       <div class="cooped-challenge-content">
         <div class="cooped-question">
-          ${challenge.question}
+          <strong>QUESTION:</strong> <span>${challenge.question}</span>
           ${challenge.isBooleanQuestion ? `<div style="font-size: 14px; margin-top: 10px; opacity: 0.9;">${challenge.booleanHint}</div>` : ''}
-        </div>
 
-        <div class="cooped-input-group">
-          <input
-            type="text"
-            id="cooped-answer-input"
-            class="cooped-input"
-            placeholder="Type your answer..."
-            autocomplete="off"
-          >
-          <button id="cooped-submit-btn" class="cooped-btn cooped-btn-primary">
-            Submit Answer
-          </button>
+          <div class="cooped-input-group">
+            <input
+              type="text"
+              id="cooped-answer-input"
+              class="cooped-input"
+              placeholder="Type your answer..."
+              autocomplete="off"
+            >
+            <button id="cooped-submit-btn" class="cooped-btn-primary">
+              Submit
+            </button>
+          </div>
         </div>
 
         <div class="cooped-actions">
@@ -290,7 +309,7 @@ async function showChallengeOverlay(messageData) {
   await saveCurrentChallenge(currentChallenge, messageData.url);
 
   // Create overlay
-  const overlay = createOverlayElement(currentChallenge, messageData.url);
+  const overlay = createOverlayElement(currentChallenge);
   document.body.appendChild(overlay);
 
   // Focus on input
@@ -312,7 +331,7 @@ function showSavedChallengeOverlay(savedChallengeData) {
   document.body.style.overflow = 'hidden';
 
   // Create overlay
-  const overlay = createOverlayElement(currentChallenge, savedChallengeData.url);
+  const overlay = createOverlayElement(currentChallenge);
   document.body.appendChild(overlay);
 
   // Focus on input
@@ -325,70 +344,62 @@ function showSavedChallengeOverlay(savedChallengeData) {
 /**
  * Create overlay DOM element
  */
-function createOverlayElement(challenge, blockedUrl) {
+function createOverlayElement(challenge) {
   const overlay = document.createElement('div');
   overlay.id = 'cooped-overlay';
   overlay.innerHTML = `
     <div class="cooped-modal">
       <div class="cooped-header">
-        <div class="cooped-mascot">🐔</div>
-        <h1>Hold up there!</h1>
-        <p class="cooped-subtitle">Complete this challenge to continue</p>
-      </div>
-
-      <div class="cooped-challenge-info">
-        <span class="cooped-badge cooped-badge-${challenge.difficulty}">${challenge.difficulty}</span>
-        <span class="cooped-badge cooped-badge-type">${challenge.type}</span>
-        <span class="cooped-skips-badge" id="cooped-skips-badge">Skips: ${skipsRemaining}/3</span>
+        <div class="cooped-chicken-image">
+          <img src="${chrome.runtime.getURL('src/assets/mascot/chicken_basic.png')}" alt="Cooped Chicken">
+        </div>
+        <h1>Funny seeing you here...</h1>
+        <p class="cooped-subtitle">Not so fast pal...</p>
       </div>
 
       <div class="cooped-challenge-content">
         <div class="cooped-question">
-          ${challenge.question}
+          <strong>QUESTION:</strong> <span>${challenge.question}</span>
           ${challenge.isBooleanQuestion ? `<div style="font-size: 14px; margin-top: 10px; opacity: 0.9;">${challenge.booleanHint}</div>` : ''}
+          ${challenge.requiresContextValidation ? `<div style="font-size: 13px; margin-top: 10px; opacity: 0.8; font-style: italic; color: #666;">Write a sentence using this word naturally. At least 10 words.</div>` : ''}
+
+          <div class="cooped-input-group">
+            <input
+              type="text"
+              id="cooped-answer-input"
+              class="cooped-input"
+              placeholder="Type your answer..."
+              autocomplete="off"
+            >
+            <button id="cooped-submit-btn" class="cooped-btn-primary">
+              Submit
+            </button>
+          </div>
         </div>
 
-        <div class="cooped-input-group">
-          <input
-            type="text"
-            id="cooped-answer-input"
-            class="cooped-input"
-            placeholder="Type your answer..."
-            autocomplete="off"
-          >
-          <button id="cooped-submit-btn" class="cooped-btn cooped-btn-primary">
-            Submit Answer
-          </button>
-        </div>
+        ${challenge.requiresContextValidation ? `<button id="cooped-show-definition-btn" class="cooped-btn cooped-btn-secondary" style="width: 100%; margin-bottom: 15px;">Show Definition</button>` : ''}
 
-        <div class="cooped-actions">
-          <button id="cooped-skip-btn" class="cooped-btn cooped-btn-secondary" ${skipsRemaining <= 0 ? 'disabled' : ''}>
-            Skip Question
-          </button>
-          <button id="cooped-tellme-btn" class="cooped-btn cooped-btn-secondary">
-            Tell Me Answer
-          </button>
-        </div>
+        <button id="cooped-skip-button" class="cooped-skip-button">
+          <span class="cooped-skip-text">Skip this question</span>
+          <span class="cooped-skip-cost">COST = 1 EGG 🥚</span>
+        </button>
 
         <div id="cooped-feedback" class="cooped-feedback"></div>
-      </div>
-
-      <div class="cooped-footer">
-        <p class="cooped-blocked-url">Trying to access: <strong>${new URL(blockedUrl).hostname}</strong></p>
-        <p class="cooped-hint">Stay focused! Your chicken is counting on you.</p>
       </div>
     </div>
   `;
 
   // Add event listeners
   const submitBtn = overlay.querySelector('#cooped-submit-btn');
-  const skipBtn = overlay.querySelector('#cooped-skip-btn');
-  const tellMeBtn = overlay.querySelector('#cooped-tellme-btn');
+  const skipBtn = overlay.querySelector('#cooped-skip-button');
   const input = overlay.querySelector('#cooped-answer-input');
+  const showDefBtn = overlay.querySelector('#cooped-show-definition-btn');
 
   submitBtn.addEventListener('click', () => handleAnswerSubmit(overlay));
   skipBtn.addEventListener('click', () => handleSkip(overlay));
-  tellMeBtn.addEventListener('click', () => handleTellMe(overlay));
+  if (showDefBtn) {
+    showDefBtn.addEventListener('click', () => handleShowDefinition(overlay, challenge));
+  }
   input.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       handleAnswerSubmit(overlay);
@@ -415,8 +426,8 @@ async function handleAnswerSubmit(overlay) {
   input.disabled = true;
   document.getElementById('cooped-submit-btn').disabled = true;
 
-  // Check answer
-  const isCorrect = checkAnswer(userAnswer, currentChallenge.answer);
+  // Check answer (pass challenge for vocabulary context validation)
+  const isCorrect = checkAnswer(userAnswer, currentChallenge.answer, currentChallenge);
   const timeSpent = Date.now() - challengeStartTime;
 
   if (isCorrect) {
@@ -621,62 +632,98 @@ async function removeOverlay(overlay) {
 }
 
 async function handleSkip(overlay) {
-  if (skipsRemaining <= 0) {
+  const state = await getAppState();
+  const currentEggs = state.user.stats.eggs || 0;
+
+  // Check if user has enough eggs to skip
+  if (currentEggs < 1) {
+    const feedback = document.getElementById('cooped-feedback');
+    showFeedback(feedback, '❌ You need 1 egg to skip! Earn more points and convert them to eggs.', 'error');
     return;
   }
 
-  skipsRemaining--;
+  // Deduct 1 egg
+  await addEggs(-1);
 
-  const skipsBadge = document.getElementById('cooped-skips-badge');
-  if (skipsBadge) {
-    skipsBadge.textContent = `Skips: ${skipsRemaining}/3`;
-  }
+  // Start time tracking for this site
+  const hostname = new URL(window.location.href).hostname;
+  await startTimeTrackingSession(hostname);
 
-  const skipBtn = document.getElementById('cooped-skip-btn');
-  if (skipBtn && skipsRemaining <= 0) {
-    skipBtn.disabled = true;
-  }
+  // Close overlay and allow access
+  await removeOverlay(overlay);
 
-  const enabledTypes = ['trivia', 'math', 'word'];
-  const randomType = enabledTypes[Math.floor(Math.random() * enabledTypes.length)];
-  currentChallenge = getRandomChallenge(randomType, currentChallenge.difficulty);
+  // Show feedback message
+  const tempFeedback = document.createElement('div');
+  tempFeedback.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #ffccbc;
+    color: #d84315;
+    padding: 15px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    z-index: 10000;
+    animation: slideIn 0.3s ease;
+  `;
+  tempFeedback.textContent = '⏱️ Skip used! -1 EGG - Time is being tracked.';
+  document.body.appendChild(tempFeedback);
 
-  challengeStartTime = Date.now();
+  // Remove message after 4 seconds
+  setTimeout(() => {
+    tempFeedback.remove();
+  }, 4000);
+}
 
-  const questionDiv = overlay.querySelector('.cooped-question');
+async function handleShowDefinition(_overlay, challenge) {
+  // Extract the word from the question (format: "Use this word in a sentence: WORD")
+  const wordMatch = challenge.question.match(/in a sentence: (\w+)/i);
+  if (!wordMatch) return;
+
+  const word = wordMatch[1];
   const feedback = document.getElementById('cooped-feedback');
-  const input = document.getElementById('cooped-answer-input');
 
-  if (questionDiv) {
-    questionDiv.textContent = currentChallenge.question;
-  }
+  // Simple definition lookup - in a real app, you'd use an API like WordsAPI or Merriam-Webster
+  const definitions = {
+    'HAPPY': 'feeling or showing pleasure or contentment',
+    'RUN': 'move fast by using your legs',
+    'BLUE': 'the color of the sky on a clear day',
+    'JUMP': 'push oneself off a surface and into the air',
+    'BRIGHT': 'giving out much light; shining',
+    'QUICK': 'happening or done fast',
+    'FRIEND': 'a person with whom one has a bond of mutual affection',
+    'LEARN': 'acquire knowledge or skill in something',
+    'MORNING': 'the part of the day from sunrise until noon',
+    'BEAUTIFUL': 'pleasing the senses or mind aesthetically',
+    'ELOQUENT': 'fluent, persuasive, and expressive in speaking or writing',
+    'MELANCHOLY': 'a feeling of pensive sadness, typically with no obvious cause',
+    'TENACIOUS': 'holding firmly to something; persistent',
+    'AMBIGUOUS': 'open to more than one interpretation; unclear',
+    'RESILIENT': 'able to withstand or recover quickly from difficult conditions',
+    'PRAGMATIC': 'dealing with things in a way based on practical rather than theoretical considerations',
+    'OBSCURE': 'not clearly expressed or easily understood',
+    'METICULOUS': 'showing great attention to detail; very careful and precise',
+    'EPHEMERAL': 'lasting for a very short time',
+    'VIVACIOUS': 'lively, animated, and spirited',
+    'INCONGRUOUS': 'not in harmony or keeping with the surroundings',
+    'SANGUINE': 'optimistic or positive, especially in an inappropriate situation',
+    'OBFUSCATE': 'to deliberately make unclear or confusing',
+    'PERSPICACIOUS': 'having keen insight; mentally sharp',
+    'SERENDIPITY': 'the occurrence of events by chance in a happy or beneficial way',
+    'PELLUCID': 'translucently clear; easy to understand',
+    'CAPRICIOUS': 'given to sudden and unaccountable changes of mood or behavior',
+    'MAGNANIMOUS': 'generous or forgiving, especially toward a rival or less powerful person',
+    'PROPITIOUS': 'giving or indicating a good chance of success; favorable',
+    'UBIQUITOUS': 'present, appearing, or found everywhere'
+  };
 
-  if (input) {
-    input.value = '';
-    input.focus();
-    input.disabled = false;
-  }
-
-  if (feedback) {
-    feedback.style.display = 'none';
-  }
-
-  const submitBtn = document.getElementById('cooped-submit-btn');
-  if (submitBtn) {
-    submitBtn.disabled = false;
-  }
+  const definition = definitions[word] || `Definition of ${word}: (Not available - try looking it up in a dictionary)`;
 
   showFeedback(
     feedback,
-    '⏭️ Question skipped! Here\'s a new one.',
-    'warning'
+    `<strong>${word}</strong><br><small>${definition}</small>`,
+    'info'
   );
-
-  setTimeout(() => {
-    if (feedback) {
-      feedback.style.display = 'none';
-    }
-  }, 2000);
 }
 
 async function handleTellMe(overlay) {
@@ -727,3 +774,146 @@ async function handleTellMe(overlay) {
 window.addEventListener('load', () => {
   // Background script will send message if site is blocked
 });
+
+/**
+ * Set up YouTube-specific video tracking
+ * Monitors pause/play events and URL changes to detect productivity patterns
+ */
+function setupYouTubeTracking() {
+  let currentVideoId = extractVideoIdFromUrl();
+
+  // Debounced function to handle URL/video changes
+  const handleVideoChange = debounce(() => {
+    const newVideoId = extractVideoIdFromUrl();
+    if (newVideoId && newVideoId !== currentVideoId) {
+      currentVideoId = newVideoId;
+      recordYouTubeActivity({
+        type: 'url_change',
+        videoId: newVideoId,
+        videoDuration: getVideoDuration(),
+        currentTime: getCurrentPlayTime()
+      });
+      console.log('Cooped: YouTube video changed to', newVideoId);
+    }
+  }, 500);
+
+  // Monitor URL changes
+  window.addEventListener('popstate', handleVideoChange);
+  window.addEventListener('hashchange', handleVideoChange);
+
+  // Inject script to monitor player events
+  const script = document.createElement('script');
+  script.textContent = `
+    (function() {
+      const originalPlay = HTMLMediaElement.prototype.play;
+      const originalPause = HTMLMediaElement.prototype.pause;
+
+      HTMLMediaElement.prototype.play = function() {
+        window.postMessage({ type: 'YT_PLAY', currentTime: this.currentTime }, '*');
+        return originalPlay.call(this);
+      };
+
+      HTMLMediaElement.prototype.pause = function() {
+        window.postMessage({ type: 'YT_PAUSE', currentTime: this.currentTime }, '*');
+        return originalPause.call(this);
+      };
+    })();
+  `;
+  document.documentElement.appendChild(script);
+  script.remove();
+
+  // Listen for messages from injected script
+  window.addEventListener('message', async (event) => {
+    if (event.source !== window) return;
+
+    if (event.data.type === 'YT_PLAY') {
+      await recordYouTubeActivity({
+        type: 'play',
+        videoId: currentVideoId,
+        videoDuration: getVideoDuration(),
+        currentTime: event.data.currentTime || getCurrentPlayTime()
+      });
+      console.log('Cooped: YouTube video played');
+    } else if (event.data.type === 'YT_PAUSE') {
+      await recordYouTubeActivity({
+        type: 'pause',
+        videoId: currentVideoId,
+        videoDuration: getVideoDuration(),
+        currentTime: event.data.currentTime || getCurrentPlayTime()
+      });
+      console.log('Cooped: YouTube video paused');
+    }
+  });
+
+  // Check every 30 seconds if video has been playing too long without pauses
+  longWatchCheckTimer = setInterval(async () => {
+    if (isOverlayActive || !recordYouTubeActivity) return;
+
+    const check = await checkLongUnpausedWatch();
+    if (check.tooLongUnpaused) {
+      console.log(`Cooped: Video playing for ${check.watchTimeMinutes} minutes without pause - showing challenge`);
+      // Show challenge for long unpaused watch
+      const response = await chrome.runtime.sendMessage({
+        type: 'CHECK_BLOCKED_SITE'
+      });
+
+      if (response && response.isBlocked) {
+        showChallengeOverlay(response);
+      }
+    }
+  }, 30000);
+}
+
+/**
+ * Extract video ID from YouTube URL
+ */
+function extractVideoIdFromUrl() {
+  const url = window.location.href;
+
+  // Handle youtube.com/watch?v=ID
+  const match = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+  if (match) return match[1];
+
+  // Handle youtu.be/ID
+  const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+  if (shortMatch) return shortMatch[1];
+
+  return null;
+}
+
+/**
+ * Get current video duration
+ */
+function getVideoDuration() {
+  const video = document.querySelector('video');
+  if (video && video.duration) {
+    return Math.round(video.duration);
+  }
+  return 0;
+}
+
+/**
+ * Get current playback time
+ */
+function getCurrentPlayTime() {
+  const video = document.querySelector('video');
+  if (video && video.currentTime) {
+    return Math.round(video.currentTime);
+  }
+  return 0;
+}
+
+/**
+ * Simple debounce helper
+ */
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}

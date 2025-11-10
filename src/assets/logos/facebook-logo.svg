@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <linearGradient id="Ld6sqrtcxMysiPvVanHans_FSVzm8os7SDBUI_gb1" x1="9.993" x2="40.615" y1="9.993" y2="40.615" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#2aa4f4"/>
+    <stop offset="1" stop-color="#007ad9"/>
+  </linearGradient>
+  <path fill="url(#Ld6sqrtcxMysiPvVanHans_FSVzm8os7SDBUI_gb1)" d="M24,4C12.954,4,4,12.954,4,24s8.954,20,20,20s20-8.954,20-20S35.046,4,24,4z"/>
+  <path fill="#fff" d="M26.707,29.301h5.176v8.802h-5.176v-8.802zm-2.169,0h-5.816v8.802h5.816v-4.428c0-1.052,0.215-2.594,1.760-2.594 c1.697,0,1.923,1.639,1.923,2.735v4.287h5.806v-5.904c0-3.368-0.703-5.976-4.466-5.976c-1.812,0-3.043,0.995-3.538,1.938h-0.051 v-1.641h-5.616V29.301z M9.585,20.031h5.816v8.802H9.585V20.031z M15.15,9.263c-1.860,0-3.359,1.499-3.359,3.359 s1.499,3.359,3.359,3.359s3.359-1.499,3.359-3.359S17.01,9.263,15.15,9.263z"/>
+</svg>

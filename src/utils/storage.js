@@ -126,6 +126,10 @@ export async function recordSession(session) {
     state.user.stats.experience += session.experienceGained;
     state.user.stats.level = calculateLevel(state.user.stats.experience);
 
+    // Award points based on difficulty (10 points per XP gained)
+    const pointsEarned = session.experienceGained * 10;
+    state.user.stats.points += pointsEarned;
+
     // Update streak
     const today = new Date().setHours(0, 0, 0, 0);
     const lastActivity = new Date(state.user.stats.lastActivityDate).setHours(0, 0, 0, 0);
@@ -613,5 +617,215 @@ export async function applySkipPenalty() {
   } catch (error) {
     console.error('Cooped: Error applying skip penalty:', error);
     return { eggsCost: 1, newBalance: 0 };
+  }
+}
+
+/**
+ * Set a "Do Not Bother Me" timer across all tabs
+ * Prevents challenges from showing until timer expires
+ * @param {number} minutes - Duration in minutes
+ * @returns {Promise<{enabled: boolean, expiryTime: number, minutesRemaining: number}>}
+ */
+export async function setDoNotBotherMe(minutes) {
+  try {
+    const expiryTime = Date.now() + (minutes * 60 * 1000);
+    const timerData = {
+      enabled: true,
+      startTime: Date.now(),
+      expiryTime,
+      minutes,
+      originalMinutes: minutes
+    };
+
+    await chrome.storage.local.set({ 'cooped_do_not_bother_me': timerData });
+    console.log(`Cooped: Do Not Bother Me timer set for ${minutes} minutes`);
+    return {
+      enabled: true,
+      expiryTime,
+      minutesRemaining: minutes
+    };
+  } catch (error) {
+    console.error('Cooped: Error setting do not bother me timer:', error);
+    return { enabled: false, expiryTime: 0, minutesRemaining: 0 };
+  }
+}
+
+/**
+ * Check if "Do Not Bother Me" timer is active
+ * @returns {Promise<{active: boolean, minutesRemaining: number, expiryTime: number}>}
+ */
+export async function checkDoNotBotherMe() {
+  try {
+    const result = await chrome.storage.local.get('cooped_do_not_bother_me');
+    const timerData = result.cooped_do_not_bother_me;
+
+    if (!timerData || !timerData.enabled) {
+      return { active: false, minutesRemaining: 0, expiryTime: 0 };
+    }
+
+    const now = Date.now();
+    if (now < timerData.expiryTime) {
+      const minutesRemaining = Math.ceil((timerData.expiryTime - now) / (60 * 1000));
+      return {
+        active: true,
+        minutesRemaining,
+        expiryTime: timerData.expiryTime
+      };
+    } else {
+      // Timer expired, clean it up
+      await chrome.storage.local.remove('cooped_do_not_bother_me');
+      return { active: false, minutesRemaining: 0, expiryTime: 0 };
+    }
+  } catch (error) {
+    console.error('Cooped: Error checking do not bother me timer:', error);
+    return { active: false, minutesRemaining: 0, expiryTime: 0 };
+  }
+}
+
+/**
+ * Disable the "Do Not Bother Me" timer early
+ * @returns {Promise<boolean>}
+ */
+export async function disableDoNotBotherMe() {
+  try {
+    await chrome.storage.local.remove('cooped_do_not_bother_me');
+    console.log('Cooped: Do Not Bother Me timer disabled');
+    return true;
+  } catch (error) {
+    console.error('Cooped: Error disabling do not bother me timer:', error);
+    return false;
+  }
+}
+
+/**
+ * Track YouTube video activity for productivity analysis
+ * Records pause/play events and URL changes
+ * @param {Object} activity - Activity object {type, timestamp, videoId, videoDuration, currentTime}
+ * @returns {Promise<boolean>}
+ */
+export async function recordYouTubeActivity(activity) {
+  try {
+    const result = await chrome.storage.local.get('cooped_youtube_activity');
+    const activities = result.cooped_youtube_activity || [];
+
+    // Keep last 100 activities
+    activities.push({
+      ...activity,
+      timestamp: Date.now(),
+      recordedAt: new Date().toISOString()
+    });
+
+    const trimmed = activities.slice(-100);
+    await chrome.storage.local.set({ 'cooped_youtube_activity': trimmed });
+
+    return true;
+  } catch (error) {
+    console.error('Cooped: Error recording YouTube activity:', error);
+    return false;
+  }
+}
+
+/**
+ * Analyze YouTube activity for productivity patterns
+ * @returns {Promise<{isProductiveMode: boolean, analysisDetails: Object}>}
+ */
+export async function analyzeYouTubeActivity() {
+  try {
+    const result = await chrome.storage.local.get('cooped_youtube_activity');
+    const activities = result.cooped_youtube_activity || [];
+
+    if (activities.length === 0) {
+      return { isProductiveMode: true, analysisDetails: { reason: 'No activity recorded' } };
+    }
+
+    // Get last 10 minutes of activity
+    const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
+    const recentActivities = activities.filter(a => a.timestamp > tenMinutesAgo);
+
+    if (recentActivities.length === 0) {
+      return { isProductiveMode: true, analysisDetails: { reason: 'No recent activity' } };
+    }
+
+    // Analyze patterns
+    const videoChanges = recentActivities.filter(a => a.type === 'url_change').length;
+    const pauseEvents = recentActivities.filter(a => a.type === 'pause').length;
+    const playEvents = recentActivities.filter(a => a.type === 'play').length;
+
+    // Get current video info from the last activity
+    const lastActivity = recentActivities[recentActivities.length - 1];
+    const watchTimeSeconds = (lastActivity.currentTime || 0) - (recentActivities[0].currentTime || 0);
+    const watchTimeMinutes = Math.max(0, watchTimeSeconds / 60);
+
+    // Detect stimming pattern: Rapid URL changes (short-form content)
+    const shortFormIndicator = videoChanges > 8; // More than 8 video changes in 10 min = stimming
+
+    // Detect productive pattern: Long video watch with pauses (implementing learnings)
+    const productiveIndicator = watchTimeMinutes > 4 && pauseEvents > 0; // Watching + pausing = productive
+
+    const analysisDetails = {
+      videoChangesLast10Min: videoChanges,
+      pauseEventsLast10Min: pauseEvents,
+      playEventsLast10Min: playEvents,
+      watchTimeMinutes: Math.round(watchTimeMinutes),
+      shortFormIndicator,
+      productiveIndicator,
+      lastVideoDuration: lastActivity.videoDuration || 0
+    };
+
+    // If short-form pattern detected OR watch time > 7 min without pauses = not productive
+    const isProductiveMode = !shortFormIndicator && (watchTimeMinutes < 7 || pauseEvents > 0);
+
+    return { isProductiveMode, analysisDetails };
+  } catch (error) {
+    console.error('Cooped: Error analyzing YouTube activity:', error);
+    return { isProductiveMode: true, analysisDetails: { error: error.message } };
+  }
+}
+
+/**
+ * Check if video has been playing for too long without pauses (7+ minutes)
+ * @returns {Promise<{tooLongUnpaused: boolean, watchTimeMinutes: number}>}
+ */
+export async function checkLongUnpausedWatch() {
+  try {
+    const result = await chrome.storage.local.get('cooped_youtube_activity');
+    const activities = result.cooped_youtube_activity || [];
+
+    if (activities.length === 0) {
+      return { tooLongUnpaused: false, watchTimeMinutes: 0 };
+    }
+
+    // Get all activities for current video (same videoId)
+    const lastActivity = activities[activities.length - 1];
+    const currentVideoId = lastActivity.videoId;
+    const currentVideoActivities = activities.filter(a => a.videoId === currentVideoId);
+
+    if (currentVideoActivities.length === 0) {
+      return { tooLongUnpaused: false, watchTimeMinutes: 0 };
+    }
+
+    // Find if there's been any pause event
+    const hasPauseEvent = currentVideoActivities.some(a => a.type === 'pause');
+
+    // Calculate continuous watch time from last pause (or start)
+    let watchStartIndex = currentVideoActivities.length - 1;
+    for (let i = currentVideoActivities.length - 1; i >= 0; i--) {
+      if (currentVideoActivities[i].type === 'pause') {
+        watchStartIndex = i;
+        break;
+      }
+    }
+
+    const watchStartTime = currentVideoActivities[watchStartIndex].timestamp;
+    const watchTimeMs = Date.now() - watchStartTime;
+    const watchTimeMinutes = watchTimeMs / (60 * 1000);
+
+    // Trigger if watching 7+ minutes without pausing
+    const tooLongUnpaused = watchTimeMinutes >= 7 && !hasPauseEvent;
+
+    return { tooLongUnpaused, watchTimeMinutes: Math.round(watchTimeMinutes) };
+  } catch (error) {
+    console.error('Cooped: Error checking long unpaused watch:', error);
+    return { tooLongUnpaused: false, watchTimeMinutes: 0 };
   }
 }
