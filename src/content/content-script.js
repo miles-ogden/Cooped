@@ -1243,7 +1243,9 @@ function setupYouTubeTracking() {
           longWatchChallengeTriggered = true;
           resetLongWatchTracking();
 
+          console.log('[BLOCK_SCREEN_TRIGGER] Showing full block screen for:', triggerInfo.reason);
           await showFullBlockScreen();
+          console.log('[BLOCK_SCREEN_TRIGGER] Block screen display completed');
         }
       }
     } catch (error) {
