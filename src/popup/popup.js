@@ -80,12 +80,6 @@ function updateMainDisplay(state) {
   const nextStage = getNextStage(currentStage.stage);
   const progress = getProgressToNextStage(user.stats.experience, currentStage.stage);
 
-  // Update chicken name
-  const chickenNameDisplay = document.getElementById('chicken-name-display');
-  if (chickenNameDisplay) {
-    chickenNameDisplay.textContent = mascot.name || 'Clucky';
-  }
-
   // Update egg count in header
   document.getElementById('egg-count').textContent = user.stats.eggs || 0;
 
@@ -137,7 +131,13 @@ function getMascotImagePath(stage) {
  * Update settings tab display
  */
 function updateSettingsDisplay(state) {
-  const { settings } = state;
+  const { settings, mascot } = state;
+
+  // Display chicken name
+  const chickenNameDisplay = document.getElementById('chicken-name-display-settings');
+  if (chickenNameDisplay) {
+    chickenNameDisplay.textContent = mascot.name || 'Clucky';
+  }
 
   // Display blocked sites
   displayBlockedSites(settings.blockedSites);
@@ -235,12 +235,11 @@ function displayBlockedSites(sites) {
 }
 
 /**
- * Setup chicken name editor with click-to-edit functionality
+ * Setup chicken name editor in settings
  */
 function setupChickenNameEditor() {
-  const nameDisplay = document.getElementById('chicken-name-display');
-  const nameInput = document.getElementById('chicken-name-input');
-  const nameContainer = document.querySelector('.chicken-name-container');
+  const nameDisplay = document.getElementById('chicken-name-display-settings');
+  const nameInput = document.getElementById('chicken-name-input-settings');
 
   if (!nameDisplay || !nameInput) return;
 
@@ -248,7 +247,7 @@ function setupChickenNameEditor() {
   nameDisplay.addEventListener('click', () => {
     nameInput.value = nameDisplay.textContent;
     nameDisplay.style.display = 'none';
-    nameInput.style.display = 'inline-block';
+    nameInput.style.display = 'block';
     nameInput.focus();
     nameInput.select();
   });
@@ -271,7 +270,7 @@ function setupChickenNameEditor() {
 
     // Update UI immediately
     nameDisplay.textContent = trimmedName;
-    nameDisplay.style.display = 'inline-block';
+    nameDisplay.style.display = 'block';
     nameInput.style.display = 'none';
 
     // Save to storage

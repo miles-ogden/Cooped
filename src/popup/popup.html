@@ -30,18 +30,10 @@
       <!-- Chicken Image -->
       <div class="chicken-section">
         <img id="chicken-image" src="../assets/mascot/chicken_basic.png" alt="Cooped Chicken" class="chicken-image">
-        <!-- Chicken Name (Clickable to Edit) -->
-        <div class="chicken-name-container">
-          <span id="chicken-name-display" class="chicken-name-display">Clucky</span>
-          <span class="chicken-name-hint">(click to edit)</span>
-        </div>
-        <!-- Hidden input for editing -->
-        <input type="text" id="chicken-name-input" class="chicken-name-input" style="display: none;" maxlength="20">
       </div>
 
-      <!-- Rank Display -->
+      <!-- Rank Display (Compact) -->
       <div class="rank-display">
-        <span class="rank-label">Current Rank</span>
         <span class="rank-value" id="current-rank">Egg 🥚</span>
       </div>
 
@@ -64,6 +56,17 @@
     <div class="settings-panel" id="settings-panel">
       <button id="close-settings-btn" class="close-settings-btn">✕</button>
       <h2>Settings</h2>
+
+      <div class="settings-section">
+        <h3>Chicken</h3>
+        <div class="setting-item">
+          <label for="chicken-name-input-settings">Chicken Name</label>
+          <div class="chicken-name-editor">
+            <span id="chicken-name-display-settings" class="chicken-name-display-settings">Clucky</span>
+            <input type="text" id="chicken-name-input-settings" class="chicken-name-input-settings" style="display: none;" maxlength="20">
+          </div>
+        </div>
+      </div>
 
       <div class="settings-section">
         <h3>Blocked Sites</h3>
