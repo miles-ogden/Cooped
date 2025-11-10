@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Earn More Eggs - Cooped</title>
+  <link rel="stylesheet" href="earn-eggs.css">
+</head>
+<body>
+  <div class="earn-eggs-container">
+    <!-- Header with back button and fullscreen toggle -->
+    <div class="earn-eggs-header">
+      <button id="back-btn" class="back-btn" title="Back to main popup">← Back</button>
+      <h1>Earn More Eggs</h1>
+      <button id="fullscreen-btn" class="fullscreen-btn" title="Fullscreen mode">⛶</button>
+    </div>
+
+    <!-- Challenge Progression Visualization -->
+    <div class="progression-container">
+      <div class="chicken-stand">
+        <img id="progression-chicken" src="../../assets/mascot/chicken_normal.png" alt="Chicken" class="progression-chicken">
+      </div>
+
+      <!-- Offset circles representing challenge progression -->
+      <div class="circles-container">
+        <!-- The circles will be generated dynamically by JavaScript -->
+        <div class="progression-circles" id="progression-circles"></div>
+      </div>
+    </div>
+
+    <!-- Challenge Display Area -->
+    <div class="challenge-area">
+      <div id="challenge-content" class="challenge-content">
+        <!-- Challenge will be loaded here -->
+      </div>
+    </div>
+
+    <!-- Egg Rewards Display -->
+    <div class="rewards-display">
+      <span class="egg-icon">🥚</span>
+      <span class="eggs-earned" id="eggs-earned">0</span>
+      <span class="earned-text">eggs earned</span>
+    </div>
+  </div>
+
+  <script type="module" src="earn-eggs.js"></script>
+</body>
+</html>

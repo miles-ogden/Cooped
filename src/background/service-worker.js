@@ -69,6 +69,10 @@ const blockedTabs = new Map();
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   // Store the tab URL whenever it updates
   if (tab.url) {
+    // First check if extension is enabled
+    const extensionStateResult = await chrome.storage.local.get(['extensionEnabled']);
+    const isExtensionEnabled = extensionStateResult.extensionEnabled !== false;
+
     const settings = await getSettings();
 
     // Check if the URL is in the blocked list
@@ -76,10 +80,11 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
     // Debug logging
     const urlObj = new URL(tab.url);
-    console.log(`Cooped: URL check - hostname: ${urlObj.hostname}, blocked: ${isBlocked}, blockedSites: ${JSON.stringify(settings.blockedSites)}`);
+    console.log(`Cooped: URL check - hostname: ${urlObj.hostname}, blocked: ${isBlocked}, enabled: ${isExtensionEnabled}, blockedSites: ${JSON.stringify(settings.blockedSites)}`);
 
-    if (isBlocked) {
-      console.log('Cooped: Blocked site detected:', tab.url);
+    // Only store blocked site if extension is enabled
+    if (isBlocked && isExtensionEnabled) {
+      console.log('Cooped: Blocked site detected (extension enabled):', tab.url);
 
       // Store blocked site info for the content script to query
       blockedTabs.set(tabId, {
@@ -88,7 +93,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         enabledTypes: settings.enabledChallengeTypes
       });
     } else {
-      // Clear if no longer blocked
+      // Clear if no longer blocked or extension is disabled
       blockedTabs.delete(tabId);
     }
   }

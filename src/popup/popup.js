@@ -88,6 +88,12 @@ function updateMainDisplay(state) {
   chickenImage.src = getMascotImagePath(currentStage.stage);
   chickenImage.alt = currentStage.name;
 
+  // Update chicken name
+  const chickenNameMain = document.getElementById('chicken-name-main');
+  if (chickenNameMain) {
+    chickenNameMain.textContent = mascot?.name || 'Clucky';
+  }
+
   // Update current rank
   document.getElementById('current-rank').textContent = `${currentStage.name} ${currentStage.emoji}`;
 
@@ -133,10 +139,15 @@ function getMascotImagePath(stage) {
 function updateSettingsDisplay(state) {
   const { settings, mascot } = state;
 
+  console.log('Cooped: updateSettingsDisplay - mascot:', mascot);
+
   // Display chicken name
   const chickenNameDisplay = document.getElementById('chicken-name-display-settings');
   if (chickenNameDisplay) {
-    chickenNameDisplay.textContent = mascot.name || 'Clucky';
+    console.log('Cooped: Found chicken name display element, setting to:', mascot?.name || 'Clucky');
+    chickenNameDisplay.textContent = mascot?.name || 'Clucky';
+  } else {
+    console.log('Cooped: chicken-name-display-settings element not found!');
   }
 
   // Display blocked sites
@@ -291,6 +302,20 @@ function setupChickenNameEditor() {
 function setupEventListeners() {
   // Chicken name editor
   setupChickenNameEditor();
+
+  // Earn More Eggs button
+  const earnEggsBtn = document.getElementById('earn-eggs-btn');
+  if (earnEggsBtn) {
+    earnEggsBtn.addEventListener('click', () => {
+      // Open the earn-eggs page in a new popup window
+      chrome.windows.create({
+        url: chrome.runtime.getURL('src/popup/earn-eggs.html'),
+        type: 'popup',
+        width: 500,
+        height: 800
+      });
+    });
+  }
 
   // Extension toggle (on/off with night mode)
   const extensionToggle = document.getElementById('extension-toggle');

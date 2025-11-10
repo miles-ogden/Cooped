@@ -53,7 +53,30 @@ export async function initializeStorage() {
 export async function getAppState() {
   try {
     const result = await chrome.storage.local.get(STORAGE_KEYS.APP_STATE);
-    return result[STORAGE_KEYS.APP_STATE] || DEFAULT_STATE;
+    const state = result[STORAGE_KEYS.APP_STATE];
+
+    if (!state) {
+      return DEFAULT_STATE;
+    }
+
+    // Ensure mascot object exists and has a name
+    let needsSave = false;
+
+    if (!state.mascot) {
+      state.mascot = DEFAULT_STATE.mascot;
+      needsSave = true;
+    }
+    if (!state.mascot.name) {
+      state.mascot.name = DEFAULT_STATE.mascot.name;
+      needsSave = true;
+    }
+
+    // Save the migrated state back if needed
+    if (needsSave) {
+      await chrome.storage.local.set({ [STORAGE_KEYS.APP_STATE]: state });
+    }
+
+    return state;
   } catch (error) {
     console.error('Cooped: Error getting app state:', error);
     return DEFAULT_STATE;
@@ -824,6 +847,52 @@ export async function analyzeYouTubeActivity() {
 }
 
 /**
+ * Check if user has been watching YouTube Shorts (simple direct method)
+ * @returns {Promise<{watchingShortsIndicator: boolean, shortsCount: number, analysisDetails: Object}>}
+ */
+export async function checkYouTubeShorts() {
+  try {
+    const result = await chrome.storage.local.get('cooped_youtube_activity');
+    const activities = result.cooped_youtube_activity || [];
+
+    if (activities.length === 0) {
+      return { watchingShortsIndicator: false, shortsCount: 0, analysisDetails: { reason: 'No activity' } };
+    }
+
+    // Get last 2 minutes of activity to detect recent Shorts viewing
+    const twoMinutesAgo = Date.now() - (2 * 60 * 1000);
+    const recentActivities = activities.filter(a => a.timestamp > twoMinutesAgo);
+
+    if (recentActivities.length === 0) {
+      return { watchingShortsIndicator: false, shortsCount: 0, analysisDetails: { reason: 'No recent activity' } };
+    }
+
+    // Count Shorts-specific URL changes
+    const shortsActivities = recentActivities.filter(a => a.type === 'url_change' && a.isShorts === true);
+    const allUrlChanges = recentActivities.filter(a => a.type === 'url_change');
+
+    // Simple method: If we see 2+ Shorts URL changes in last 2 minutes, they're watching Shorts
+    const watchingShortsIndicator = shortsActivities.length >= 2;
+
+    const analysisDetails = {
+      shortsUrlChanges: shortsActivities.length,
+      totalUrlChanges: allUrlChanges.length,
+      timeWindowMinutes: 2,
+      threshold: 2,
+      allActivities: recentActivities.length,
+      shortsActivitiesDetail: shortsActivities.map(a => ({ type: a.type, videoId: a.videoId, isShorts: a.isShorts }))
+    };
+
+    console.log('[SHORTS DETECTION] Analyzing last 2 minutes:', analysisDetails, 'Trigger?', watchingShortsIndicator);
+
+    return { watchingShortsIndicator, shortsCount: shortsActivities.length, analysisDetails };
+  } catch (error) {
+    console.error('Cooped: Error checking YouTube Shorts:', error);
+    return { watchingShortsIndicator: false, shortsCount: 0, analysisDetails: { error: error.message } };
+  }
+}
+
+/**
  * Check if video has been playing for too long without pauses (7+ minutes)
  * @returns {Promise<{tooLongUnpaused: boolean, watchTimeMinutes: number}>}
  */
@@ -833,36 +902,54 @@ export async function checkLongUnpausedWatch() {
     const activities = result.cooped_youtube_activity || [];
 
     if (activities.length === 0) {
+      console.log('Cooped: No YouTube activities recorded yet');
       return { tooLongUnpaused: false, watchTimeMinutes: 0 };
     }
 
     // Get all activities for current video (same videoId)
     const lastActivity = activities[activities.length - 1];
     const currentVideoId = lastActivity.videoId;
-    const currentVideoActivities = activities.filter(a => a.videoId === currentVideoId);
 
-    if (currentVideoActivities.length === 0) {
+    // If we don't have a valid video ID (e.g., browsing search/feeds), skip the long-watch check
+    if (!currentVideoId) {
+      console.log('Cooped: No valid video ID found');
       return { tooLongUnpaused: false, watchTimeMinutes: 0 };
     }
 
-    // Find if there's been any pause event
-    const hasPauseEvent = currentVideoActivities.some(a => a.type === 'pause');
+    const currentVideoActivities = activities.filter(a => a.videoId === currentVideoId);
 
-    // Calculate continuous watch time from last pause (or start)
-    let watchStartIndex = currentVideoActivities.length - 1;
-    for (let i = currentVideoActivities.length - 1; i >= 0; i--) {
-      if (currentVideoActivities[i].type === 'pause') {
-        watchStartIndex = i;
+    if (currentVideoActivities.length === 0) {
+      console.log('Cooped: No activities for current video ID');
+      return { tooLongUnpaused: false, watchTimeMinutes: 0 };
+    }
+
+    // Only consider recent activity (last 15 minutes) to avoid stale sessions
+    const maxLookbackMs = 15 * 60 * 1000;
+    const cutoffTime = Date.now() - maxLookbackMs;
+    const recentVideoActivities = currentVideoActivities.filter(a => a.timestamp >= cutoffTime);
+
+    if (recentVideoActivities.length === 0) {
+      console.log('Cooped: No recent activities within 15 minutes');
+      return { tooLongUnpaused: false, watchTimeMinutes: 0 };
+    }
+
+    // Calculate continuous watch time from last pause (or from first activity if no pause yet)
+    let lastPauseTime = null;
+    for (let i = recentVideoActivities.length - 1; i >= 0; i--) {
+      if (recentVideoActivities[i].type === 'pause') {
+        lastPauseTime = recentVideoActivities[i].timestamp;
         break;
       }
     }
 
-    const watchStartTime = currentVideoActivities[watchStartIndex].timestamp;
+    const watchStartTime = lastPauseTime || recentVideoActivities[0].timestamp;
     const watchTimeMs = Date.now() - watchStartTime;
     const watchTimeMinutes = watchTimeMs / (60 * 1000);
 
-    // Trigger if watching 7+ minutes without pausing
-    const tooLongUnpaused = watchTimeMinutes >= 7 && !hasPauseEvent;
+    console.log(`Cooped: Watch check - ${recentVideoActivities.length} recent activities, ${watchTimeMinutes.toFixed(1)} minutes unpaused, lastPause: ${lastPauseTime ? 'yes' : 'no'}`);
+
+    // Trigger if watching 1+ minute without pausing (for testing - should be 7 minutes in production)
+    const tooLongUnpaused = watchTimeMinutes >= 1;
 
     return { tooLongUnpaused, watchTimeMinutes: Math.round(watchTimeMinutes) };
   } catch (error) {

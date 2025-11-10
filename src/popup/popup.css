@@ -176,15 +176,28 @@ body.night-mode::after {
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+/* Chicken Name Display (Main Page) */
+.chicken-name-display {
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.chicken-name-text {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
 /* Rank Display (Compact) */
 .rank-display {
   margin-bottom: 30px;
+  text-align: center;
 }
 
 .rank-value {
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
+  font-size: 13px;
+  font-weight: 400;
+  color: #999;
 }
 
 /* XP Section */
@@ -671,4 +684,35 @@ body.night-mode .xp-value {
 
 .chicken-image.sleeping {
   animation: sleep-bounce 2s ease-in-out infinite;
+}
+
+/* Earn More Eggs Button */
+.btn-earn-eggs {
+  width: 100%;
+  max-width: 280px;
+  padding: 14px 24px;
+  margin-top: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-earn-eggs:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.btn-earn-eggs:active {
+  transform: translateY(0);
+}
+
+/* Hide Earn Eggs button in night mode */
+body.night-mode .btn-earn-eggs {
+  display: none;
 }
