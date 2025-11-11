@@ -328,16 +328,22 @@ function setupEventListeners() {
   if (testInterruptBtn) {
     testInterruptBtn.addEventListener('click', async () => {
       console.log('[POPUP] Test button clicked');
-      // Get the active tab and send message to show interrupt sequence
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      console.log('[POPUP] Found tabs:', tabs.length);
-      if (tabs.length > 0) {
-        console.log('[POPUP] Sending showInterruptSequence message to tab:', tabs[0].id);
-        chrome.tabs.sendMessage(tabs[0].id, {
+      // Get all tabs and find a non-extension tab
+      const tabs = await chrome.tabs.query({});
+      console.log('[POPUP] Found total tabs:', tabs.length);
+
+      // Find a tab that's not the popup itself (non-extension URL)
+      const targetTab = tabs.find(tab => !tab.url.startsWith('chrome-extension'));
+
+      if (targetTab) {
+        console.log('[POPUP] Sending showInterruptSequence message to tab:', targetTab.id, targetTab.url);
+        chrome.tabs.sendMessage(targetTab.id, {
           action: 'showInterruptSequence'
         }).catch(err => {
           console.log('[POPUP] Could not send message to tab:', err);
         });
+      } else {
+        console.log('[POPUP] No valid tab found to send message to');
       }
     });
   }
