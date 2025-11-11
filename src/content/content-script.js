@@ -18,19 +18,180 @@ let showInterruptSequence;
 let pendingMessages = [];
 let modulesReady = false;
 
+// Interrupt sequence overlay state
+let interruptOverlayElement = null;
+let currentInterruptPage = 1;
+
+/**
+ * Show the interrupt sequence overlay (inline implementation)
+ */
+function showInterruptSequenceInline() {
+  console.log('[INTERRUPT] showInterruptSequenceInline called');
+
+  if (interruptOverlayElement && interruptOverlayElement.isConnected) {
+    console.log('[INTERRUPT] Overlay already showing, returning');
+    return;
+  }
+
+  console.log('[INTERRUPT] Creating new interrupt overlay');
+  currentInterruptPage = 1;
+
+  // Create overlay container
+  interruptOverlayElement = document.createElement('div');
+  interruptOverlayElement.id = 'cooped-interrupt-overlay';
+  interruptOverlayElement.className = 'page-1';
+
+  const container = document.createElement('div');
+  container.className = 'cooped-interrupt-container';
+
+  // Create content area
+  const content = document.createElement('div');
+  content.className = 'cooped-interrupt-content';
+  content.id = 'cooped-interrupt-content';
+
+  container.appendChild(content);
+
+  // Create navigation arrow at bottom
+  const arrow = document.createElement('div');
+  arrow.className = 'cooped-interrupt-arrow';
+  arrow.innerHTML = '↓';
+  container.appendChild(arrow);
+
+  interruptOverlayElement.appendChild(container);
+
+  // Add click event listeners
+  interruptOverlayElement.addEventListener('click', (e) => {
+    if (e.target === arrow || e.target.closest('.cooped-interrupt-arrow')) {
+      advanceInterruptPageInline();
+    } else if (!e.target.closest('button, input, textarea')) {
+      advanceInterruptPageInline();
+    }
+  });
+
+  // Append to body
+  if (document.body) {
+    document.body.appendChild(interruptOverlayElement);
+    console.log('[INTERRUPT] Overlay appended to DOM');
+    renderInterruptPageInline(1);
+    console.log('[INTERRUPT] Page 1 rendered');
+  } else {
+    console.log('[INTERRUPT] ERROR: No document.body available');
+  }
+}
+
+/**
+ * Render a specific interrupt page
+ */
+function renderInterruptPageInline(pageNum) {
+  const contentEl = document.getElementById('cooped-interrupt-content');
+  if (!contentEl) {
+    console.log('[INTERRUPT] Content element not found');
+    return;
+  }
+
+  contentEl.innerHTML = '';
+
+  if (pageNum === 1) {
+    renderPage1Inline(contentEl);
+  } else if (pageNum === 2) {
+    renderPage2Inline(contentEl);
+  } else if (pageNum === 3) {
+    renderPage3Inline(contentEl);
+  }
+
+  // Update overlay class for background styling
+  if (interruptOverlayElement) {
+    interruptOverlayElement.className = `page-${pageNum}`;
+  }
+}
+
+/**
+ * Page 1: "WHAT THE FLOCK ARE YOU DOING?!?!"
+ */
+function renderPage1Inline(container) {
+  console.log('[INTERRUPT] renderPage1Inline called');
+  const img = document.createElement('img');
+  img.src = chrome.runtime.getURL('src/assets/mascot/chicken_basic.png');
+  img.alt = 'Cooped Chicken';
+  img.className = 'cooped-interrupt-chicken';
+
+  const text = document.createElement('div');
+  text.className = 'cooped-interrupt-text';
+  text.textContent = 'WHAT THE FLOCK ARE YOU DOING?!?!';
+
+  container.appendChild(img);
+  container.appendChild(text);
+  console.log('[INTERRUPT] Page 1 rendered');
+}
+
+/**
+ * Page 2: Question/Challenge
+ */
+function renderPage2Inline(container) {
+  const text = document.createElement('div');
+  text.className = 'cooped-interrupt-text';
+  text.textContent = 'Page 2: Challenge Question';
+  text.style.fontSize = '24px';
+
+  const description = document.createElement('div');
+  description.style.color = '#333';
+  description.style.fontSize = '16px';
+  description.style.marginTop = '20px';
+  description.textContent = '(Challenge question to be implemented)';
+
+  container.appendChild(text);
+  container.appendChild(description);
+}
+
+/**
+ * Page 3: Reflection/Followup
+ */
+function renderPage3Inline(container) {
+  const text = document.createElement('div');
+  text.className = 'cooped-interrupt-text';
+  text.textContent = 'Page 3: Reflection';
+  text.style.fontSize = '24px';
+
+  const description = document.createElement('div');
+  description.style.color = '#333';
+  description.style.fontSize = '16px';
+  description.style.marginTop = '20px';
+  description.textContent = '(Reflection/followup content to be implemented)';
+
+  container.appendChild(text);
+  container.appendChild(description);
+}
+
+/**
+ * Advance to next page or close if on last page
+ */
+function advanceInterruptPageInline() {
+  if (currentInterruptPage < 3) {
+    currentInterruptPage++;
+    renderInterruptPageInline(currentInterruptPage);
+  } else {
+    closeInterruptSequenceInline();
+  }
+}
+
+/**
+ * Close the interrupt sequence overlay
+ */
+function closeInterruptSequenceInline() {
+  if (interruptOverlayElement && interruptOverlayElement.isConnected) {
+    interruptOverlayElement.remove();
+    interruptOverlayElement = null;
+    currentInterruptPage = 1;
+    console.log('[INTERRUPT] Overlay closed');
+  }
+}
+
 chrome.runtime.onMessage.addListener((message) => {
   console.log('[CONTENT-SCRIPT] Message received:', message);
   if (message.action === 'showInterruptSequence') {
-    console.log('[CONTENT-SCRIPT] showInterruptSequence message received, modulesReady:', modulesReady);
-    if (modulesReady && showInterruptSequence) {
-      console.log('[CONTENT-SCRIPT] Calling showInterruptSequence immediately');
-      showInterruptSequence();
-    } else {
-      console.log('[CONTENT-SCRIPT] Queuing message for later processing');
-      // Store message to process when modules are ready
-      pendingMessages.push(message);
-    }
-    // Don't return true - process synchronously without keeping channel open
+    console.log('[CONTENT-SCRIPT] showInterruptSequence message received');
+    // Call the inline version immediately
+    showInterruptSequenceInline();
   }
 });
 
@@ -86,14 +247,6 @@ Promise.all([
 
   // Mark modules as ready
   modulesReady = true;
-
-  // Process any pending messages
-  while (pendingMessages.length > 0) {
-    const msg = pendingMessages.shift();
-    if (msg.action === 'showInterruptSequence' && showInterruptSequence) {
-      showInterruptSequence();
-    }
-  }
 
   // Now initialize the content script
   initializeContentScript();
