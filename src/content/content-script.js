@@ -9,13 +9,18 @@ let recordSession, getAppState, saveCurrentChallenge, getCurrentChallenge, clear
 let calculateXPReward, getMascotMessage, checkLevelUp, getAdaptiveDifficultyWithVariety;
 let setSiteInterval, checkSiteInterval, addEggs, startTimeTrackingSession;
 let checkDoNotBotherMe, recordYouTubeActivity, analyzeYouTubeActivity, checkYouTubeShorts;
+let updateTabVisibility, updateMediaPauseState, setActivityState, ACTIVITY_STATE, accumulateTime, getTimeTrackingRecord;
+let detectPlatform, isOnYouTubeShorts, handleYouTubeShortsDetection, handleYouTubeLongFormDetection;
+let recordYouTubeProductivityResponse, handleSocialMediaStimmingDetection, handleMediaPauseChange, handleTabVisibilityChange;
 
 // Load all modules
 Promise.all([
   import('../../challenges/challenge-bank.js'),
   import('../utils/storage.js'),
-  import('../utils/mascot.js')
-]).then(([challengeBank, storageModule, mascotModule]) => {
+  import('../utils/mascot.js'),
+  import('../utils/time-tracking.js'),
+  import('../utils/platform-detection.js')
+]).then(([challengeBank, storageModule, mascotModule, timeTrackingModule, platformDetectionModule]) => {
   getRandomChallenge = challengeBank.getRandomChallenge;
   checkAnswer = challengeBank.checkAnswer;
   CHALLENGE_TYPES = challengeBank.CHALLENGE_TYPES;
@@ -38,6 +43,22 @@ Promise.all([
   getMascotMessage = mascotModule.getMascotMessage;
   checkLevelUp = mascotModule.checkLevelUp;
   getAdaptiveDifficultyWithVariety = mascotModule.getAdaptiveDifficultyWithVariety;
+
+  updateTabVisibility = timeTrackingModule.updateTabVisibility;
+  updateMediaPauseState = timeTrackingModule.updateMediaPauseState;
+  setActivityState = timeTrackingModule.setActivityState;
+  ACTIVITY_STATE = timeTrackingModule.ACTIVITY_STATE;
+  accumulateTime = timeTrackingModule.accumulateTime;
+  getTimeTrackingRecord = timeTrackingModule.getTimeTrackingRecord;
+
+  detectPlatform = platformDetectionModule.detectPlatform;
+  isOnYouTubeShorts = platformDetectionModule.isOnYouTubeShorts;
+  handleYouTubeShortsDetection = platformDetectionModule.handleYouTubeShortsDetection;
+  handleYouTubeLongFormDetection = platformDetectionModule.handleYouTubeLongFormDetection;
+  recordYouTubeProductivityResponse = platformDetectionModule.recordYouTubeProductivityResponse;
+  handleSocialMediaStimmingDetection = platformDetectionModule.handleSocialMediaStimmingDetection;
+  handleMediaPauseChange = platformDetectionModule.handleMediaPauseChange;
+  handleTabVisibilityChange = platformDetectionModule.handleTabVisibilityChange;
 
   // Now initialize the content script
   initializeContentScript();
@@ -170,6 +191,18 @@ function initializeContentScript() {
   });
   document.addEventListener('scroll', () => {
     lastActivityTime = Date.now();
+  });
+
+  // Track tab visibility (active/inactive) for time tracking
+  document.addEventListener('visibilitychange', async () => {
+    const isVisible = !document.hidden;
+    const hostname = new URL(window.location.href).hostname;
+    const platform = detectPlatform(hostname);
+
+    if (platform) {
+      await handleTabVisibilityChange(platform, isVisible);
+      console.log(`[TAB-VISIBILITY] ${platform}: Tab is now ${isVisible ? 'VISIBLE' : 'HIDDEN'}`);
+    }
   });
 
   // Check on page load if this is a blocked site
@@ -1141,6 +1174,8 @@ function setupYouTubeTracking() {
         currentTime: event.data.currentTime || getCurrentPlayTime()
       });
       startLongWatchSegment();
+      // Update time tracking: video is playing (not paused)
+      await handleMediaPauseChange('youtube.com', false);
       console.log('Cooped: YouTube video played');
     } else if (event.data.type === 'YT_PAUSE') {
       await recordYouTubeActivity({
@@ -1150,6 +1185,8 @@ function setupYouTubeTracking() {
         currentTime: event.data.currentTime || getCurrentPlayTime()
       });
       pauseLongWatchSegment();
+      // Update time tracking: video is paused (no time accumulation)
+      await handleMediaPauseChange('youtube.com', true);
       console.log('Cooped: YouTube video paused');
     }
   });
@@ -1207,6 +1244,9 @@ function setupYouTubeTracking() {
 
         console.log('[SHORTS CHECK RESULT]', shortsCheck);
 
+        // Update time tracking based on Shorts detection
+        await handleYouTubeShortsDetection(shortsCheck.shortsCount, '7 minutes');
+
         if (shortsCheck.watchingShortsIndicator) {
           triggerInfo = {
             type: 'block_screen',
@@ -1224,6 +1264,9 @@ function setupYouTubeTracking() {
         !longWatchChallengeTriggered &&
         currentWatchVideoId
       ) {
+        // Update time tracking: long watch detected
+        await handleYouTubeLongFormDetection(watchedMinutes);
+
         triggerInfo = {
           type: 'youtube_mini',
           reason: 'long_watch',

@@ -4,6 +4,19 @@
  */
 
 /**
+ * @typedef {Object} TimeTrackingRecord
+ * @property {string} domain - Domain being tracked (youtube.com, tiktok.com, etc)
+ * @property {number} sessionStartTime - When this tracking session began
+ * @property {number} lastResetTime - Last time the 2-hour timer was reset (for TikTok/Facebook/X)
+ * @property {number} timeInProductiveState - Total time spent in productive state (ms)
+ * @property {number} timeInUnproductiveState - Total time spent in unproductive state (ms)
+ * @property {number} lastTabActiveTime - Last time tab was active (to track inactive periods)
+ * @property {string} currentState - Current state: 'ACTIVE', 'INACTIVE', 'PAUSED', 'PRODUCTIVE', 'UNPRODUCTIVE'
+ * @property {Object} contentMetadata - Platform-specific metadata (videoId, videoTitle, etc)
+ * @property {Array} events - Log of state transitions and key events
+ */
+
+/**
  * @typedef {Object} UserStats
  * @property {number} challengesCompleted - Total challenges successfully completed
  * @property {number} currentStreak - Current consecutive days with activity (fire emoji counter)
@@ -17,6 +30,8 @@
  * @property {number} lastEggConversion - Timestamp of last egg conversion (Sunday 9 AM PST)
  * @property {string} rank - Current rank tier (Egg, Chick, Pecker, Chicken, HEN)
  * @property {number} lastDayChecked - Last calendar day checked for avoidance bonus (midnight UTC)
+ * @property {number} totalProductiveTime - Total time spent being productive on tracked sites (ms)
+ * @property {number} totalUnproductiveTime - Total time spent being unproductive on tracked sites (ms)
  */
 
 /**
@@ -115,7 +130,9 @@ export const DEFAULT_STATE = {
       eggs: 10,
       lastEggConversion: Date.now(),
       rank: 'Egg',
-      lastDayChecked: Math.floor(Date.now() / (24 * 60 * 60 * 1000))
+      lastDayChecked: Math.floor(Date.now() / (24 * 60 * 60 * 1000)),
+      totalProductiveTime: 0,
+      totalUnproductiveTime: 0
     },
     createdAt: Date.now()
   },
