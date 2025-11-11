@@ -30,7 +30,7 @@ chrome.runtime.onMessage.addListener((message) => {
       // Store message to process when modules are ready
       pendingMessages.push(message);
     }
-    return true; // Keep channel open for async response
+    // Don't return true - process synchronously without keeping channel open
   }
 });
 
