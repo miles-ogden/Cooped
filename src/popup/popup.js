@@ -327,13 +327,16 @@ function setupEventListeners() {
   const testInterruptBtn = document.getElementById('test-interrupt-btn');
   if (testInterruptBtn) {
     testInterruptBtn.addEventListener('click', async () => {
+      console.log('[POPUP] Test button clicked');
       // Get the active tab and send message to show interrupt sequence
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      console.log('[POPUP] Found tabs:', tabs.length);
       if (tabs.length > 0) {
+        console.log('[POPUP] Sending showInterruptSequence message to tab:', tabs[0].id);
         chrome.tabs.sendMessage(tabs[0].id, {
           action: 'showInterruptSequence'
         }).catch(err => {
-          console.log('Could not send message to tab:', err);
+          console.log('[POPUP] Could not send message to tab:', err);
         });
       }
     });

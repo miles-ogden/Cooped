@@ -12,10 +12,14 @@ let interruptOverlayElement = null;
  * Show the interrupt sequence overlay
  */
 export function showInterruptSequence() {
+  console.log('[INTERRUPT] showInterruptSequence called');
+
   if (interruptOverlayElement) {
+    console.log('[INTERRUPT] Overlay already showing, returning');
     return; // Already showing
   }
 
+  console.log('[INTERRUPT] Creating new interrupt overlay');
   currentInterruptPage = 1;
 
   // Create overlay container

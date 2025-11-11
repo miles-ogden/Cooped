@@ -19,10 +19,14 @@ let pendingMessages = [];
 let modulesReady = false;
 
 chrome.runtime.onMessage.addListener((message) => {
+  console.log('[CONTENT-SCRIPT] Message received:', message);
   if (message.action === 'showInterruptSequence') {
+    console.log('[CONTENT-SCRIPT] showInterruptSequence message received, modulesReady:', modulesReady);
     if (modulesReady && showInterruptSequence) {
+      console.log('[CONTENT-SCRIPT] Calling showInterruptSequence immediately');
       showInterruptSequence();
     } else {
+      console.log('[CONTENT-SCRIPT] Queuing message for later processing');
       // Store message to process when modules are ready
       pendingMessages.push(message);
     }
