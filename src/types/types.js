@@ -112,7 +112,7 @@ export const DEFAULT_STATE = {
       level: 1,
       lastActivityDate: Date.now(),
       points: 0,
-      eggs: 0,
+      eggs: 10,
       lastEggConversion: Date.now(),
       rank: 'Egg',
       lastDayChecked: Math.floor(Date.now() / (24 * 60 * 60 * 1000))
@@ -129,11 +129,9 @@ export const DEFAULT_STATE = {
   },
   settings: {
     blockedSites: [
-      '*://www.facebook.com/*',
-      '*://www.instagram.com/*',
-      '*://www.twitter.com/*',
-      '*://www.reddit.com/*',
       '*://www.youtube.com/*',
+      '*://www.instagram.com/*',
+      '*://www.facebook.com/*',
       '*://www.tiktok.com/*'
     ],
     challengeDifficulty: 'medium',
@@ -285,6 +283,36 @@ export const COSMETICS_CATALOG = [
   { id: 'nest-cozy', name: 'Cozy Nest', type: 'nest', price: 5, emoji: '🏠' },
   { id: 'nest-rainbow', name: 'Rainbow Nest', type: 'nest', price: 5, emoji: '🌈' }
 ];
+
+/**
+ * Website metadata for displaying icons and names
+ */
+export const WEBSITE_METADATA = {
+  'youtube.com': {
+    name: 'YouTube',
+    logo: '../assets/logos/youtube-logo.png',
+    emoji: '▶️',
+    color: '#FF0000'
+  },
+  'instagram.com': {
+    name: 'Instagram',
+    logo: '../assets/logos/instagram-logo.png',
+    emoji: '📷',
+    color: '#E4405F'
+  },
+  'facebook.com': {
+    name: 'Facebook',
+    logo: '../assets/logos/facebook-logo.png',
+    emoji: '👥',
+    color: '#1877F2'
+  },
+  'tiktok.com': {
+    name: 'TikTok',
+    logo: '../assets/logos/tiktok-logo.png',
+    emoji: '🎵',
+    color: '#25F4EE'
+  }
+};
 
 /**
  * Storage keys

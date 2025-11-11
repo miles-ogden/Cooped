@@ -27,7 +27,19 @@ export async function initializeStorage() {
       return initialState;
     }
 
-    return existing[STORAGE_KEYS.APP_STATE];
+    // Check if blocked sites contain old sites (Twitter, Reddit) and update if needed
+    const currentState = existing[STORAGE_KEYS.APP_STATE];
+    const hasOldSites = currentState.settings.blockedSites?.some(site =>
+      site.includes('twitter.com') || site.includes('reddit.com')
+    );
+
+    if (hasOldSites) {
+      console.log('Cooped: Detected old blocked sites, resetting to default');
+      currentState.settings.blockedSites = DEFAULT_STATE.settings.blockedSites;
+      await chrome.storage.local.set({ [STORAGE_KEYS.APP_STATE]: currentState });
+    }
+
+    return currentState;
   } catch (error) {
     console.error('Cooped: Error initializing storage:', error);
     throw error;
@@ -41,10 +53,62 @@ export async function initializeStorage() {
 export async function getAppState() {
   try {
     const result = await chrome.storage.local.get(STORAGE_KEYS.APP_STATE);
-    return result[STORAGE_KEYS.APP_STATE] || DEFAULT_STATE;
+    const state = result[STORAGE_KEYS.APP_STATE];
+
+    if (!state) {
+      return DEFAULT_STATE;
+    }
+
+    // Ensure mascot object exists and has a name
+    let needsSave = false;
+
+    if (!state.mascot) {
+      state.mascot = DEFAULT_STATE.mascot;
+      needsSave = true;
+    }
+    if (!state.mascot.name) {
+      state.mascot.name = DEFAULT_STATE.mascot.name;
+      needsSave = true;
+    }
+
+    // Save the migrated state back if needed
+    if (needsSave) {
+      await chrome.storage.local.set({ [STORAGE_KEYS.APP_STATE]: state });
+    }
+
+    return state;
   } catch (error) {
     console.error('Cooped: Error getting app state:', error);
     return DEFAULT_STATE;
+  }
+}
+
+/**
+ * Hard reset - completely clear all storage and reinitialize
+ * Use this to fix any corrupted or outdated settings
+ * @returns {Promise<AppState>}
+ */
+export async function hardResetStorage() {
+  try {
+    // Clear ALL storage
+    await chrome.storage.local.clear();
+    console.log('Cooped: All storage cleared');
+
+    // Reinitialize with fresh defaults
+    const initialState = {
+      ...DEFAULT_STATE,
+      user: {
+        ...DEFAULT_STATE.user,
+        id: generateUserId()
+      }
+    };
+
+    await chrome.storage.local.set({ [STORAGE_KEYS.APP_STATE]: initialState });
+    console.log('Cooped: Storage reinitialized with default state');
+    return initialState;
+  } catch (error) {
+    console.error('Cooped: Error during hard reset:', error);
+    throw error;
   }
 }
 
@@ -125,6 +189,10 @@ export async function recordSession(session) {
     state.user.stats.challengesCompleted++;
     state.user.stats.experience += session.experienceGained;
     state.user.stats.level = calculateLevel(state.user.stats.experience);
+
+    // Award points based on difficulty (10 points per XP gained)
+    const pointsEarned = session.experienceGained * 10;
+    state.user.stats.points += pointsEarned;
 
     // Update streak
     const today = new Date().setHours(0, 0, 0, 0);
@@ -613,5 +681,279 @@ export async function applySkipPenalty() {
   } catch (error) {
     console.error('Cooped: Error applying skip penalty:', error);
     return { eggsCost: 1, newBalance: 0 };
+  }
+}
+
+/**
+ * Set a "Do Not Bother Me" timer across all tabs
+ * Prevents challenges from showing until timer expires
+ * @param {number} minutes - Duration in minutes
+ * @returns {Promise<{enabled: boolean, expiryTime: number, minutesRemaining: number}>}
+ */
+export async function setDoNotBotherMe(minutes) {
+  try {
+    const expiryTime = Date.now() + (minutes * 60 * 1000);
+    const timerData = {
+      enabled: true,
+      startTime: Date.now(),
+      expiryTime,
+      minutes,
+      originalMinutes: minutes
+    };
+
+    await chrome.storage.local.set({ 'cooped_do_not_bother_me': timerData });
+    console.log(`Cooped: Do Not Bother Me timer set for ${minutes} minutes`);
+    return {
+      enabled: true,
+      expiryTime,
+      minutesRemaining: minutes
+    };
+  } catch (error) {
+    console.error('Cooped: Error setting do not bother me timer:', error);
+    return { enabled: false, expiryTime: 0, minutesRemaining: 0 };
+  }
+}
+
+/**
+ * Check if "Do Not Bother Me" timer is active
+ * @returns {Promise<{active: boolean, minutesRemaining: number, expiryTime: number}>}
+ */
+export async function checkDoNotBotherMe() {
+  try {
+    const result = await chrome.storage.local.get('cooped_do_not_bother_me');
+    const timerData = result.cooped_do_not_bother_me;
+
+    if (!timerData || !timerData.enabled) {
+      return { active: false, minutesRemaining: 0, expiryTime: 0 };
+    }
+
+    const now = Date.now();
+    if (now < timerData.expiryTime) {
+      const minutesRemaining = Math.ceil((timerData.expiryTime - now) / (60 * 1000));
+      return {
+        active: true,
+        minutesRemaining,
+        expiryTime: timerData.expiryTime
+      };
+    } else {
+      // Timer expired, clean it up
+      await chrome.storage.local.remove('cooped_do_not_bother_me');
+      return { active: false, minutesRemaining: 0, expiryTime: 0 };
+    }
+  } catch (error) {
+    console.error('Cooped: Error checking do not bother me timer:', error);
+    return { active: false, minutesRemaining: 0, expiryTime: 0 };
+  }
+}
+
+/**
+ * Disable the "Do Not Bother Me" timer early
+ * @returns {Promise<boolean>}
+ */
+export async function disableDoNotBotherMe() {
+  try {
+    await chrome.storage.local.remove('cooped_do_not_bother_me');
+    console.log('Cooped: Do Not Bother Me timer disabled');
+    return true;
+  } catch (error) {
+    console.error('Cooped: Error disabling do not bother me timer:', error);
+    return false;
+  }
+}
+
+/**
+ * Track YouTube video activity for productivity analysis
+ * Records pause/play events and URL changes
+ * @param {Object} activity - Activity object {type, timestamp, videoId, videoDuration, currentTime}
+ * @returns {Promise<boolean>}
+ */
+export async function recordYouTubeActivity(activity) {
+  try {
+    const result = await chrome.storage.local.get('cooped_youtube_activity');
+    const activities = result.cooped_youtube_activity || [];
+
+    // Keep last 100 activities
+    activities.push({
+      ...activity,
+      timestamp: Date.now(),
+      recordedAt: new Date().toISOString()
+    });
+
+    const trimmed = activities.slice(-100);
+    await chrome.storage.local.set({ 'cooped_youtube_activity': trimmed });
+
+    return true;
+  } catch (error) {
+    console.error('Cooped: Error recording YouTube activity:', error);
+    return false;
+  }
+}
+
+/**
+ * Analyze YouTube activity for productivity patterns
+ * @returns {Promise<{isProductiveMode: boolean, analysisDetails: Object}>}
+ */
+export async function analyzeYouTubeActivity() {
+  try {
+    const result = await chrome.storage.local.get('cooped_youtube_activity');
+    const activities = result.cooped_youtube_activity || [];
+
+    if (activities.length === 0) {
+      return { isProductiveMode: true, analysisDetails: { reason: 'No activity recorded' } };
+    }
+
+    // Get last 10 minutes of activity
+    const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
+    const recentActivities = activities.filter(a => a.timestamp > tenMinutesAgo);
+
+    if (recentActivities.length === 0) {
+      return { isProductiveMode: true, analysisDetails: { reason: 'No recent activity' } };
+    }
+
+    // Analyze patterns
+    const videoChanges = recentActivities.filter(a => a.type === 'url_change').length;
+    const pauseEvents = recentActivities.filter(a => a.type === 'pause').length;
+    const playEvents = recentActivities.filter(a => a.type === 'play').length;
+
+    // Get current video info from the last activity
+    const lastActivity = recentActivities[recentActivities.length - 1];
+    const watchTimeSeconds = (lastActivity.currentTime || 0) - (recentActivities[0].currentTime || 0);
+    const watchTimeMinutes = Math.max(0, watchTimeSeconds / 60);
+
+    // Detect stimming pattern: Rapid URL changes (short-form content)
+    const shortFormIndicator = videoChanges > 8; // More than 8 video changes in 10 min = stimming
+
+    // Detect productive pattern: Long video watch with pauses (implementing learnings)
+    const productiveIndicator = watchTimeMinutes > 4 && pauseEvents > 0; // Watching + pausing = productive
+
+    const analysisDetails = {
+      videoChangesLast10Min: videoChanges,
+      pauseEventsLast10Min: pauseEvents,
+      playEventsLast10Min: playEvents,
+      watchTimeMinutes: Math.round(watchTimeMinutes),
+      shortFormIndicator,
+      productiveIndicator,
+      lastVideoDuration: lastActivity.videoDuration || 0
+    };
+
+    // If short-form pattern detected OR watch time > 7 min without pauses = not productive
+    const isProductiveMode = !shortFormIndicator && (watchTimeMinutes < 7 || pauseEvents > 0);
+
+    return { isProductiveMode, analysisDetails };
+  } catch (error) {
+    console.error('Cooped: Error analyzing YouTube activity:', error);
+    return { isProductiveMode: true, analysisDetails: { error: error.message } };
+  }
+}
+
+/**
+ * Check if user has been watching YouTube Shorts (simple direct method)
+ * @returns {Promise<{watchingShortsIndicator: boolean, shortsCount: number, analysisDetails: Object}>}
+ */
+export async function checkYouTubeShorts() {
+  try {
+    const result = await chrome.storage.local.get('cooped_youtube_activity');
+    const activities = result.cooped_youtube_activity || [];
+
+    if (activities.length === 0) {
+      return { watchingShortsIndicator: false, shortsCount: 0, analysisDetails: { reason: 'No activity' } };
+    }
+
+    // Get last 10 minutes of activity to detect rapid Shorts scrolling
+    const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
+    const recentActivities = activities.filter(a => a.timestamp > tenMinutesAgo);
+
+    if (recentActivities.length === 0) {
+      return { watchingShortsIndicator: false, shortsCount: 0, analysisDetails: { reason: 'No recent activity' } };
+    }
+
+    // Count Shorts-specific URL changes
+    const shortsActivities = recentActivities.filter(a => a.type === 'url_change' && a.isShorts === true);
+    const allUrlChanges = recentActivities.filter(a => a.type === 'url_change');
+
+    // Trigger if we see 8+ Shorts URL changes in last 10 minutes (rapid scrolling through Shorts)
+    const watchingShortsIndicator = shortsActivities.length >= 8;
+
+    const analysisDetails = {
+      shortsUrlChanges: shortsActivities.length,
+      totalUrlChanges: allUrlChanges.length,
+      timeWindowMinutes: 10,
+      threshold: 8,
+      allActivities: recentActivities.length,
+      shortsActivitiesDetail: shortsActivities.map(a => ({ type: a.type, videoId: a.videoId, isShorts: a.isShorts }))
+    };
+
+    console.log('[SHORTS DETECTION] Analyzing last 10 minutes:', analysisDetails, 'Trigger?', watchingShortsIndicator);
+
+    return { watchingShortsIndicator, shortsCount: shortsActivities.length, analysisDetails };
+  } catch (error) {
+    console.error('Cooped: Error checking YouTube Shorts:', error);
+    return { watchingShortsIndicator: false, shortsCount: 0, analysisDetails: { error: error.message } };
+  }
+}
+
+/**
+ * Check if video has been playing for too long without pauses (7+ minutes)
+ * @returns {Promise<{tooLongUnpaused: boolean, watchTimeMinutes: number}>}
+ */
+export async function checkLongUnpausedWatch() {
+  try {
+    const result = await chrome.storage.local.get('cooped_youtube_activity');
+    const activities = result.cooped_youtube_activity || [];
+
+    if (activities.length === 0) {
+      console.log('Cooped: No YouTube activities recorded yet');
+      return { tooLongUnpaused: false, watchTimeMinutes: 0 };
+    }
+
+    // Get all activities for current video (same videoId)
+    const lastActivity = activities[activities.length - 1];
+    const currentVideoId = lastActivity.videoId;
+
+    // If we don't have a valid video ID (e.g., browsing search/feeds), skip the long-watch check
+    if (!currentVideoId) {
+      console.log('Cooped: No valid video ID found');
+      return { tooLongUnpaused: false, watchTimeMinutes: 0 };
+    }
+
+    const currentVideoActivities = activities.filter(a => a.videoId === currentVideoId);
+
+    if (currentVideoActivities.length === 0) {
+      console.log('Cooped: No activities for current video ID');
+      return { tooLongUnpaused: false, watchTimeMinutes: 0 };
+    }
+
+    // Only consider recent activity (last 15 minutes) to avoid stale sessions
+    const maxLookbackMs = 15 * 60 * 1000;
+    const cutoffTime = Date.now() - maxLookbackMs;
+    const recentVideoActivities = currentVideoActivities.filter(a => a.timestamp >= cutoffTime);
+
+    if (recentVideoActivities.length === 0) {
+      console.log('Cooped: No recent activities within 15 minutes');
+      return { tooLongUnpaused: false, watchTimeMinutes: 0 };
+    }
+
+    // Calculate continuous watch time from last pause (or from first activity if no pause yet)
+    let lastPauseTime = null;
+    for (let i = recentVideoActivities.length - 1; i >= 0; i--) {
+      if (recentVideoActivities[i].type === 'pause') {
+        lastPauseTime = recentVideoActivities[i].timestamp;
+        break;
+      }
+    }
+
+    const watchStartTime = lastPauseTime || recentVideoActivities[0].timestamp;
+    const watchTimeMs = Date.now() - watchStartTime;
+    const watchTimeMinutes = watchTimeMs / (60 * 1000);
+
+    console.log(`Cooped: Watch check - ${recentVideoActivities.length} recent activities, ${watchTimeMinutes.toFixed(1)} minutes unpaused, lastPause: ${lastPauseTime ? 'yes' : 'no'}`);
+
+    // Trigger if watching 7+ minutes without pausing (production threshold)
+    const tooLongUnpaused = watchTimeMinutes >= 7;
+
+    return { tooLongUnpaused, watchTimeMinutes: Math.round(watchTimeMinutes) };
+  } catch (error) {
+    console.error('Cooped: Error checking long unpaused watch:', error);
+    return { tooLongUnpaused: false, watchTimeMinutes: 0 };
   }
 }

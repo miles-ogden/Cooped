@@ -6,187 +6,180 @@
 import { fetchQuestionsFromAPI, checkAPIAnswer, isBooleanQuestion, getBooleanHint } from '../src/utils/api.js';
 
 export const CHALLENGE_TYPES = {
-  TRIVIA: 'trivia',
   MATH: 'math',
-  WORD: 'word',
-  MEMORY: 'memory',
-  TYPING: 'typing'
+  VOCABULARY: 'vocabulary',
+  HISTORY: 'history',
+  GENERAL_KNOWLEDGE: 'general-knowledge'
 };
 
 /**
- * Trivia challenges - General knowledge questions
+ * Math challenges - Arithmetic with non-round numbers
  */
-const triviaEasy = [
+const mathEasyNew = [
+  { question: 'What is 72 + 14?', answer: '86', category: 'math' },
+  { question: 'What is 95 - 23?', answer: '72', category: 'math' },
+  { question: 'What is 17 × 6?', answer: '102', category: 'math' },
+  { question: 'What is 84 ÷ 7?', answer: '12', category: 'math' },
+  { question: 'What is 58 + 37?', answer: '95', category: 'math' },
+  { question: 'What is 113 - 45?', answer: '68', category: 'math' },
+  { question: 'What is 23 × 4?', answer: '92', category: 'math' },
+  { question: 'What is 63 ÷ 9?', answer: '7', category: 'math' },
+  { question: 'What is 71 + 19?', answer: '90', category: 'math' },
+  { question: 'What is 154 - 76?', answer: '78', category: 'math' }
+];
+
+const mathMediumNew = [
+  { question: 'What is 247 + 185?', answer: '432', category: 'math' },
+  { question: 'What is 523 - 237?', answer: '286', category: 'math' },
+  { question: 'What is 34 × 17?', answer: '578', category: 'math' },
+  { question: 'What is 312 ÷ 8?', answer: '39', category: 'math' },
+  { question: 'What is 18²?', answer: '324', category: 'math' },
+  { question: 'What is √169?', answer: '13', category: 'math' },
+  { question: 'What is 45% of 240?', answer: '108', category: 'math' },
+  { question: 'What is 7³?', answer: '343', category: 'math' },
+  { question: 'What is 625 ÷ 25?', answer: '25', category: 'math' },
+  { question: 'What is 29 × 13?', answer: '377', category: 'math' }
+];
+
+const mathHardNew = [
+  { question: 'What is 456 × 23?', answer: '10488', category: 'math' },
+  { question: 'What is 1234 ÷ 17?', answer: '72.59', category: 'math' },
+  { question: 'What is √841?', answer: '29', category: 'math' },
+  { question: 'What is 12²?', answer: '144', category: 'math' },
+  { question: 'What is 2⁹?', answer: '512', category: 'math' },
+  { question: 'What is 73% of 350?', answer: '255.5', category: 'math' },
+  { question: 'Solve: 3x + 15 = 42. What is x?', answer: '9', category: 'math' },
+  { question: 'What is the area of a rectangle: 23 × 17?', answer: '391', category: 'math' },
+  { question: 'What is 15! ÷ 14!? (factorial)', answer: '15', category: 'math' },
+  { question: 'What is 89 × 76?', answer: '6764', category: 'math' }
+];
+
+/**
+ * Vocabulary challenges - Use word in context
+ */
+const vocabularyEasy = [
+  { question: 'Use this word in a sentence: HAPPY', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: RUN', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: BLUE', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: JUMP', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: BRIGHT', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: QUICK', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: FRIEND', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: LEARN', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: MORNING', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: BEAUTIFUL', answer: null, category: 'vocabulary', requiresContextValidation: true }
+];
+
+const vocabularyMedium = [
+  { question: 'Use this word in a sentence: ELOQUENT', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: MELANCHOLY', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: TENACIOUS', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: AMBIGUOUS', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: RESILIENT', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: PRAGMATIC', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: OBSCURE', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: METICULOUS', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: EPHEMERAL', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: VIVACIOUS', answer: null, category: 'vocabulary', requiresContextValidation: true }
+];
+
+const vocabularyHard = [
+  { question: 'Use this word in a sentence: INCONGRUOUS', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: SANGUINE', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: OBFUSCATE', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: PERSPICACIOUS', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: SERENDIPITY', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: PELLUCID', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: CAPRICIOUS', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: MAGNANIMOUS', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: PROPITIOUS', answer: null, category: 'vocabulary', requiresContextValidation: true },
+  { question: 'Use this word in a sentence: UBIQUITOUS', answer: null, category: 'vocabulary', requiresContextValidation: true }
+];
+
+/**
+ * History challenges - General history questions
+ */
+const historyEasy = [
+  { question: 'In what year did the Titanic sink?', answer: '1912', category: 'history' },
+  { question: 'Who was the first President of the United States?', answer: 'George Washington', category: 'history' },
+  { question: 'In what year did World War II end?', answer: '1945', category: 'history' },
+  { question: 'Who invented the light bulb?', answer: 'Thomas Edison', category: 'history' },
+  { question: 'In what year did man first land on the moon?', answer: '1969', category: 'history' },
+  { question: 'Who wrote the Declaration of Independence?', answer: 'Thomas Jefferson', category: 'history' },
+  { question: 'In what year was the Great Wall of China completed?', answer: '1644', category: 'history' },
+  { question: 'Who was the first Emperor of Rome?', answer: 'Augustus', category: 'history' },
+  { question: 'In what year did Christopher Columbus reach America?', answer: '1492', category: 'history' },
+  { question: 'Who painted the Mona Lisa?', answer: 'Leonardo da Vinci', category: 'history' }
+];
+
+const historyMedium = [
+  { question: 'In what year did the French Revolution begin?', answer: '1789', category: 'history' },
+  { question: 'Who was the first woman to win a Nobel Prize?', answer: 'Marie Curie', category: 'history' },
+  { question: 'In what year was the Russian Revolution?', answer: '1917', category: 'history' },
+  { question: 'Who discovered penicillin?', answer: 'Alexander Fleming', category: 'history' },
+  { question: 'In what year did the Berlin Wall fall?', answer: '1989', category: 'history' },
+  { question: 'Who was the first person to circumnavigate the globe?', answer: 'Ferdinand Magellan', category: 'history' },
+  { question: 'In what year was the American Declaration of Independence signed?', answer: '1776', category: 'history' },
+  { question: 'Who invented the telephone?', answer: 'Alexander Graham Bell', category: 'history' },
+  { question: 'In what year did the Magna Carta get signed?', answer: '1215', category: 'history' },
+  { question: 'Who was the first Emperor of Japan?', answer: 'Jimmu', category: 'history' }
+];
+
+const historyHard = [
+  { question: 'In what year was the Battle of Hastings?', answer: '1066', category: 'history' },
+  { question: 'Who was the first computer programmer?', answer: 'Ada Lovelace', category: 'history' },
+  { question: 'In what year did the Library of Alexandria burn?', answer: '48', category: 'history' },
+  { question: 'Who was the longest-reigning British monarch (before Queen Elizabeth II)?', answer: 'King George III', category: 'history' },
+  { question: 'In what year was the Treaty of Versailles signed?', answer: '1919', category: 'history' },
+  { question: 'Who led the Cuban Missile Crisis?', answer: 'John F Kennedy', category: 'history' },
+  { question: 'In what year did the Ottoman Empire fall?', answer: '1922', category: 'history' },
+  { question: 'Who was the oldest civilization known to history?', answer: 'Sumerian', category: 'history' },
+  { question: 'In what year was the printing press invented?', answer: '1440', category: 'history' },
+  { question: 'Who was the first African American President of the United States?', answer: 'Barack Obama', category: 'history' }
+];
+
+/**
+ * General Knowledge challenges - Mix of various topics
+ */
+const generalKnowledgeEasy = [
   { question: 'What is the capital of France?', answer: 'Paris', category: 'general-knowledge' },
   { question: 'How many days are in a week?', answer: '7', category: 'general-knowledge' },
   { question: 'What color is the sky on a clear day?', answer: 'Blue', category: 'general-knowledge' },
-  { question: 'What is 2 + 2?', answer: '4', category: 'math' },
   { question: 'What animal says "meow"?', answer: 'Cat', category: 'general-knowledge' },
   { question: 'What planet do we live on?', answer: 'Earth', category: 'general-knowledge' },
   { question: 'How many legs does a spider have?', answer: '8', category: 'general-knowledge' },
-  { question: 'What is the opposite of hot?', answer: 'Cold', category: 'vocabulary' },
   { question: 'What do bees make?', answer: 'Honey', category: 'general-knowledge' },
-  { question: 'What color are emeralds?', answer: 'Green', category: 'general-knowledge' }
+  { question: 'What color are emeralds?', answer: 'Green', category: 'general-knowledge' },
+  { question: 'What is the largest ocean on Earth?', answer: 'Pacific', category: 'general-knowledge' },
+  { question: 'What is the largest mammal in the world?', answer: 'Blue Whale', category: 'general-knowledge' }
 ];
 
-const triviaMedium = [
-  { question: 'What is the largest ocean on Earth?', answer: 'Pacific', category: 'general-knowledge' },
-  { question: 'Who painted the Mona Lisa?', answer: 'Leonardo da Vinci', category: 'history' },
+const generalKnowledgeMedium = [
   { question: 'What is the chemical symbol for gold?', answer: 'Au', category: 'general-knowledge' },
-  { question: 'In what year did World War II end?', answer: '1945', category: 'history' },
-  { question: 'What is the smallest prime number?', answer: '2', category: 'math' },
-  { question: 'What is the largest mammal in the world?', answer: 'Blue Whale', category: 'general-knowledge' },
   { question: 'How many continents are there?', answer: '7', category: 'general-knowledge' },
   { question: 'What is the speed of light in km/s?', answer: '300000', category: 'general-knowledge' },
-  { question: 'Who wrote "Romeo and Juliet"?', answer: 'Shakespeare', category: 'vocabulary' },
-  { question: 'What is the capital of Japan?', answer: 'Tokyo', category: 'general-knowledge' }
+  { question: 'What is the capital of Japan?', answer: 'Tokyo', category: 'general-knowledge' },
+  { question: 'What is the highest mountain in the world?', answer: 'Mount Everest', category: 'general-knowledge' },
+  { question: 'How many sides does a hexagon have?', answer: '6', category: 'general-knowledge' },
+  { question: 'What is the boiling point of water in Celsius?', answer: '100', category: 'general-knowledge' },
+  { question: 'What is the smallest country in the world?', answer: 'Vatican City', category: 'general-knowledge' },
+  { question: 'How many strings does a standard guitar have?', answer: '6', category: 'general-knowledge' },
+  { question: 'What gas do plants breathe in?', answer: 'Carbon dioxide', category: 'general-knowledge' }
 ];
 
-const triviaHard = [
+const generalKnowledgeHard = [
   { question: 'What is the Planck constant approximately? (in J⋅s)', answer: '6.626e-34', category: 'general-knowledge' },
-  { question: 'Who was the first computer programmer?', answer: 'Ada Lovelace', category: 'history' },
-  { question: 'What is the oldest known civilization?', answer: 'Sumerian', category: 'history' },
   { question: 'What is the rarest blood type?', answer: 'AB negative', category: 'general-knowledge' },
-  { question: 'In what year was the World Wide Web invented?', answer: '1989', category: 'history' },
   { question: 'What is the largest desert in the world?', answer: 'Antarctic', category: 'general-knowledge' },
-  { question: 'Who discovered penicillin?', answer: 'Alexander Fleming', category: 'history' },
   { question: 'What is the longest river in the world?', answer: 'Nile', category: 'general-knowledge' },
   { question: 'What programming language was created by Guido van Rossum?', answer: 'Python', category: 'general-knowledge' },
-  { question: 'What is the study of mushrooms called?', answer: 'Mycology', category: 'vocabulary' }
+  { question: 'What is the oldest known civilization?', answer: 'Sumerian', category: 'general-knowledge' },
+  { question: 'How many bones are in the human body?', answer: '206', category: 'general-knowledge' },
+  { question: 'What is the symbol for Iron on the periodic table?', answer: 'Fe', category: 'general-knowledge' },
+  { question: 'How many strings does a cello have?', answer: '4', category: 'general-knowledge' },
+  { question: 'What is the escape velocity from Earth? (km/s)', answer: '11.2', category: 'general-knowledge' }
 ];
 
-/**
- * Math challenges - Quick calculations
- */
-const mathEasy = [
-  { question: 'What is 15 + 27?', answer: '42' },
-  { question: 'What is 50 - 18?', answer: '32' },
-  { question: 'What is 6 × 7?', answer: '42' },
-  { question: 'What is 100 ÷ 4?', answer: '25' },
-  { question: 'What is 12 + 12?', answer: '24' },
-  { question: 'What is 9 × 9?', answer: '81' },
-  { question: 'What is 45 - 17?', answer: '28' },
-  { question: 'What is 8 × 5?', answer: '40' },
-  { question: 'What is 36 ÷ 6?', answer: '6' },
-  { question: 'What is 25 + 25?', answer: '50' }
-];
-
-const mathMedium = [
-  { question: 'What is 123 + 456?', answer: '579' },
-  { question: 'What is 15²?', answer: '225' },
-  { question: 'What is 144 ÷ 12?', answer: '12' },
-  { question: 'What is 25 × 4 - 10?', answer: '90' },
-  { question: 'What is √64?', answer: '8' },
-  { question: 'What is 3³ (3 cubed)?', answer: '27' },
-  { question: 'What is 17 × 3?', answer: '51' },
-  { question: 'What is 200 - 87?', answer: '113' },
-  { question: 'What is 18 × 6?', answer: '108' },
-  { question: 'What is 1000 ÷ 25?', answer: '40' }
-];
-
-const mathHard = [
-  { question: 'What is 234 × 17?', answer: '3978' },
-  { question: 'What is √289?', answer: '17' },
-  { question: 'What is 2⁸ (2 to the power of 8)?', answer: '256' },
-  { question: 'What is 45% of 160?', answer: '72' },
-  { question: 'What is 17² - 13²?', answer: '120' },
-  { question: 'If a = 5 and b = 7, what is 3a + 2b?', answer: '29' },
-  { question: 'What is the next prime number after 89?', answer: '97' },
-  { question: 'What is 15! ÷ 13!? (factorial)', answer: '210' },
-  { question: 'What is the area of a circle with radius 5? (use π ≈ 3.14)', answer: '78.5' },
-  { question: 'Solve for x: 2x + 7 = 23', answer: '8' }
-];
-
-/**
- * Word challenges - Anagrams and word puzzles
- */
-const wordEasy = [
-  { question: 'Unscramble: TAC', answer: 'Cat' },
-  { question: 'Unscramble: ETRE', answer: 'Tree' },
-  { question: 'Unscramble: OKOB', answer: 'Book' },
-  { question: 'Unscramble: SUEMO', answer: 'Mouse' },
-  { question: 'What word is the opposite of "day"?', answer: 'Night' },
-  { question: 'Unscramble: RTAEH', answer: 'Heart' },
-  { question: 'Complete: Happy as a ___', answer: 'Clam' },
-  { question: 'Unscramble: NOMO', answer: 'Moon' },
-  { question: 'Unscramble: RSTAW', answer: 'Straw' },
-  { question: 'What is a baby chicken called?', answer: 'Chick' }
-];
-
-const wordMedium = [
-  { question: 'Unscramble: CMREOPTU', answer: 'Computer' },
-  { question: 'Unscramble: LPHNAEET', answer: 'Elephant' },
-  { question: 'What 5-letter word becomes shorter when you add two letters?', answer: 'Short' },
-  { question: 'Unscramble: KRBAOD', answer: 'Keyboard' },
-  { question: 'Unscramble: TNIUAMON', answer: 'Mountain' },
-  { question: 'Unscramble: CALNEBA', answer: 'Balance' },
-  { question: 'What word means both "a citrus fruit" and "a color"?', answer: 'Orange' },
-  { question: 'Unscramble: HCKNCIE', answer: 'Chicken' },
-  { question: 'Unscramble: DIWONW', answer: 'Window' },
-  { question: 'What 7-letter word has hundreds of letters in it?', answer: 'Mailbox' }
-];
-
-const wordHard = [
-  { question: 'Unscramble: EOUQTNSI', answer: 'Question' },
-  { question: 'Unscramble: ODRHMOLAC', answer: 'Chlorodam' },
-  { question: 'What is an anagram of "listen"?', answer: 'Silent' },
-  { question: 'Unscramble: OGMIRPAGNMR', answer: 'Programming' },
-  { question: 'What word can go before "light", "break", and "fast"?', answer: 'Day' },
-  { question: 'Unscramble: PLOHHPIYSO', answer: 'Philosophy' },
-  { question: 'What is an anagram of "astronomers"?', answer: 'Moon starers' },
-  { question: 'Unscramble: NEDLACRA', answer: 'Calendar' },
-  { question: 'Palindrome: What 5-letter word reads the same forwards and backwards?', answer: 'Kayak' },
-  { question: 'Unscramble: TXUEONICN', answer: 'Execution' }
-];
-
-/**
- * Typing challenges - Type the phrase correctly
- */
-const typingEasy = [
-  { question: 'Type this: The quick brown fox', answer: 'The quick brown fox' },
-  { question: 'Type this: Focus is key', answer: 'Focus is key' },
-  { question: 'Type this: Stay productive', answer: 'Stay productive' },
-  { question: 'Type this: One step at a time', answer: 'One step at a time' },
-  { question: 'Type this: You can do it', answer: 'You can do it' }
-];
-
-const typingMedium = [
-  { question: 'Type this: The early bird catches the worm', answer: 'The early bird catches the worm' },
-  { question: 'Type this: Practice makes perfect progress', answer: 'Practice makes perfect progress' },
-  { question: 'Type this: Knowledge is power', answer: 'Knowledge is power' },
-  { question: 'Type this: Small steps lead to big changes', answer: 'Small steps lead to big changes' },
-  { question: 'Type this: Consistency beats intensity', answer: 'Consistency beats intensity' }
-];
-
-const typingHard = [
-  { question: 'Type this: The greatest glory in living lies not in never falling, but in rising every time we fall', answer: 'The greatest glory in living lies not in never falling, but in rising every time we fall' },
-  { question: 'Type this: Success is not final, failure is not fatal: it is the courage to continue that counts', answer: 'Success is not final, failure is not fatal: it is the courage to continue that counts' },
-  { question: 'Type this: Programming is the art of telling another human what one wants the computer to do', answer: 'Programming is the art of telling another human what one wants the computer to do' }
-];
-
-/**
- * Memory challenges - Remember and recall
- */
-const memoryEasy = [
-  { question: 'Remember this number: 573. Now type it back.', answer: '573' },
-  { question: 'Remember this word: LAMP. Now type it back.', answer: 'Lamp' },
-  { question: 'Remember these colors: Red Blue. Now type them (space separated).', answer: 'Red Blue' },
-  { question: 'Remember this: 42. Now type it back.', answer: '42' },
-  { question: 'Remember this word: FOCUS. Now type it back.', answer: 'Focus' }
-];
-
-const memoryMedium = [
-  { question: 'Remember this sequence: 7 3 9 2. Now type it back (space separated).', answer: '7 3 9 2' },
-  { question: 'Remember these words: Sky Tree Bird. Now type them (space separated).', answer: 'Sky Tree Bird' },
-  { question: 'Remember this: A5K9L2. Now type it back.', answer: 'A5K9L2' },
-  { question: 'Remember this pattern: X O X O X. Now type it back (space separated).', answer: 'X O X O X' }
-];
-
-const memoryHard = [
-  { question: 'Remember: 8 2 7 4 1 9 3 6. Now type it back (space separated).', answer: '8 2 7 4 1 9 3 6' },
-  { question: 'Remember: Mountain River Valley Forest. Now type them (space separated).', answer: 'Mountain River Valley Forest' },
-  { question: 'Remember: B7F3K9M2P5. Now type it back.', answer: 'B7F3K9M2P5' }
-];
 
 /**
  * Get random challenge - tries API first, falls back to local questions
@@ -233,33 +226,28 @@ function getRandomChallengeLocal(type, difficulty, enabledCategories = null) {
   let pool = [];
 
   switch (type) {
-    case CHALLENGE_TYPES.TRIVIA:
-      pool = difficulty === 'easy' ? triviaEasy
-        : difficulty === 'medium' ? triviaMedium
-        : triviaHard;
-      break;
     case CHALLENGE_TYPES.MATH:
-      pool = difficulty === 'easy' ? mathEasy
-        : difficulty === 'medium' ? mathMedium
-        : mathHard;
+      pool = difficulty === 'easy' ? mathEasyNew
+        : difficulty === 'medium' ? mathMediumNew
+        : mathHardNew;
       break;
-    case CHALLENGE_TYPES.WORD:
-      pool = difficulty === 'easy' ? wordEasy
-        : difficulty === 'medium' ? wordMedium
-        : wordHard;
+    case CHALLENGE_TYPES.VOCABULARY:
+      pool = difficulty === 'easy' ? vocabularyEasy
+        : difficulty === 'medium' ? vocabularyMedium
+        : vocabularyHard;
       break;
-    case CHALLENGE_TYPES.TYPING:
-      pool = difficulty === 'easy' ? typingEasy
-        : difficulty === 'medium' ? typingMedium
-        : typingHard;
+    case CHALLENGE_TYPES.HISTORY:
+      pool = difficulty === 'easy' ? historyEasy
+        : difficulty === 'medium' ? historyMedium
+        : historyHard;
       break;
-    case CHALLENGE_TYPES.MEMORY:
-      pool = difficulty === 'easy' ? memoryEasy
-        : difficulty === 'medium' ? memoryMedium
-        : memoryHard;
+    case CHALLENGE_TYPES.GENERAL_KNOWLEDGE:
+      pool = difficulty === 'easy' ? generalKnowledgeEasy
+        : difficulty === 'medium' ? generalKnowledgeMedium
+        : generalKnowledgeHard;
       break;
     default:
-      pool = triviaMedium;
+      pool = generalKnowledgeMedium;
   }
 
   // Filter by enabled categories if provided
@@ -272,33 +260,28 @@ function getRandomChallengeLocal(type, difficulty, enabledCategories = null) {
   // Fallback to original pool if filtered pool is empty
   if (pool.length === 0) {
     switch (type) {
-      case CHALLENGE_TYPES.TRIVIA:
-        pool = difficulty === 'easy' ? triviaEasy
-          : difficulty === 'medium' ? triviaMedium
-          : triviaHard;
-        break;
       case CHALLENGE_TYPES.MATH:
-        pool = difficulty === 'easy' ? mathEasy
-          : difficulty === 'medium' ? mathMedium
-          : mathHard;
+        pool = difficulty === 'easy' ? mathEasyNew
+          : difficulty === 'medium' ? mathMediumNew
+          : mathHardNew;
         break;
-      case CHALLENGE_TYPES.WORD:
-        pool = difficulty === 'easy' ? wordEasy
-          : difficulty === 'medium' ? wordMedium
-          : wordHard;
+      case CHALLENGE_TYPES.VOCABULARY:
+        pool = difficulty === 'easy' ? vocabularyEasy
+          : difficulty === 'medium' ? vocabularyMedium
+          : vocabularyHard;
         break;
-      case CHALLENGE_TYPES.TYPING:
-        pool = difficulty === 'easy' ? typingEasy
-          : difficulty === 'medium' ? typingMedium
-          : typingHard;
+      case CHALLENGE_TYPES.HISTORY:
+        pool = difficulty === 'easy' ? historyEasy
+          : difficulty === 'medium' ? historyMedium
+          : historyHard;
         break;
-      case CHALLENGE_TYPES.MEMORY:
-        pool = difficulty === 'easy' ? memoryEasy
-          : difficulty === 'medium' ? memoryMedium
-          : memoryHard;
+      case CHALLENGE_TYPES.GENERAL_KNOWLEDGE:
+        pool = difficulty === 'easy' ? generalKnowledgeEasy
+          : difficulty === 'medium' ? generalKnowledgeMedium
+          : generalKnowledgeHard;
         break;
       default:
-        pool = triviaMedium;
+        pool = generalKnowledgeMedium;
     }
   }
 
@@ -311,6 +294,7 @@ function getRandomChallengeLocal(type, difficulty, enabledCategories = null) {
     question: challenge.question,
     answer: challenge.answer,
     category: challenge.category || type,
+    requiresContextValidation: challenge.requiresContextValidation || false,
     timeLimit: difficulty === 'easy' ? 60 : difficulty === 'medium' ? 45 : 30,
     source: 'local'
   };
@@ -319,11 +303,48 @@ function getRandomChallengeLocal(type, difficulty, enabledCategories = null) {
 /**
  * Check if answer is correct
  * Handles both local and API questions with lenient matching
+ * For vocabulary challenges, uses fuzzy matching with context validation
  * @param {string} userAnswer - User's input
- * @param {string} correctAnswer - Correct answer
+ * @param {string} correctAnswer - Correct answer (null for vocabulary challenges)
+ * @param {Object} [challenge] - Full challenge object (for vocabulary validation)
  * @returns {boolean} Whether answer is correct
  */
-export function checkAnswer(userAnswer, correctAnswer) {
+export function checkAnswer(userAnswer, correctAnswer, challenge = null) {
+  // For vocabulary challenges, validate with context
+  if (challenge && challenge.requiresContextValidation && correctAnswer === null) {
+    return validateVocabularyUsage(userAnswer, challenge.question);
+  }
+
   // Use the API answer checker which handles all edge cases
   return checkAPIAnswer(userAnswer, correctAnswer);
+}
+
+/**
+ * Validate vocabulary challenge response using fuzzy matching with context
+ * Checks if the word is used in a proper sentence context
+ * @param {string} userAnswer - User's sentence
+ * @param {string} questionText - Original question text (contains the word in caps)
+ * @returns {boolean} Whether the word is properly used in context
+ */
+export function validateVocabularyUsage(userAnswer, questionText) {
+  // Extract the word from the question (format: "Use this word in a sentence: WORD")
+  const wordMatch = questionText.match(/in a sentence: (\w+)/i);
+  if (!wordMatch) return false;
+
+  const targetWord = wordMatch[1].toLowerCase();
+  const answerLower = userAnswer.toLowerCase();
+
+  // Check 1: Does the answer contain the word?
+  if (!answerLower.includes(targetWord)) {
+    return false;
+  }
+
+  // Check 2: Is the answer long enough? (At least 10 words to ensure context usage)
+  const wordCount = userAnswer.trim().split(/\s+/).length;
+  if (wordCount < 10) {
+    return false;
+  }
+
+  // If both checks pass, consider it a valid usage
+  return true;
 }

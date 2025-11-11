@@ -45,6 +45,9 @@
       "resources": [
         "src/assets/mascot/*.png",
         "src/assets/icons/*.png",
+        "src/popup/earn-eggs.html",
+        "src/popup/earn-eggs.css",
+        "src/popup/earn-eggs.js",
         "challenges/challenge-bank.js",
         "src/utils/api.js",
         "src/utils/storage.js",

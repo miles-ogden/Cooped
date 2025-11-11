@@ -13,6 +13,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 /**
  * Check if URL matches any blocked site patterns
+ * STRICTLY only blocks the exact domains specified
  * @param {string} url - URL to check
  * @param {string[]} blockedSites - Array of URL patterns
  * @returns {boolean}
@@ -20,19 +21,38 @@ chrome.runtime.onInstalled.addListener(async () => {
 function isBlockedSite(url, blockedSites) {
   try {
     const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
 
     return blockedSites.some(pattern => {
-      // Convert simple wildcard pattern to regex
-      // *://www.facebook.com/* -> match facebook.com domain
-      const regexPattern = pattern
-        .replace(/\*/g, '.*')
-        .replace(/\./g, '\\.');
+      // Extract domain from pattern like *://www.youtube.com/*
+      // Remove protocol: *:// -> ""
+      let domain = pattern.replace(/^\*:\/\//, '');
+      // Remove trailing path: /* -> ""
+      domain = domain.replace(/\/\*$/, '');
+      // Remove www. prefix if present: www.youtube.com -> youtube.com
+      domain = domain.replace(/^www\./, '');
+      domain = domain.toLowerCase();
 
-      const regex = new RegExp(regexPattern);
-      return regex.test(url);
+      // STRICT matching: only match if hostname is exactly the domain or subdomain of it
+      // Examples:
+      // - youtube.com matches youtube.com, www.youtube.com, m.youtube.com
+      // - instagram.com matches instagram.com, www.instagram.com
+      // - Does NOT match google.com, facebook-cdn.com, etc.
+
+      if (hostname === domain) {
+        return true; // Exact match
+      }
+
+      // Check if hostname is a subdomain of the blocked domain
+      if (hostname.endsWith('.' + domain)) {
+        return true; // Subdomain match
+      }
+
+      return false;
     });
   } catch (error) {
     // Invalid URL
+    console.log('Cooped: Invalid URL:', url, error);
     return false;
   }
 }
@@ -49,11 +69,22 @@ const blockedTabs = new Map();
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   // Store the tab URL whenever it updates
   if (tab.url) {
+    // First check if extension is enabled
+    const extensionStateResult = await chrome.storage.local.get(['extensionEnabled']);
+    const isExtensionEnabled = extensionStateResult.extensionEnabled !== false;
+
     const settings = await getSettings();
 
     // Check if the URL is in the blocked list
-    if (isBlockedSite(tab.url, settings.blockedSites)) {
-      console.log('Cooped: Blocked site detected:', tab.url);
+    const isBlocked = isBlockedSite(tab.url, settings.blockedSites);
+
+    // Debug logging
+    const urlObj = new URL(tab.url);
+    console.log(`Cooped: URL check - hostname: ${urlObj.hostname}, blocked: ${isBlocked}, enabled: ${isExtensionEnabled}, blockedSites: ${JSON.stringify(settings.blockedSites)}`);
+
+    // Only store blocked site if extension is enabled
+    if (isBlocked && isExtensionEnabled) {
+      console.log('Cooped: Blocked site detected (extension enabled):', tab.url);
 
       // Store blocked site info for the content script to query
       blockedTabs.set(tabId, {
@@ -62,7 +93,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         enabledTypes: settings.enabledChallengeTypes
       });
     } else {
-      // Clear if no longer blocked
+      // Clear if no longer blocked or extension is disabled
       blockedTabs.delete(tabId);
     }
   }

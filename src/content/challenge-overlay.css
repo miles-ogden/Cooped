@@ -26,7 +26,7 @@
 
 .cooped-modal {
   background: white;
-  border-radius: 20px;
+  border-radius: 0;
   padding: 40px;
   max-width: 600px;
   width: 90%;
@@ -50,6 +50,22 @@
   margin-bottom: 30px;
 }
 
+.cooped-chicken-image {
+  width: 100%;
+  height: 200px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.cooped-chicken-image img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
 .cooped-mascot {
   font-size: 64px;
   margin-bottom: 15px;
@@ -68,7 +84,7 @@
 .cooped-header h1 {
   font-size: 32px;
   color: #333;
-  margin: 0 0 10px 0;
+  margin: 0;
   font-weight: bold;
 }
 
@@ -127,35 +143,41 @@
 }
 
 .cooped-question {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 25px;
-  border-radius: 15px;
+  background: white;
+  color: black;
+  padding: 30px;
+  border: 3px solid black;
+  border-radius: 10px;
   font-size: 20px;
   font-weight: 500;
   text-align: center;
   margin-bottom: 25px;
   line-height: 1.5;
+  min-height: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 
 .cooped-input-group {
   display: flex;
   gap: 10px;
-  margin-bottom: 15px;
+  margin-top: 20px;
 }
 
 .cooped-input {
   flex: 1;
-  padding: 15px 20px;
+  padding: 12px 15px;
   border: 2px solid #e0e0e0;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 16px;
   transition: border-color 0.3s ease;
+  color: black;
 }
 
 .cooped-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #333;
 }
 
 .cooped-input:disabled {
@@ -164,23 +186,33 @@
 }
 
 .cooped-btn {
-  padding: 15px 30px;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
+  padding: 12px 25px;
+  border: 2px solid #333;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  background: white;
+  color: black;
+}
+
+.cooped-input-group .cooped-btn-primary {
+  border: 2px solid #333;
+  background: white;
+  color: black;
 }
 
 .cooped-btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: white;
+  color: black;
+  border: 2px solid black !important;
+  font-weight: 600;
 }
 
 .cooped-btn-primary:hover:not(:disabled) {
+  background: #f0f0f0;
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
 }
 
 .cooped-btn-primary:disabled {
@@ -202,6 +234,51 @@
 .cooped-btn-secondary:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.cooped-skip-button {
+  width: 100%;
+  padding: 15px 20px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  background: white;
+  color: #666;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 15px;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.cooped-skip-text {
+  display: block;
+}
+
+.cooped-skip-cost {
+  display: none;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.cooped-skip-button:hover {
+  background: #dc3545;
+  color: white;
+  border-color: #dc3545;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+}
+
+.cooped-skip-button:hover .cooped-skip-text {
+  display: none;
+}
+
+.cooped-skip-button:hover .cooped-skip-cost {
+  display: block;
 }
 
 .cooped-actions {
@@ -271,6 +348,108 @@
   font-style: italic;
   margin: 0;
 }
+
+/* Mini reminder overlay */
+#cooped-mini-reminder {
+  position: fixed;
+  left: 50%;
+  transform: translate(-50%, 0);
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  transition: opacity 0.2s ease;
+}
+
+.cooped-mini-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cooped-mini-card {
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 10px;
+  padding: 20px 26px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(320px, 80vw);
+  text-align: center;
+  border: 3px solid #000;
+  animation: coopedMiniSlideUp 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.cooped-mini-mascot {
+  width: 120px;
+  height: auto;
+  object-fit: contain;
+  margin-bottom: 8px;
+}
+
+.cooped-mini-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2f2f2f;
+  margin: 8px 0 16px;
+}
+
+.cooped-mini-btn {
+  width: 100%;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border: 2px solid #000;
+}
+
+.cooped-mini-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.cooped-mini-btn-primary {
+  background: #ffd740;
+  color: #111;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+.cooped-mini-btn-secondary {
+  background: #fff;
+  color: #222;
+}
+
+.cooped-mini-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.cooped-mini-message {
+  min-height: 18px;
+  font-size: 14px;
+  color: #5d4037;
+  margin-top: 4px;
+}
+
+@keyframes coopedMiniSlideUp {
+  from {
+    transform: translate(-50%, 80px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
 
 /* Interval Selection Overlay Styles */
 #cooped-interval-overlay {
@@ -356,13 +535,22 @@
     font-size: 24px;
   }
 
+  .cooped-chicken-image {
+    height: 150px;
+    margin-bottom: 15px;
+  }
+
   .cooped-question {
     font-size: 18px;
     padding: 20px;
   }
 
   .cooped-input-group {
-    flex-direction: column;
+    flex-direction: row;
+  }
+
+  .cooped-input-group .cooped-btn-primary {
+    border-left: 2px solid black;
   }
 
   .cooped-actions {
