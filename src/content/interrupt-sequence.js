@@ -57,10 +57,14 @@ export function showInterruptSequence() {
   });
 
   // Append to body
+  console.log('[INTERRUPT] Appending overlay to body, body exists:', !!document.body);
   document.body.appendChild(interruptOverlayElement);
+  console.log('[INTERRUPT] Overlay appended, overlay in DOM:', interruptOverlayElement.isConnected);
 
   // Render first page
+  console.log('[INTERRUPT] Rendering page 1');
   renderInterruptPage(1);
+  console.log('[INTERRUPT] Page 1 rendered');
 }
 
 /**
@@ -88,17 +92,21 @@ function renderInterruptPage(pageNum) {
  * Page 1: "WHAT THE FLOCK ARE YOU DOING?!?!"
  */
 function renderPage1(container) {
+  console.log('[INTERRUPT] renderPage1 called, container:', !!container);
   const img = document.createElement('img');
   img.src = chrome.runtime.getURL('src/assets/mascot/chicken_basic.png');
   img.alt = 'Cooped Chicken';
   img.className = 'cooped-interrupt-chicken';
+  console.log('[INTERRUPT] Image created, src:', img.src);
 
   const text = document.createElement('div');
   text.className = 'cooped-interrupt-text';
   text.textContent = 'WHAT THE FLOCK ARE YOU DOING?!?!';
+  console.log('[INTERRUPT] Text created');
 
   container.appendChild(img);
   container.appendChild(text);
+  console.log('[INTERRUPT] Appended image and text to container');
 }
 
 /**
