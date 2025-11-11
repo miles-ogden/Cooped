@@ -408,6 +408,59 @@ function initializeContentScript() {
   if (window.location.hostname.includes('youtube.com')) {
     setupYouTubeTracking();
   }
+
+  // If on TikTok, Facebook, Instagram, or X - set up social media monitoring
+  const hostname = new URL(window.location.href).hostname;
+  const platform = detectPlatform(hostname);
+  if (platform && ['tiktok.com', 'facebook.com', 'instagram.com', 'x.com'].includes(platform)) {
+    setupSocialMediaMonitoring(platform);
+  }
+}
+
+/**
+ * Set up monitoring for social media stimming detection (TikTok, Facebook, Instagram, X)
+ * Checks every 5 seconds if user has been on the site past 3-minute grace period
+ */
+function setupSocialMediaMonitoring(platform) {
+  let lastInterruptShown = 0;
+  const INTERRUPT_COOLDOWN = 60000; // Don't show interrupt more than once per minute
+
+  const checkSocialMediaStimming = async () => {
+    if (interruptOverlayElement && interruptOverlayElement.isConnected) {
+      return; // Interrupt already showing
+    }
+
+    try {
+      // Check if extension is enabled
+      const extensionStateResult = await chrome.storage.local.get(['extensionEnabled']);
+      const isExtensionEnabled = extensionStateResult.extensionEnabled !== false;
+
+      if (!isExtensionEnabled) {
+        return;
+      }
+
+      // Check if enough time has passed since last interrupt
+      const timeSinceLastInterrupt = Date.now() - lastInterruptShown;
+      if (timeSinceLastInterrupt < INTERRUPT_COOLDOWN) {
+        return;
+      }
+
+      // Call the social media stimming detection
+      const isUnproductive = await handleSocialMediaStimmingDetection(platform);
+
+      if (isUnproductive) {
+        console.log(`[SOCIAL-MEDIA] ${platform}: Detected stimming, showing interrupt sequence`);
+        lastInterruptShown = Date.now();
+        showInterruptSequenceInline();
+      }
+    } catch (error) {
+      console.error(`[SOCIAL-MEDIA] Error checking ${platform}:`, error);
+    }
+  };
+
+  // Check every 5 seconds for stimming behavior
+  setInterval(checkSocialMediaStimming, 5000);
+  console.log(`[SOCIAL-MEDIA] Monitoring for stimming on ${platform}`);
 }
 
 /**
