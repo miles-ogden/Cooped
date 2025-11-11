@@ -133,6 +133,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ settings });
     });
     return true; // Keep message channel open for async response
+  } else if (message.action === 'showInterruptSequence') {
+    // Popup is requesting to show interrupt sequence
+    console.log('[SERVICE-WORKER] Relay showInterruptSequence to all tabs');
+    // Get all tabs and send message to each
+    chrome.tabs.query({}, (tabs) => {
+      tabs.forEach(tab => {
+        if (!tab.url.startsWith('chrome-extension')) {
+          console.log('[SERVICE-WORKER] Sending to tab:', tab.id, tab.url);
+          chrome.tabs.sendMessage(tab.id, {
+            action: 'showInterruptSequence'
+          }).catch(err => {
+            console.log('[SERVICE-WORKER] Could not send to tab', tab.id, ':', err.message);
+          });
+        }
+      });
+    });
+    sendResponse({ success: true });
   }
 });
 
