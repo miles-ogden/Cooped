@@ -11,7 +11,7 @@ let setSiteInterval, checkSiteInterval, addEggs, startTimeTrackingSession;
 let checkDoNotBotherMe, recordYouTubeActivity, analyzeYouTubeActivity, checkYouTubeShorts;
 let updateTabVisibility, updateMediaPauseState, setActivityState, ACTIVITY_STATE, accumulateTime, getTimeTrackingRecord;
 let detectPlatform, isOnYouTubeShorts, handleYouTubeShortsDetection, handleYouTubeLongFormDetection;
-let recordYouTubeProductivityResponse, handleSocialMediaStimmingDetection, handleMediaPauseChange, handleTabVisibilityChange;
+let recordYouTubeProductivityResponse, handleMediaPauseChange, handleTabVisibilityChange;
 let showInterruptSequence;
 
 // Set up message listener BEFORE modules load, store message for when ready
@@ -33,31 +33,46 @@ function showInterruptSequenceInline() {
     return;
   }
 
+  if (!document.body) {
+    console.log('[INTERRUPT] document.body not ready, waiting for DOMContentLoaded');
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('[INTERRUPT] DOM ready, retrying interrupt overlay');
+      showInterruptSequenceInline();
+    }, { once: true });
+    return;
+  }
+
   console.log('[INTERRUPT] Creating new interrupt overlay');
   currentInterruptPage = 1;
 
   // Create overlay container
   interruptOverlayElement = document.createElement('div');
   interruptOverlayElement.id = 'cooped-interrupt-overlay';
-  interruptOverlayElement.className = 'page-1';
 
-  const container = document.createElement('div');
-  container.className = 'cooped-interrupt-container';
+  // Create modal box (white square in center)
+  const modal = document.createElement('div');
+  modal.className = 'cooped-interrupt-modal';
+  modal.id = 'cooped-interrupt-modal';
+
+  // Create header
+  const header = document.createElement('div');
+  header.className = 'cooped-interrupt-header';
+  header.id = 'cooped-interrupt-header';
+  modal.appendChild(header);
 
   // Create content area
   const content = document.createElement('div');
   content.className = 'cooped-interrupt-content';
   content.id = 'cooped-interrupt-content';
-
-  container.appendChild(content);
+  modal.appendChild(content);
 
   // Create navigation arrow at bottom
   const arrow = document.createElement('div');
   arrow.className = 'cooped-interrupt-arrow';
   arrow.innerHTML = '↓';
-  container.appendChild(arrow);
+  modal.appendChild(arrow);
 
-  interruptOverlayElement.appendChild(container);
+  interruptOverlayElement.appendChild(modal);
 
   // Add click event listeners
   interruptOverlayElement.addEventListener('click', (e) => {
@@ -83,83 +98,100 @@ function showInterruptSequenceInline() {
  * Render a specific interrupt page
  */
 function renderInterruptPageInline(pageNum) {
+  const headerEl = document.getElementById('cooped-interrupt-header');
   const contentEl = document.getElementById('cooped-interrupt-content');
-  if (!contentEl) {
-    console.log('[INTERRUPT] Content element not found');
+
+  if (!headerEl || !contentEl) {
+    console.log('[INTERRUPT] Header or content element not found');
     return;
   }
 
+  headerEl.innerHTML = '';
   contentEl.innerHTML = '';
 
   if (pageNum === 1) {
-    renderPage1Inline(contentEl);
+    renderPage1Inline(headerEl);
   } else if (pageNum === 2) {
-    renderPage2Inline(contentEl);
+    renderPage2Inline(headerEl, contentEl);
   } else if (pageNum === 3) {
-    renderPage3Inline(contentEl);
-  }
-
-  // Update overlay class for background styling
-  if (interruptOverlayElement) {
-    interruptOverlayElement.className = `page-${pageNum}`;
+    renderPage3Inline(headerEl, contentEl);
   }
 }
 
 /**
  * Page 1: "WHAT THE FLOCK ARE YOU DOING?!?!"
  */
-function renderPage1Inline(container) {
+function renderPage1Inline(headerEl) {
   console.log('[INTERRUPT] renderPage1Inline called');
+
+  // Add chicken image to header
+  const chickenDiv = document.createElement('div');
+  chickenDiv.className = 'cooped-interrupt-chicken-image';
   const img = document.createElement('img');
   img.src = chrome.runtime.getURL('src/assets/mascot/chicken_basic.png');
   img.alt = 'Cooped Chicken';
-  img.className = 'cooped-interrupt-chicken';
+  chickenDiv.appendChild(img);
+  headerEl.appendChild(chickenDiv);
 
-  const text = document.createElement('div');
-  text.className = 'cooped-interrupt-text';
-  text.textContent = 'WHAT THE FLOCK ARE YOU DOING?!?!';
+  // Add title to header
+  const title = document.createElement('h1');
+  title.className = 'cooped-interrupt-title';
+  title.textContent = 'WHAT THE FLOCK ARE YOU DOING?!?!';
+  headerEl.appendChild(title);
 
-  container.appendChild(img);
-  container.appendChild(text);
   console.log('[INTERRUPT] Page 1 rendered');
 }
 
 /**
  * Page 2: Question/Challenge
  */
-function renderPage2Inline(container) {
+function renderPage2Inline(headerEl, contentEl) {
+  console.log('[INTERRUPT] renderPage2Inline called');
+
+  // Add title to header
+  const title = document.createElement('h1');
+  title.className = 'cooped-interrupt-title';
+  title.textContent = 'Challenge';
+  headerEl.appendChild(title);
+
+  const subtitle = document.createElement('p');
+  subtitle.className = 'cooped-interrupt-subtitle';
+  subtitle.textContent = 'Test your knowledge';
+  headerEl.appendChild(subtitle);
+
+  // Add content
   const text = document.createElement('div');
-  text.className = 'cooped-interrupt-text';
-  text.textContent = 'Page 2: Challenge Question';
-  text.style.fontSize = '24px';
-
-  const description = document.createElement('div');
-  description.style.color = '#333';
-  description.style.fontSize = '16px';
-  description.style.marginTop = '20px';
-  description.textContent = '(Challenge question to be implemented)';
-
-  container.appendChild(text);
-  container.appendChild(description);
+  text.style.color = '#333';
+  text.style.fontSize = '16px';
+  text.style.textAlign = 'center';
+  text.textContent = '(Challenge question to be implemented)';
+  contentEl.appendChild(text);
 }
 
 /**
  * Page 3: Reflection/Followup
  */
-function renderPage3Inline(container) {
+function renderPage3Inline(headerEl, contentEl) {
+  console.log('[INTERRUPT] renderPage3Inline called');
+
+  // Add title to header
+  const title = document.createElement('h1');
+  title.className = 'cooped-interrupt-title';
+  title.textContent = 'Reflection';
+  headerEl.appendChild(title);
+
+  const subtitle = document.createElement('p');
+  subtitle.className = 'cooped-interrupt-subtitle';
+  subtitle.textContent = 'Think about your focus';
+  headerEl.appendChild(subtitle);
+
+  // Add content
   const text = document.createElement('div');
-  text.className = 'cooped-interrupt-text';
-  text.textContent = 'Page 3: Reflection';
-  text.style.fontSize = '24px';
-
-  const description = document.createElement('div');
-  description.style.color = '#333';
-  description.style.fontSize = '16px';
-  description.style.marginTop = '20px';
-  description.textContent = '(Reflection/followup content to be implemented)';
-
-  container.appendChild(text);
-  container.appendChild(description);
+  text.style.color = '#333';
+  text.style.fontSize = '16px';
+  text.style.textAlign = 'center';
+  text.textContent = '(Reflection/followup content to be implemented)';
+  contentEl.appendChild(text);
 }
 
 /**
@@ -239,7 +271,6 @@ Promise.all([
   handleYouTubeShortsDetection = platformDetectionModule.handleYouTubeShortsDetection;
   handleYouTubeLongFormDetection = platformDetectionModule.handleYouTubeLongFormDetection;
   recordYouTubeProductivityResponse = platformDetectionModule.recordYouTubeProductivityResponse;
-  handleSocialMediaStimmingDetection = platformDetectionModule.handleSocialMediaStimmingDetection;
   handleMediaPauseChange = platformDetectionModule.handleMediaPauseChange;
   handleTabVisibilityChange = platformDetectionModule.handleTabVisibilityChange;
 
@@ -418,49 +449,21 @@ function initializeContentScript() {
 }
 
 /**
- * Set up monitoring for social media stimming detection (TikTok, Facebook, Instagram, X)
- * Checks every 5 seconds if user has been on the site past grace period
+ * Set up monitoring for social media platforms (immediate interrupt for debugging)
  */
 function setupSocialMediaMonitoring(platform) {
-  let lastInterruptShown = 0;
-  const INTERRUPT_COOLDOWN = 60000; // Don't show interrupt more than once per minute
-
-  const checkSocialMediaStimming = async () => {
-    if (interruptOverlayElement && interruptOverlayElement.isConnected) {
-      return; // Interrupt already showing
-    }
-
-    try {
-      // Check if extension is enabled
-      const extensionStateResult = await chrome.storage.local.get(['extensionEnabled']);
-      const isExtensionEnabled = extensionStateResult.extensionEnabled !== false;
-
-      if (!isExtensionEnabled) {
-        return;
-      }
-
-      // Check if enough time has passed since last interrupt
-      const timeSinceLastInterrupt = Date.now() - lastInterruptShown;
-      if (timeSinceLastInterrupt < INTERRUPT_COOLDOWN) {
-        return;
-      }
-
-      // Call the social media stimming detection
-      const isUnproductive = await handleSocialMediaStimmingDetection(platform);
-
-      if (isUnproductive) {
-        console.log(`[SOCIAL-MEDIA] ${platform}: Detected stimming, showing interrupt sequence`);
-        lastInterruptShown = Date.now();
-        showInterruptSequenceInline();
-      }
-    } catch (error) {
-      console.error(`[SOCIAL-MEDIA] Error checking ${platform}:`, error);
+  console.log(`[SOCIAL-MEDIA] Immediate interrupt for ${platform}`);
+  const trigger = () => {
+    if (!document.hidden) {
+      showInterruptSequenceInline();
     }
   };
 
-  // Check every 5 seconds for stimming behavior
-  setInterval(checkSocialMediaStimming, 5000);
-  console.log(`[SOCIAL-MEDIA] Monitoring for stimming on ${platform}`);
+  if (document.body) {
+    setTimeout(trigger, 500);
+  } else {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(trigger, 200), { once: true });
+  }
 }
 
 /**
