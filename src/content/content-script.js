@@ -419,7 +419,7 @@ function initializeContentScript() {
 
 /**
  * Set up monitoring for social media stimming detection (TikTok, Facebook, Instagram, X)
- * Checks every 5 seconds if user has been on the site past 3-minute grace period
+ * Checks every 5 seconds if user has been on the site past grace period
  */
 function setupSocialMediaMonitoring(platform) {
   let lastInterruptShown = 0;
