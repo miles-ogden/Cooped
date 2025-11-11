@@ -14,6 +14,22 @@ let detectPlatform, isOnYouTubeShorts, handleYouTubeShortsDetection, handleYouTu
 let recordYouTubeProductivityResponse, handleSocialMediaStimmingDetection, handleMediaPauseChange, handleTabVisibilityChange;
 let showInterruptSequence;
 
+// Set up message listener BEFORE modules load, store message for when ready
+let pendingMessages = [];
+let modulesReady = false;
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.action === 'showInterruptSequence') {
+    if (modulesReady && showInterruptSequence) {
+      showInterruptSequence();
+    } else {
+      // Store message to process when modules are ready
+      pendingMessages.push(message);
+    }
+    return true; // Keep channel open for async response
+  }
+});
+
 // Load all modules
 Promise.all([
   import('../../challenges/challenge-bank.js'),
@@ -63,6 +79,17 @@ Promise.all([
   handleTabVisibilityChange = platformDetectionModule.handleTabVisibilityChange;
 
   showInterruptSequence = interruptModule.showInterruptSequence;
+
+  // Mark modules as ready
+  modulesReady = true;
+
+  // Process any pending messages
+  while (pendingMessages.length > 0) {
+    const msg = pendingMessages.shift();
+    if (msg.action === 'showInterruptSequence' && showInterruptSequence) {
+      showInterruptSequence();
+    }
+  }
 
   // Now initialize the content script
   initializeContentScript();
@@ -179,13 +206,10 @@ async function checkAndShowChallenge() {
  * Initialize the content script (called once modules are loaded)
  */
 function initializeContentScript() {
-  // Set up message listener
+  // Add message listener for challenges (interrupt sequence already has its own)
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'SHOW_CHALLENGE' && !isOverlayActive) {
       showChallengeOverlay(message);
-    }
-    if (message.action === 'showInterruptSequence') {
-      showInterruptSequence();
     }
   });
 
