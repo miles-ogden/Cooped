@@ -971,6 +971,28 @@ function positionMiniReminderOverlay(overlay) {
 /**
  * Show a lightweight reminder overlay (YouTube mini block screen)
  */
+/**
+ * Get YouTube video title using multiple fallback selectors
+ * @returns {string|null} Video title or null if not found
+ */
+function getYouTubeVideoTitle() {
+  // Try primary selector
+  let title = document.querySelector('h1.title yt-formatted-string')?.textContent;
+  if (title?.trim()) return title.trim();
+
+  // Fallback: Try document title (contains video name at start)
+  const docTitle = document.title;
+  if (docTitle && !docTitle.includes('YouTube')) {
+    return docTitle.replace(' - YouTube', '').trim();
+  }
+
+  // Fallback: Try meta tags
+  const ogTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content');
+  if (ogTitle?.trim()) return ogTitle.trim();
+
+  return null;
+}
+
 function showMiniReminderOverlay(context = {}) {
   if (isMiniReminderActive) return;
   isMiniReminderActive = true;
@@ -1016,7 +1038,7 @@ function showMiniReminderOverlay(context = {}) {
 
     // Record that user reported being productive
     const videoId = extractVideoIdFromUrl();
-    const videoTitle = document.querySelector('h1.title yt-formatted-string')?.textContent || 'Unknown';
+    const videoTitle = getYouTubeVideoTitle() || 'Unknown';
     await recordYouTubeProductivityResponse(true, {
       videoId,
       videoTitle,
@@ -1033,7 +1055,7 @@ function showMiniReminderOverlay(context = {}) {
 
     // Record that user reported NOT being productive
     const videoId = extractVideoIdFromUrl();
-    const videoTitle = document.querySelector('h1.title yt-formatted-string')?.textContent || 'Unknown';
+    const videoTitle = getYouTubeVideoTitle() || 'Unknown';
     await recordYouTubeProductivityResponse(false, {
       videoId,
       videoTitle,
