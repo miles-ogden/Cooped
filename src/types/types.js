@@ -112,7 +112,7 @@ export const DEFAULT_STATE = {
       level: 1,
       lastActivityDate: Date.now(),
       points: 0,
-      eggs: 0,
+      eggs: 10,
       lastEggConversion: Date.now(),
       rank: 'Egg',
       lastDayChecked: Math.floor(Date.now() / (24 * 60 * 60 * 1000))
@@ -290,25 +290,25 @@ export const COSMETICS_CATALOG = [
 export const WEBSITE_METADATA = {
   'youtube.com': {
     name: 'YouTube',
-    logo: '../assets/logos/youtube-logo.svg',
+    logo: '../assets/logos/youtube-logo.png',
     emoji: '▶️',
     color: '#FF0000'
   },
   'instagram.com': {
     name: 'Instagram',
-    logo: '../assets/logos/instagram-logo.svg',
+    logo: '../assets/logos/instagram-logo.png',
     emoji: '📷',
     color: '#E4405F'
   },
   'facebook.com': {
     name: 'Facebook',
-    logo: '../assets/logos/facebook-logo.svg',
+    logo: '../assets/logos/facebook-logo.png',
     emoji: '👥',
     color: '#1877F2'
   },
   'tiktok.com': {
     name: 'TikTok',
-    logo: '../assets/logos/tiktok-logo.svg',
+    logo: '../assets/logos/tiktok-logo.png',
     emoji: '🎵',
     color: '#25F4EE'
   }

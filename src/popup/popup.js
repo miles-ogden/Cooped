@@ -279,10 +279,16 @@ function setupChickenNameEditor() {
   async function saveName(newName) {
     const trimmedName = newName.trim() || 'Clucky';
 
-    // Update UI immediately
+    // Update UI immediately (settings panel)
     nameDisplay.textContent = trimmedName;
     nameDisplay.style.display = 'block';
     nameInput.style.display = 'none';
+
+    // Also update home page name display
+    const chickenNameMain = document.getElementById('chicken-name-main');
+    if (chickenNameMain) {
+      chickenNameMain.textContent = trimmedName;
+    }
 
     // Save to storage
     try {

@@ -948,8 +948,8 @@ export async function checkLongUnpausedWatch() {
 
     console.log(`Cooped: Watch check - ${recentVideoActivities.length} recent activities, ${watchTimeMinutes.toFixed(1)} minutes unpaused, lastPause: ${lastPauseTime ? 'yes' : 'no'}`);
 
-    // Trigger if watching 1+ minute without pausing (for testing - should be 7 minutes in production)
-    const tooLongUnpaused = watchTimeMinutes >= 1;
+    // Trigger if watching 7+ minutes without pausing (production threshold)
+    const tooLongUnpaused = watchTimeMinutes >= 7;
 
     return { tooLongUnpaused, watchTimeMinutes: Math.round(watchTimeMinutes) };
   } catch (error) {

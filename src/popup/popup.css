@@ -646,7 +646,15 @@ body.night-mode .header {
 }
 
 body.night-mode .eggs-display {
-  color: #e0e0e0;
+  color: white;
+}
+
+body.night-mode .egg-count {
+  color: white;
+}
+
+body.night-mode .chicken-name-text {
+  color: white;
 }
 
 body.night-mode .settings-btn:hover {
