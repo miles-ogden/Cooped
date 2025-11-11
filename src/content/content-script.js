@@ -1009,17 +1009,37 @@ function showMiniReminderOverlay(context = {}) {
   const confessBtn = overlay.querySelector('[data-action="confess"]');
   const messageEl = overlay.querySelector('.cooped-mini-message');
 
-  yesBtn.addEventListener('click', () => {
+  yesBtn.addEventListener('click', async () => {
     yesBtn.disabled = true;
     confessBtn.disabled = true;
     messageEl.textContent = 'Keep it up! 🐥';
+
+    // Record that user reported being productive
+    const videoId = extractVideoIdFromUrl();
+    const videoTitle = document.querySelector('h1.title yt-formatted-string')?.textContent || 'Unknown';
+    await recordYouTubeProductivityResponse(true, {
+      videoId,
+      videoTitle,
+      timestamp: Date.now()
+    });
+
     setTimeout(removeOverlay, 800);
   });
 
-  confessBtn.addEventListener('click', () => {
+  confessBtn.addEventListener('click', async () => {
     yesBtn.disabled = true;
     confessBtn.disabled = true;
     messageEl.textContent = "I'll be back...";
+
+    // Record that user reported NOT being productive
+    const videoId = extractVideoIdFromUrl();
+    const videoTitle = document.querySelector('h1.title yt-formatted-string')?.textContent || 'Unknown';
+    await recordYouTubeProductivityResponse(false, {
+      videoId,
+      videoTitle,
+      timestamp: Date.now()
+    });
+
     setTimeout(removeOverlay, 1500);
   });
 
