@@ -52,29 +52,11 @@ export function showInterruptSequence() {
     }
   });
 
-  // Load CSS
-  loadInterruptCSS();
-
   // Append to body
   document.body.appendChild(interruptOverlayElement);
 
   // Render first page
   renderInterruptPage(1);
-}
-
-/**
- * Load the interrupt overlay CSS
- */
-function loadInterruptCSS() {
-  if (document.getElementById('cooped-interrupt-css')) {
-    return; // Already loaded
-  }
-
-  const link = document.createElement('link');
-  link.id = 'cooped-interrupt-css';
-  link.rel = 'stylesheet';
-  link.href = chrome.runtime.getURL('src/content/interrupt-overlay.css');
-  document.head.appendChild(link);
 }
 
 /**
