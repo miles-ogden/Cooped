@@ -12,6 +12,7 @@ let checkDoNotBotherMe, recordYouTubeActivity, analyzeYouTubeActivity, checkYouT
 let updateTabVisibility, updateMediaPauseState, setActivityState, ACTIVITY_STATE, accumulateTime, getTimeTrackingRecord;
 let detectPlatform, isOnYouTubeShorts, handleYouTubeShortsDetection, handleYouTubeLongFormDetection;
 let recordYouTubeProductivityResponse, handleSocialMediaStimmingDetection, handleMediaPauseChange, handleTabVisibilityChange;
+let showInterruptSequence;
 
 // Load all modules
 Promise.all([
@@ -19,8 +20,9 @@ Promise.all([
   import('../utils/storage.js'),
   import('../utils/mascot.js'),
   import('../utils/time-tracking.js'),
-  import('../utils/platform-detection.js')
-]).then(([challengeBank, storageModule, mascotModule, timeTrackingModule, platformDetectionModule]) => {
+  import('../utils/platform-detection.js'),
+  import('./interrupt-sequence.js')
+]).then(([challengeBank, storageModule, mascotModule, timeTrackingModule, platformDetectionModule, interruptModule]) => {
   getRandomChallenge = challengeBank.getRandomChallenge;
   checkAnswer = challengeBank.checkAnswer;
   CHALLENGE_TYPES = challengeBank.CHALLENGE_TYPES;
@@ -59,6 +61,8 @@ Promise.all([
   handleSocialMediaStimmingDetection = platformDetectionModule.handleSocialMediaStimmingDetection;
   handleMediaPauseChange = platformDetectionModule.handleMediaPauseChange;
   handleTabVisibilityChange = platformDetectionModule.handleTabVisibilityChange;
+
+  showInterruptSequence = interruptModule.showInterruptSequence;
 
   // Now initialize the content script
   initializeContentScript();
@@ -179,6 +183,9 @@ function initializeContentScript() {
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'SHOW_CHALLENGE' && !isOverlayActive) {
       showChallengeOverlay(message);
+    }
+    if (message.action === 'showInterruptSequence') {
+      showInterruptSequence();
     }
   });
 

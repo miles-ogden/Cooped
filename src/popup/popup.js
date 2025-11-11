@@ -323,6 +323,22 @@ function setupEventListeners() {
     });
   }
 
+  // Test Interrupt Sequence button
+  const testInterruptBtn = document.getElementById('test-interrupt-btn');
+  if (testInterruptBtn) {
+    testInterruptBtn.addEventListener('click', async () => {
+      // Get the active tab and send message to show interrupt sequence
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs.length > 0) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          action: 'showInterruptSequence'
+        }).catch(err => {
+          console.log('Could not send message to tab:', err);
+        });
+      }
+    });
+  }
+
   // Extension toggle (on/off with night mode)
   const extensionToggle = document.getElementById('extension-toggle');
   if (extensionToggle) {
