@@ -639,11 +639,32 @@ function showChickenScratchOverlay() {
 function renderMathChallengeInline(_, contentEl) {
   console.log('[INTERRUPT] renderMathChallengeInline called');
 
-  // Math question data
-  const question = {
-    problem: '50 ÷ 2 = ?',
-    correctAnswer: 25
-  };
+  // Dynamically load math questions and render the game
+  Promise.all([
+    import('./math-questions.js')
+  ]).then(([mathModule]) => {
+    const question = mathModule.getRandomMathQuestion();
+    renderMathGameUI(_, contentEl, question);
+  }).catch(err => {
+    console.error('[INTERRUPT] Failed to load math questions:', err);
+    // Fallback to hardcoded question
+    const fallbackQuestion = {
+      question: '50 ÷ 2 = ?',
+      answer: 25
+    };
+    renderMathGameUI(_, contentEl, fallbackQuestion);
+  });
+}
+
+/**
+ * Render the math game UI with a specific question
+ */
+function renderMathGameUI(_, contentEl, question) {
+  console.log('[INTERRUPT] renderMathGameUI called with question:', question);
+
+  // Normalize question data for both formats (question/answer vs problem/correctAnswer)
+  const problem = question.question || question.problem;
+  const correctAnswer = question.answer !== undefined ? question.answer : question.correctAnswer;
 
   // Track accumulated eggs and animation state
   let accumulatedEggs = 0;
@@ -678,7 +699,7 @@ function renderMathChallengeInline(_, contentEl) {
   questionContainer.style.width = '100%';
   questionContainer.style.display = 'flex';
   questionContainer.style.justifyContent = 'center';
-  questionContainer.textContent = question.problem;
+  questionContainer.textContent = problem;
 
   // Chicken scratch button (top right)
   const scratchBtn = document.createElement('button');
@@ -958,7 +979,7 @@ function renderMathChallengeInline(_, contentEl) {
   submitBtn.style.flex = '0 0 auto';
 
   submitBtn.addEventListener('click', () => {
-    if (accumulatedEggs === question.correctAnswer) {
+    if (accumulatedEggs === correctAnswer) {
       // Correct! Move to next page
       advanceInterruptPageInline();
     } else {
