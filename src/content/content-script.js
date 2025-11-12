@@ -171,12 +171,28 @@ function renderVocabularyChallengeInline(headerEl, contentEl) {
   subtitle.textContent = 'Help the chicken pick the right word!';
   headerEl.appendChild(subtitle);
 
-  // Vocabulary question data
-  const question = {
-    correctAnswer: 'plethora',
-    options: ['plethora', 'squadral', 'surreal', 'flora']
-  };
+  // Dynamically load vocabulary questions and select a random one
+  import('./vocabulary-questions.js').then(module => {
+    const question = module.getRandomVocabularyQuestion();
+    console.log('[INTERRUPT] Selected vocabulary question:', question.correctAnswer);
+    renderVocabularyGameUI(headerEl, contentEl, question);
+  }).catch(err => {
+    console.error('[INTERRUPT] Error loading vocabulary questions:', err);
+    // Fallback question if import fails
+    const fallbackQuestion = {
+      sentence: 'The teacher gave a __________ explanation that helped everyone understand the concept.',
+      correctAnswer: 'lucid',
+      options: ['lucid', 'vague', 'confusing', 'incoherent'],
+      difficulty: 1
+    };
+    renderVocabularyGameUI(headerEl, contentEl, fallbackQuestion);
+  });
+}
 
+/**
+ * Render the vocabulary game UI with a specific question
+ */
+function renderVocabularyGameUI(headerEl, contentEl, question) {
   // Track which word is placed in blank and chicken animation state
   let selectedWord = null;
   let isAnimating = false;
@@ -200,8 +216,13 @@ function renderVocabularyChallengeInline(headerEl, contentEl) {
   sentenceContainer.style.color = '#333';
   sentenceContainer.style.textAlign = 'center';
 
+  // Split sentence into parts before and after blank
+  const sentenceMatch = question.sentence.match(/^(.*?)\s*__________\s*(.*)$/);
+  const sentenceBefore = sentenceMatch ? sentenceMatch[1] : 'Fill in the blank:';
+  const sentenceAfter = sentenceMatch ? sentenceMatch[2] : '';
+
   const sentenceText = document.createElement('span');
-  sentenceText.textContent = 'Jeremiah went to the store and realized that he had a(n) ';
+  sentenceText.textContent = sentenceBefore + ' ';
   sentenceContainer.appendChild(sentenceText);
 
   // Create blank space
@@ -225,9 +246,11 @@ function renderVocabularyChallengeInline(headerEl, contentEl) {
 
   sentenceContainer.appendChild(blank);
 
-  const sentenceAfter = document.createElement('span');
-  sentenceAfter.textContent = ' of groceries in his shopping cart';
-  sentenceContainer.appendChild(sentenceAfter);
+  if (sentenceAfter) {
+    const sentenceAfterSpan = document.createElement('span');
+    sentenceAfterSpan.textContent = ' ' + sentenceAfter;
+    sentenceContainer.appendChild(sentenceAfterSpan);
+  }
 
   layoutContainer.appendChild(sentenceContainer);
 
