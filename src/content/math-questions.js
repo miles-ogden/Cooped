@@ -5,608 +5,614 @@
  */
 
 export const mathQuestions = [
-  // Level 1: Simple single-digit operations (5 questions)
+  // Level 1: 10th grade level - multi-digit with whole number solutions (5 questions)
   {
-    question: "3 + 2 = ?",
-    answer: 5,
-    difficulty: 1,
-    explanation: "Three plus two equals five."
-  },
-  {
-    question: "10 - 4 = ?",
-    answer: 6,
-    difficulty: 1,
-    explanation: "Ten minus four equals six."
-  },
-  {
-    question: "2 × 3 = ?",
-    answer: 6,
-    difficulty: 1,
-    explanation: "Two times three equals six."
-  },
-  {
-    question: "8 ÷ 2 = ?",
-    answer: 4,
-    difficulty: 1,
-    explanation: "Eight divided by two equals four."
-  },
-  {
-    question: "7 + 1 = ?",
-    answer: 8,
-    difficulty: 1,
-    explanation: "Seven plus one equals eight."
-  },
-
-  // Level 2: Two-digit operations and basic multiplication (25 questions)
-  {
-    question: "12 + 15 = ?",
-    answer: 27,
-    difficulty: 2,
-    explanation: "Twelve plus fifteen equals twenty-seven."
-  },
-  {
-    question: "25 - 10 = ?",
-    answer: 15,
-    difficulty: 2,
-    explanation: "Twenty-five minus ten equals fifteen."
-  },
-  {
-    question: "5 × 4 = ?",
-    answer: 20,
-    difficulty: 2,
-    explanation: "Five times four equals twenty."
-  },
-  {
-    question: "20 ÷ 5 = ?",
-    answer: 4,
-    difficulty: 2,
-    explanation: "Twenty divided by five equals four."
-  },
-  {
-    question: "18 + 22 = ?",
-    answer: 40,
-    difficulty: 2,
-    explanation: "Eighteen plus twenty-two equals forty."
-  },
-  {
-    question: "50 - 23 = ?",
-    answer: 27,
-    difficulty: 2,
-    explanation: "Fifty minus twenty-three equals twenty-seven."
-  },
-  {
-    question: "6 × 7 = ?",
-    answer: 42,
-    difficulty: 2,
-    explanation: "Six times seven equals forty-two."
-  },
-  {
-    question: "36 ÷ 6 = ?",
-    answer: 6,
-    difficulty: 2,
-    explanation: "Thirty-six divided by six equals six."
-  },
-  {
-    question: "33 + 17 = ?",
-    answer: 50,
-    difficulty: 2,
-    explanation: "Thirty-three plus seventeen equals fifty."
-  },
-  {
-    question: "45 - 18 = ?",
-    answer: 27,
-    difficulty: 2,
-    explanation: "Forty-five minus eighteen equals twenty-seven."
-  },
-  {
-    question: "8 × 5 = ?",
-    answer: 40,
-    difficulty: 2,
-    explanation: "Eight times five equals forty."
-  },
-  {
-    question: "72 ÷ 8 = ?",
-    answer: 9,
-    difficulty: 2,
-    explanation: "Seventy-two divided by eight equals nine."
-  },
-  {
-    question: "24 + 26 = ?",
-    answer: 50,
-    difficulty: 2,
-    explanation: "Twenty-four plus twenty-six equals fifty."
-  },
-  {
-    question: "60 - 35 = ?",
-    answer: 25,
-    difficulty: 2,
-    explanation: "Sixty minus thirty-five equals twenty-five."
-  },
-  {
-    question: "9 × 6 = ?",
-    answer: 54,
-    difficulty: 2,
-    explanation: "Nine times six equals fifty-four."
-  },
-  {
-    question: "48 ÷ 6 = ?",
-    answer: 8,
-    difficulty: 2,
-    explanation: "Forty-eight divided by six equals eight."
-  },
-  {
-    question: "31 + 19 = ?",
-    answer: 50,
-    difficulty: 2,
-    explanation: "Thirty-one plus nineteen equals fifty."
-  },
-  {
-    question: "75 - 42 = ?",
-    answer: 33,
-    difficulty: 2,
-    explanation: "Seventy-five minus forty-two equals thirty-three."
-  },
-  {
-    question: "7 × 8 = ?",
-    answer: 56,
-    difficulty: 2,
-    explanation: "Seven times eight equals fifty-six."
-  },
-  {
-    question: "63 ÷ 9 = ?",
-    answer: 7,
-    difficulty: 2,
-    explanation: "Sixty-three divided by nine equals seven."
-  },
-  {
-    question: "28 + 22 = ?",
-    answer: 50,
-    difficulty: 2,
-    explanation: "Twenty-eight plus twenty-two equals fifty."
-  },
-  {
-    question: "55 - 30 = ?",
-    answer: 25,
-    difficulty: 2,
-    explanation: "Fifty-five minus thirty equals twenty-five."
-  },
-  {
-    question: "11 × 4 = ?",
-    answer: 44,
-    difficulty: 2,
-    explanation: "Eleven times four equals forty-four."
-  },
-  {
-    question: "50 ÷ 2 = ?",
-    answer: 25,
-    difficulty: 2,
-    explanation: "Fifty divided by two equals twenty-five."
-  },
-
-  // Level 3: Three-digit operations and mixed operations (27 questions)
-  {
-    question: "125 + 85 = ?",
-    answer: 210,
-    difficulty: 3,
-    explanation: "One hundred twenty-five plus eighty-five equals two hundred ten."
-  },
-  {
-    question: "200 - 73 = ?",
-    answer: 127,
-    difficulty: 3,
-    explanation: "Two hundred minus seventy-three equals one hundred twenty-seven."
-  },
-  {
-    question: "15 × 12 = ?",
-    answer: 180,
-    difficulty: 3,
-    explanation: "Fifteen times twelve equals one hundred eighty."
-  },
-  {
-    question: "144 ÷ 12 = ?",
-    answer: 12,
-    difficulty: 3,
-    explanation: "One hundred forty-four divided by twelve equals twelve."
-  },
-  {
-    question: "156 + 94 = ?",
-    answer: 250,
-    difficulty: 3,
-    explanation: "One hundred fifty-six plus ninety-four equals two hundred fifty."
-  },
-  {
-    question: "300 - 145 = ?",
-    answer: 155,
-    difficulty: 3,
-    explanation: "Three hundred minus one hundred forty-five equals one hundred fifty-five."
-  },
-  {
-    question: "18 × 11 = ?",
-    answer: 198,
-    difficulty: 3,
-    explanation: "Eighteen times eleven equals one hundred ninety-eight."
-  },
-  {
-    question: "225 ÷ 15 = ?",
-    answer: 15,
-    difficulty: 3,
-    explanation: "Two hundred twenty-five divided by fifteen equals fifteen."
-  },
-  {
-    question: "167 + 83 = ?",
-    answer: 250,
-    difficulty: 3,
-    explanation: "One hundred sixty-seven plus eighty-three equals two hundred fifty."
-  },
-  {
-    question: "350 - 198 = ?",
-    answer: 152,
-    difficulty: 3,
-    explanation: "Three hundred fifty minus one hundred ninety-eight equals one hundred fifty-two."
-  },
-  {
-    question: "14 × 13 = ?",
-    answer: 182,
-    difficulty: 3,
-    explanation: "Fourteen times thirteen equals one hundred eighty-two."
-  },
-  {
-    question: "195 ÷ 13 = ?",
-    answer: 15,
-    difficulty: 3,
-    explanation: "One hundred ninety-five divided by thirteen equals fifteen."
-  },
-  {
-    question: "248 + 152 = ?",
+    question: "147 + 253 = ?",
     answer: 400,
-    difficulty: 3,
-    explanation: "Two hundred forty-eight plus one hundred fifty-two equals four hundred."
+    difficulty: 1,
+    explanation: "One hundred forty-seven plus two hundred fifty-three equals four hundred."
   },
   {
-    question: "500 - 287 = ?",
-    answer: 213,
-    difficulty: 3,
-    explanation: "Five hundred minus two hundred eighty-seven equals two hundred thirteen."
+    question: "500 - 175 = ?",
+    answer: 325,
+    difficulty: 1,
+    explanation: "Five hundred minus one hundred seventy-five equals three hundred twenty-five."
   },
   {
-    question: "16 × 15 = ?",
-    answer: 240,
-    difficulty: 3,
-    explanation: "Sixteen times fifteen equals two hundred forty."
+    question: "24 × 15 = ?",
+    answer: 360,
+    difficulty: 1,
+    explanation: "Twenty-four times fifteen equals three hundred sixty."
   },
   {
-    question: "288 ÷ 16 = ?",
-    answer: 18,
-    difficulty: 3,
-    explanation: "Two hundred eighty-eight divided by sixteen equals eighteen."
-  },
-  {
-    question: "175 + 225 = ?",
-    answer: 400,
-    difficulty: 3,
-    explanation: "One hundred seventy-five plus two hundred twenty-five equals four hundred."
-  },
-  {
-    question: "450 - 162 = ?",
-    answer: 288,
-    difficulty: 3,
-    explanation: "Four hundred fifty minus one hundred sixty-two equals two hundred eighty-eight."
-  },
-  {
-    question: "19 × 12 = ?",
-    answer: 228,
-    difficulty: 3,
-    explanation: "Nineteen times twelve equals two hundred twenty-eight."
-  },
-  {
-    question: "336 ÷ 14 = ?",
+    question: "432 ÷ 18 = ?",
     answer: 24,
-    difficulty: 3,
-    explanation: "Three hundred thirty-six divided by fourteen equals twenty-four."
+    difficulty: 1,
+    explanation: "Four hundred thirty-two divided by eighteen equals twenty-four."
   },
   {
-    question: "213 + 187 = ?",
-    answer: 400,
-    difficulty: 3,
-    explanation: "Two hundred thirteen plus one hundred eighty-seven equals four hundred."
-  },
-  {
-    question: "600 - 324 = ?",
-    answer: 276,
-    difficulty: 3,
-    explanation: "Six hundred minus three hundred twenty-four equals two hundred seventy-six."
-  },
-  {
-    question: "17 × 14 = ?",
-    answer: 238,
-    difficulty: 3,
-    explanation: "Seventeen times fourteen equals two hundred thirty-eight."
-  },
-  {
-    question: "270 ÷ 18 = ?",
-    answer: 15,
-    difficulty: 3,
-    explanation: "Two hundred seventy divided by eighteen equals fifteen."
-  },
-  {
-    question: "345 + 155 = ?",
-    answer: 500,
-    difficulty: 3,
-    explanation: "Three hundred forty-five plus one hundred fifty-five equals five hundred."
-  },
-  {
-    question: "700 - 425 = ?",
-    answer: 275,
-    difficulty: 3,
-    explanation: "Seven hundred minus four hundred twenty-five equals two hundred seventy-five."
-  },
-  {
-    question: "21 × 13 = ?",
-    answer: 273,
-    difficulty: 3,
-    explanation: "Twenty-one times thirteen equals two hundred seventy-three."
+    question: "289 + 311 = ?",
+    answer: 600,
+    difficulty: 1,
+    explanation: "Two hundred eighty-nine plus three hundred eleven equals six hundred."
   },
 
-  // Level 4: Larger numbers, harder multiplications, order of operations (32 questions)
-  {
-    question: "456 + 344 = ?",
-    answer: 800,
-    difficulty: 4,
-    explanation: "Four hundred fifty-six plus three hundred forty-four equals eight hundred."
-  },
-  {
-    question: "1000 - 567 = ?",
-    answer: 433,
-    difficulty: 4,
-    explanation: "One thousand minus five hundred sixty-seven equals four hundred thirty-three."
-  },
-  {
-    question: "23 × 24 = ?",
-    answer: 552,
-    difficulty: 4,
-    explanation: "Twenty-three times twenty-four equals five hundred fifty-two."
-  },
-  {
-    question: "540 ÷ 20 = ?",
-    answer: 27,
-    difficulty: 4,
-    explanation: "Five hundred forty divided by twenty equals twenty-seven."
-  },
+  // Level 2: Intermediate/College prep level (25 questions)
   {
     question: "567 + 433 = ?",
     answer: 1000,
-    difficulty: 4,
+    difficulty: 2,
     explanation: "Five hundred sixty-seven plus four hundred thirty-three equals one thousand."
   },
   {
-    question: "1500 - 789 = ?",
-    answer: 711,
-    difficulty: 4,
-    explanation: "One thousand five hundred minus seven hundred eighty-nine equals seven hundred eleven."
+    question: "800 - 345 = ?",
+    answer: 455,
+    difficulty: 2,
+    explanation: "Eight hundred minus three hundred forty-five equals four hundred fifty-five."
   },
   {
-    question: "25 × 26 = ?",
-    answer: 650,
-    difficulty: 4,
-    explanation: "Twenty-five times twenty-six equals six hundred fifty."
+    question: "28 × 12 = ?",
+    answer: 336,
+    difficulty: 2,
+    explanation: "Twenty-eight times twelve equals three hundred thirty-six."
   },
   {
-    question: "624 ÷ 24 = ?",
+    question: "520 ÷ 20 = ?",
     answer: 26,
-    difficulty: 4,
-    explanation: "Six hundred twenty-four divided by twenty-four equals twenty-six."
+    difficulty: 2,
+    explanation: "Five hundred twenty divided by twenty equals twenty-six."
   },
   {
-    question: "678 + 322 = ?",
+    question: "375 + 625 = ?",
     answer: 1000,
-    difficulty: 4,
-    explanation: "Six hundred seventy-eight plus three hundred twenty-two equals one thousand."
+    difficulty: 2,
+    explanation: "Three hundred seventy-five plus six hundred twenty-five equals one thousand."
   },
   {
-    question: "2000 - 1234 = ?",
-    answer: 766,
-    difficulty: 4,
-    explanation: "Two thousand minus one thousand two hundred thirty-four equals seven hundred sixty-six."
+    question: "900 - 456 = ?",
+    answer: 444,
+    difficulty: 2,
+    explanation: "Nine hundred minus four hundred fifty-six equals four hundred forty-four."
   },
   {
-    question: "27 × 28 = ?",
-    answer: 756,
-    difficulty: 4,
-    explanation: "Twenty-seven times twenty-eight equals seven hundred fifty-six."
+    question: "32 × 18 = ?",
+    answer: 576,
+    difficulty: 2,
+    explanation: "Thirty-two times eighteen equals five hundred seventy-six."
   },
   {
-    question: "720 ÷ 24 = ?",
-    answer: 30,
-    difficulty: 4,
-    explanation: "Seven hundred twenty divided by twenty-four equals thirty."
+    question: "648 ÷ 24 = ?",
+    answer: 27,
+    difficulty: 2,
+    explanation: "Six hundred forty-eight divided by twenty-four equals twenty-seven."
   },
   {
-    question: "789 + 211 = ?",
+    question: "612 + 388 = ?",
     answer: 1000,
-    difficulty: 4,
-    explanation: "Seven hundred eighty-nine plus two hundred eleven equals one thousand."
+    difficulty: 2,
+    explanation: "Six hundred twelve plus three hundred eighty-eight equals one thousand."
   },
   {
-    question: "1800 - 945 = ?",
-    answer: 855,
-    difficulty: 4,
-    explanation: "One thousand eight hundred minus nine hundred forty-five equals eight hundred fifty-five."
+    question: "750 - 275 = ?",
+    answer: 475,
+    difficulty: 2,
+    explanation: "Seven hundred fifty minus two hundred seventy-five equals four hundred seventy-five."
   },
   {
-    question: "32 × 25 = ?",
-    answer: 800,
-    difficulty: 4,
-    explanation: "Thirty-two times twenty-five equals eight hundred."
+    question: "35 × 16 = ?",
+    answer: 560,
+    difficulty: 2,
+    explanation: "Thirty-five times sixteen equals five hundred sixty."
   },
   {
-    question: "800 ÷ 32 = ?",
-    answer: 25,
-    difficulty: 4,
-    explanation: "Eight hundred divided by thirty-two equals twenty-five."
+    question: "552 ÷ 23 = ?",
+    answer: 24,
+    difficulty: 2,
+    explanation: "Five hundred fifty-two divided by twenty-three equals twenty-four."
   },
   {
     question: "456 + 544 = ?",
     answer: 1000,
-    difficulty: 4,
+    difficulty: 2,
     explanation: "Four hundred fifty-six plus five hundred forty-four equals one thousand."
   },
   {
-    question: "2500 - 1567 = ?",
-    answer: 933,
-    difficulty: 4,
-    explanation: "Two thousand five hundred minus one thousand five hundred sixty-seven equals nine hundred thirty-three."
+    question: "1000 - 678 = ?",
+    answer: 322,
+    difficulty: 2,
+    explanation: "One thousand minus six hundred seventy-eight equals three hundred twenty-two."
   },
   {
-    question: "31 × 29 = ?",
-    answer: 899,
-    difficulty: 4,
-    explanation: "Thirty-one times twenty-nine equals eight hundred ninety-nine."
+    question: "42 × 14 = ?",
+    answer: 588,
+    difficulty: 2,
+    explanation: "Forty-two times fourteen equals five hundred eighty-eight."
   },
   {
-    question: "900 ÷ 30 = ?",
-    answer: 30,
-    difficulty: 4,
-    explanation: "Nine hundred divided by thirty equals thirty."
+    question: "560 ÷ 16 = ?",
+    answer: 35,
+    difficulty: 2,
+    explanation: "Five hundred sixty divided by sixteen equals thirty-five."
   },
   {
-    question: "634 + 366 = ?",
+    question: "289 + 711 = ?",
     answer: 1000,
-    difficulty: 4,
-    explanation: "Six hundred thirty-four plus three hundred sixty-six equals one thousand."
+    difficulty: 2,
+    explanation: "Two hundred eighty-nine plus seven hundred eleven equals one thousand."
   },
   {
-    question: "3000 - 1876 = ?",
-    answer: 1124,
-    difficulty: 4,
-    explanation: "Three thousand minus one thousand eight hundred seventy-six equals one thousand one hundred twenty-four."
+    question: "850 - 367 = ?",
+    answer: 483,
+    difficulty: 2,
+    explanation: "Eight hundred fifty minus three hundred sixty-seven equals four hundred eighty-three."
   },
   {
-    question: "34 × 27 = ?",
-    answer: 918,
-    difficulty: 4,
-    explanation: "Thirty-four times twenty-seven equals nine hundred eighteen."
+    question: "38 × 19 = ?",
+    answer: 722,
+    difficulty: 2,
+    explanation: "Thirty-eight times nineteen equals seven hundred twenty-two."
   },
   {
-    question: "966 ÷ 23 = ?",
-    answer: 42,
-    difficulty: 4,
-    explanation: "Nine hundred sixty-six divided by twenty-three equals forty-two."
+    question: "690 ÷ 15 = ?",
+    answer: 46,
+    difficulty: 2,
+    explanation: "Six hundred ninety divided by fifteen equals forty-six."
   },
   {
-    question: "742 + 258 = ?",
+    question: "445 + 555 = ?",
     answer: 1000,
-    difficulty: 4,
-    explanation: "Seven hundred forty-two plus two hundred fifty-eight equals one thousand."
+    difficulty: 2,
+    explanation: "Four hundred forty-five plus five hundred fifty-five equals one thousand."
   },
   {
-    question: "2200 - 1345 = ?",
-    answer: 855,
-    difficulty: 4,
-    explanation: "Two thousand two hundred minus one thousand three hundred forty-five equals eight hundred fifty-five."
+    question: "950 - 524 = ?",
+    answer: 426,
+    difficulty: 2,
+    explanation: "Nine hundred fifty minus five hundred twenty-four equals four hundred twenty-six."
   },
   {
-    question: "36 × 23 = ?",
-    answer: 828,
-    difficulty: 4,
-    explanation: "Thirty-six times twenty-three equals eight hundred twenty-eight."
+    question: "36 × 21 = ?",
+    answer: 756,
+    difficulty: 2,
+    explanation: "Thirty-six times twenty-one equals seven hundred fifty-six."
   },
   {
-    question: "858 ÷ 22 = ?",
-    answer: 39,
-    difficulty: 4,
-    explanation: "Eight hundred fifty-eight divided by twenty-two equals thirty-nine."
+    question: "612 ÷ 18 = ?",
+    answer: 34,
+    difficulty: 2,
+    explanation: "Six hundred twelve divided by eighteen equals thirty-four."
   },
   {
-    question: "891 + 109 = ?",
+    question: "125 + 875 = ?",
     answer: 1000,
-    difficulty: 4,
-    explanation: "Eight hundred ninety-one plus one hundred nine equals one thousand."
+    difficulty: 2,
+    explanation: "One hundred twenty-five plus eight hundred seventy-five equals one thousand."
+  },
+
+  // Level 3: Advanced (percentages, exponents, larger multi-digit operations - 27 questions)
+  {
+    question: "1234 + 2766 = ?",
+    answer: 4000,
+    difficulty: 3,
+    explanation: "One thousand two hundred thirty-four plus two thousand seven hundred sixty-six equals four thousand."
   },
   {
-    question: "3500 - 2156 = ?",
-    answer: 1344,
-    difficulty: 4,
-    explanation: "Three thousand five hundred minus two thousand one hundred fifty-six equals one thousand three hundred forty-four."
+    question: "2000 - 1234 = ?",
+    answer: 766,
+    difficulty: 3,
+    explanation: "Two thousand minus one thousand two hundred thirty-four equals seven hundred sixty-six."
   },
   {
-    question: "38 × 21 = ?",
-    answer: 798,
-    difficulty: 4,
-    explanation: "Thirty-eight times twenty-one equals seven hundred ninety-eight."
+    question: "45 × 32 = ?",
+    answer: 1440,
+    difficulty: 3,
+    explanation: "Forty-five times thirty-two equals one thousand four hundred forty."
   },
   {
     question: "1008 ÷ 24 = ?",
     answer: 42,
-    difficulty: 4,
+    difficulty: 3,
     explanation: "One thousand eight divided by twenty-four equals forty-two."
-  },
-
-  // Level 5: Complex operations, larger multiplications, challenging divisions (11 questions)
-  {
-    question: "1234 + 2766 = ?",
-    answer: 4000,
-    difficulty: 5,
-    explanation: "One thousand two hundred thirty-four plus two thousand seven hundred sixty-six equals four thousand."
-  },
-  {
-    question: "5000 - 2847 = ?",
-    answer: 2153,
-    difficulty: 5,
-    explanation: "Five thousand minus two thousand eight hundred forty-seven equals two thousand one hundred fifty-three."
-  },
-  {
-    question: "47 × 43 = ?",
-    answer: 2021,
-    difficulty: 5,
-    explanation: "Forty-seven times forty-three equals two thousand twenty-one."
-  },
-  {
-    question: "1572 ÷ 26 = ?",
-    answer: 60.46,
-    difficulty: 5,
-    explanation: "One thousand five hundred seventy-two divided by twenty-six equals approximately sixty point four six."
   },
   {
     question: "3456 + 3544 = ?",
     answer: 7000,
-    difficulty: 5,
+    difficulty: 3,
     explanation: "Three thousand four hundred fifty-six plus three thousand five hundred forty-four equals seven thousand."
   },
   {
-    question: "8000 - 4567 = ?",
-    answer: 3433,
-    difficulty: 5,
-    explanation: "Eight thousand minus four thousand five hundred sixty-seven equals three thousand four hundred thirty-three."
+    question: "5000 - 2847 = ?",
+    answer: 2153,
+    difficulty: 3,
+    explanation: "Five thousand minus two thousand eight hundred forty-seven equals two thousand one hundred fifty-three."
   },
   {
-    question: "52 × 48 = ?",
-    answer: 2496,
-    difficulty: 5,
-    explanation: "Fifty-two times forty-eight equals two thousand four hundred ninety-six."
+    question: "52 × 28 = ?",
+    answer: 1456,
+    difficulty: 3,
+    explanation: "Fifty-two times twenty-eight equals one thousand four hundred fifty-six."
   },
   {
-    question: "2145 ÷ 35 = ?",
-    answer: 61.29,
-    difficulty: 5,
-    explanation: "Two thousand one hundred forty-five divided by thirty-five equals approximately sixty-one point two nine."
+    question: "1232 ÷ 28 = ?",
+    answer: 44,
+    difficulty: 3,
+    explanation: "One thousand two hundred thirty-two divided by twenty-eight equals forty-four."
   },
   {
-    question: "4567 + 3433 = ?",
+    question: "What is 20% of 450?",
+    answer: 90,
+    difficulty: 3,
+    explanation: "Twenty percent of four hundred fifty equals ninety."
+  },
+  {
+    question: "What is 15% of 800?",
+    answer: 120,
+    difficulty: 3,
+    explanation: "Fifteen percent of eight hundred equals one hundred twenty."
+  },
+  {
+    question: "3² (3 squared) = ?",
+    answer: 9,
+    difficulty: 3,
+    explanation: "Three squared equals nine."
+  },
+  {
+    question: "4³ (4 cubed) = ?",
+    answer: 64,
+    difficulty: 3,
+    explanation: "Four cubed equals sixty-four."
+  },
+  {
+    question: "2567 + 1433 = ?",
+    answer: 4000,
+    difficulty: 3,
+    explanation: "Two thousand five hundred sixty-seven plus one thousand four hundred thirty-three equals four thousand."
+  },
+  {
+    question: "3500 - 1876 = ?",
+    answer: 1624,
+    difficulty: 3,
+    explanation: "Three thousand five hundred minus one thousand eight hundred seventy-six equals one thousand six hundred twenty-four."
+  },
+  {
+    question: "38 × 26 = ?",
+    answer: 988,
+    difficulty: 3,
+    explanation: "Thirty-eight times twenty-six equals nine hundred eighty-eight."
+  },
+  {
+    question: "1560 ÷ 24 = ?",
+    answer: 65,
+    difficulty: 3,
+    explanation: "One thousand five hundred sixty divided by twenty-four equals sixty-five."
+  },
+  {
+    question: "What is 25% of 1200?",
+    answer: 300,
+    difficulty: 3,
+    explanation: "Twenty-five percent of one thousand two hundred equals three hundred."
+  },
+  {
+    question: "4789 + 1211 = ?",
+    answer: 6000,
+    difficulty: 3,
+    explanation: "Four thousand seven hundred eighty-nine plus one thousand two hundred eleven equals six thousand."
+  },
+  {
+    question: "6500 - 3245 = ?",
+    answer: 3255,
+    difficulty: 3,
+    explanation: "Six thousand five hundred minus three thousand two hundred forty-five equals three thousand two hundred fifty-five."
+  },
+  {
+    question: "48 × 35 = ?",
+    answer: 1680,
+    difficulty: 3,
+    explanation: "Forty-eight times thirty-five equals one thousand six hundred eighty."
+  },
+  {
+    question: "√144 (square root) = ?",
+    answer: 12,
+    difficulty: 3,
+    explanation: "The square root of one hundred forty-four equals twelve."
+  },
+  {
+    question: "What is 30% of 600?",
+    answer: 180,
+    difficulty: 3,
+    explanation: "Thirty percent of six hundred equals one hundred eighty."
+  },
+  {
+    question: "5² (5 squared) = ?",
+    answer: 25,
+    difficulty: 3,
+    explanation: "Five squared equals twenty-five."
+  },
+  {
+    question: "What is 40% of 750?",
+    answer: 300,
+    difficulty: 3,
+    explanation: "Forty percent of seven hundred fifty equals three hundred."
+  },
+  {
+    question: "6² (6 squared) = ?",
+    answer: 36,
+    difficulty: 3,
+    explanation: "Six squared equals thirty-six."
+  },
+  {
+    question: "7890 + 1110 = ?",
+    answer: 9000,
+    difficulty: 3,
+    explanation: "Seven thousand eight hundred ninety plus one thousand one hundred ten equals nine thousand."
+  },
+  {
+    question: "Solve: 5x + 10 = 35. x = ?",
+    answer: 5,
+    difficulty: 3,
+    explanation: "Solving the equation: 5x + 10 = 35 gives us x = 5."
+  },
+
+  // Level 4: College-level with complex operations, fractions as decimals, and challenging exponents (32 questions)
+  {
+    question: "Solve: 3x² = 75. x = ?",
+    answer: 5,
+    difficulty: 4,
+    explanation: "Solving the quadratic: 3x² = 75 gives us x = 5."
+  },
+  {
+    question: "10⁴ (10 to the 4th power) = ?",
+    answer: 10000,
+    difficulty: 4,
+    explanation: "Ten to the fourth power equals ten thousand."
+  },
+  {
+    question: "√625 (square root) = ?",
+    answer: 25,
+    difficulty: 4,
+    explanation: "The square root of six hundred twenty-five equals twenty-five."
+  },
+  {
+    question: "8³ (8 cubed) = ?",
+    answer: 512,
+    difficulty: 4,
+    explanation: "Eight cubed equals five hundred twelve."
+  },
+  {
+    question: "What is 35% of 2000?",
+    answer: 700,
+    difficulty: 4,
+    explanation: "Thirty-five percent of two thousand equals seven hundred."
+  },
+  {
+    question: "12,450 + 8,750 = ?",
+    answer: 21200,
+    difficulty: 4,
+    explanation: "Twelve thousand four hundred fifty plus eight thousand seven hundred fifty equals twenty-one thousand two hundred."
+  },
+  {
+    question: "15,000 - 7,345 = ?",
+    answer: 7655,
+    difficulty: 4,
+    explanation: "Fifteen thousand minus seven thousand three hundred forty-five equals seven thousand six hundred fifty-five."
+  },
+  {
+    question: "125 × 64 = ?",
     answer: 8000,
-    difficulty: 5,
-    explanation: "Four thousand five hundred sixty-seven plus three thousand four hundred thirty-three equals eight thousand."
+    difficulty: 4,
+    explanation: "One hundred twenty-five times sixty-four equals eight thousand."
   },
   {
-    question: "10000 - 5678 = ?",
-    answer: 4322,
-    difficulty: 5,
-    explanation: "Ten thousand minus five thousand six hundred seventy-eight equals four thousand three hundred twenty-two."
+    question: "2304 ÷ 48 = ?",
+    answer: 48,
+    difficulty: 4,
+    explanation: "Two thousand three hundred four divided by forty-eight equals forty-eight."
   },
   {
-    question: "59 × 61 = ?",
-    answer: 3599,
+    question: "9⁴ ÷ 9² = ?",
+    answer: 81,
+    difficulty: 4,
+    explanation: "Nine to the fourth power divided by nine squared equals eighty-one."
+  },
+  {
+    question: "What is 22.5% of 800?",
+    answer: 180,
+    difficulty: 4,
+    explanation: "Twenty-two point five percent of eight hundred equals one hundred eighty."
+  },
+  {
+    question: "√289 (square root) = ?",
+    answer: 17,
+    difficulty: 4,
+    explanation: "The square root of two hundred eighty-nine equals seventeen."
+  },
+  {
+    question: "Solve: 2x + 7 = 25. x = ?",
+    answer: 9,
+    difficulty: 4,
+    explanation: "Solving the equation: 2x + 7 = 25 gives us x = 9."
+  },
+  {
+    question: "18,900 + 11,100 = ?",
+    answer: 30000,
+    difficulty: 4,
+    explanation: "Eighteen thousand nine hundred plus eleven thousand one hundred equals thirty thousand."
+  },
+  {
+    question: "25,000 - 13,456 = ?",
+    answer: 11544,
+    difficulty: 4,
+    explanation: "Twenty-five thousand minus thirteen thousand four hundred fifty-six equals eleven thousand five hundred forty-four."
+  },
+  {
+    question: "144 × 75 = ?",
+    answer: 10800,
+    difficulty: 4,
+    explanation: "One hundred forty-four times seventy-five equals ten thousand eight hundred."
+  },
+  {
+    question: "3528 ÷ 56 = ?",
+    answer: 63,
+    difficulty: 4,
+    explanation: "Three thousand five hundred twenty-eight divided by fifty-six equals sixty-three."
+  },
+  {
+    question: "2⁷ (2 to the 7th power) = ?",
+    answer: 128,
+    difficulty: 4,
+    explanation: "Two to the seventh power equals one hundred twenty-eight."
+  },
+  {
+    question: "What is 18% of 1500?",
+    answer: 270,
+    difficulty: 4,
+    explanation: "Eighteen percent of one thousand five hundred equals two hundred seventy."
+  },
+  {
+    question: "Solve: 4x - 5 = 27. x = ?",
+    answer: 8,
+    difficulty: 4,
+    explanation: "Solving the equation: 4x - 5 = 27 gives us x = 8."
+  },
+  {
+    question: "√441 (square root) = ?",
+    answer: 21,
+    difficulty: 4,
+    explanation: "The square root of four hundred forty-one equals twenty-one."
+  },
+  {
+    question: "11 × 11 × 11 = ?",
+    answer: 1331,
+    difficulty: 4,
+    explanation: "Eleven times eleven times eleven equals one thousand three hundred thirty-one."
+  },
+  {
+    question: "42,800 + 17,200 = ?",
+    answer: 60000,
+    difficulty: 4,
+    explanation: "Forty-two thousand eight hundred plus seventeen thousand two hundred equals sixty thousand."
+  },
+  {
+    question: "50,000 - 24,375 = ?",
+    answer: 25625,
+    difficulty: 4,
+    explanation: "Fifty thousand minus twenty-four thousand three hundred seventy-five equals twenty-five thousand six hundred twenty-five."
+  },
+  {
+    question: "250 × 88 = ?",
+    answer: 22000,
+    difficulty: 4,
+    explanation: "Two hundred fifty times eighty-eight equals twenty-two thousand."
+  },
+  {
+    question: "4840 ÷ 55 = ?",
+    answer: 88,
+    difficulty: 4,
+    explanation: "Four thousand eight hundred forty divided by fifty-five equals eighty-eight."
+  },
+  {
+    question: "3⁶ (3 to the 6th power) = ?",
+    answer: 729,
+    difficulty: 4,
+    explanation: "Three to the sixth power equals seven hundred twenty-nine."
+  },
+  {
+    question: "What is 45% of 1800?",
+    answer: 810,
+    difficulty: 4,
+    explanation: "Forty-five percent of one thousand eight hundred equals eight hundred ten."
+  },
+  {
+    question: "Solve: x² - 9 = 40. x = ?",
+    answer: 7,
+    difficulty: 4,
+    explanation: "Solving the quadratic: x² - 9 = 40 gives us x = 7."
+  },
+  {
+    question: "√1024 (square root) = ?",
+    answer: 32,
+    difficulty: 4,
+    explanation: "The square root of one thousand twenty-four equals thirty-two."
+  },
+  {
+    question: "99 × 99 = ?",
+    answer: 9801,
+    difficulty: 4,
+    explanation: "Ninety-nine times ninety-nine equals nine thousand eight hundred one."
+  },
+  {
+    question: "6336 ÷ 72 = ?",
+    answer: 88,
+    difficulty: 4,
+    explanation: "Six thousand three hundred thirty-six divided by seventy-two equals eighty-eight."
+  },
+
+  // Level 5: Advanced college/graduate level - challenging algebra, exponents, systems (11 questions)
+  {
+    question: "Solve: 2x² + 3x = 20. x = ?",
+    answer: 2,
     difficulty: 5,
-    explanation: "Fifty-nine times sixty-one equals three thousand five hundred ninety-nine."
+    explanation: "Solving the quadratic equation: 2x² + 3x = 20 gives us x = 2 (positive solution)."
+  },
+  {
+    question: "What is 12% of 8750?",
+    answer: 1050,
+    difficulty: 5,
+    explanation: "Twelve percent of eight thousand seven hundred fifty equals one thousand fifty."
+  },
+  {
+    question: "128² (128 squared) = ?",
+    answer: 16384,
+    difficulty: 5,
+    explanation: "One hundred twenty-eight squared equals sixteen thousand three hundred eighty-four."
+  },
+  {
+    question: "Solve: 3(x + 5) = 48. x = ?",
+    answer: 11,
+    difficulty: 5,
+    explanation: "Solving the equation: 3(x + 5) = 48 gives us x = 11."
+  },
+  {
+    question: "456,789 + 543,211 = ?",
+    answer: 1000000,
+    difficulty: 5,
+    explanation: "Four hundred fifty-six thousand seven hundred eighty-nine plus five hundred forty-three thousand two hundred eleven equals one million."
+  },
+  {
+    question: "5⁵ (5 to the 5th power) = ?",
+    answer: 3125,
+    difficulty: 5,
+    explanation: "Five to the fifth power equals three thousand one hundred twenty-five."
+  },
+  {
+    question: "∛1000 (cube root of 1000) = ?",
+    answer: 10,
+    difficulty: 5,
+    explanation: "The cube root of one thousand equals ten."
+  },
+  {
+    question: "What is 33.33% of 3000?",
+    answer: 1000,
+    difficulty: 5,
+    explanation: "Thirty-three point thirty-three percent of three thousand equals approximately one thousand."
+  },
+  {
+    question: "987,654 - 321,456 = ?",
+    answer: 666198,
+    difficulty: 5,
+    explanation: "Nine hundred eighty-seven thousand six hundred fifty-four minus three hundred twenty-one thousand four hundred fifty-six equals six hundred sixty-six thousand one hundred ninety-eight."
+  },
+  {
+    question: "144 × 144 = ?",
+    answer: 20736,
+    difficulty: 5,
+    explanation: "One hundred forty-four times one hundred forty-four equals twenty thousand seven hundred thirty-six."
+  },
+  {
+    question: "√2809 (square root) = ?",
+    answer: 53,
+    difficulty: 5,
+    explanation: "The square root of two thousand eight hundred nine equals fifty-three."
   }
 ];
 
