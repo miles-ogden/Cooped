@@ -1105,6 +1105,9 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
   detectiveContainer.style.alignItems = 'center';
   detectiveContainer.style.justifyContent = 'center';
   detectiveContainer.style.cursor = 'grab';
+  detectiveContainer.style.minHeight = '400px';
+
+  layoutContainer.appendChild(detectiveContainer);
 
   // Create clue text elements positioned randomly
   const clues = [
@@ -1117,6 +1120,10 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
   const clueElements = [];
   const positions = [];
 
+  // Get actual container dimensions after adding to DOM
+  const containerWidth = detectiveContainer.offsetWidth || 600;
+  const containerHeight = detectiveContainer.offsetHeight || 400;
+
   clues.forEach((clue) => {
     const clueEl = document.createElement('div');
     clueEl.id = clue.id;
@@ -1125,7 +1132,7 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
     clueEl.style.fontSize = '16px';
     clueEl.style.lineHeight = '1.5';
     clueEl.style.maxWidth = '200px';
-    clueEl.style.color = '#f5f5f5'; // Hidden color - same as background
+    clueEl.style.color = '#e8e8e8'; // Hidden color - very light gray, almost same as background
     clueEl.style.cursor = 'default';
     clueEl.style.fontWeight = 'bold';
     clueEl.style.userSelect = 'none';
@@ -1137,8 +1144,8 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
     let x, y, overlapping;
     do {
       overlapping = false;
-      x = Math.random() * (detectiveContainer.offsetWidth - 220);
-      y = Math.random() * (detectiveContainer.offsetHeight - 100);
+      x = Math.random() * (containerWidth - 220);
+      y = Math.random() * (containerHeight - 100);
 
       // Check for overlap with existing positions
       for (let pos of positions) {
@@ -1159,8 +1166,6 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
     detectiveContainer.appendChild(clueEl);
     clueElements.push({ element: clueEl, id: clue.id, x, y });
   });
-
-  layoutContainer.appendChild(detectiveContainer);
 
   // ===== Magnifying glass =====
   const magnifyingGlass = document.createElement('img');
@@ -1195,10 +1200,10 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
       );
 
       if (distance < MAGNIFY_RADIUS) {
-        element.style.color = '#333'; // Reveal text
+        element.style.color = '#000'; // Reveal text - pure black
         discoveredClues.add(id);
       } else {
-        element.style.color = '#f5f5f5'; // Hide text
+        element.style.color = '#e8e8e8'; // Hide text - light gray
       }
     });
   });
@@ -1233,10 +1238,10 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
       );
 
       if (distance < MAGNIFY_RADIUS) {
-        element.style.color = '#333';
+        element.style.color = '#000';
         discoveredClues.add(id);
       } else {
-        element.style.color = '#f5f5f5';
+        element.style.color = '#e8e8e8';
       }
     });
   });
