@@ -1416,27 +1416,16 @@ function startIntervalMonitoring() {
 
 /**
  * Show a re-engagement challenge when user is still on blocked site after interval
+ * Now uses the new 3-slide interrupt sequence instead of old overlay
  */
 async function showReEngagementChallenge(messageData) {
+  // Use the new 3-slide interrupt sequence
+  showInterruptSequenceInline();
+
   isOverlayActive = true;
   challengeStartTime = Date.now();
 
-  document.body.style.overflow = 'hidden';
-
-  const enabledTypes = messageData.enabledTypes || ['trivia', 'math', 'word'];
-  const state = await getAppState();
-  const difficulty = getAdaptiveDifficultyWithVariety(state.mascot.currentStage, state.user.stats.experience);
-  const enabledCategories = state.settings.enabledCategories;
-
-  const randomType = enabledTypes[Math.floor(Math.random() * enabledTypes.length)];
-  currentChallenge = await getRandomChallenge(randomType, difficulty, enabledCategories);
-
-  await saveCurrentChallenge(currentChallenge, messageData.url);
-
-  const overlay = createReEngagementOverlay(currentChallenge, messageData.url);
-  document.body.appendChild(overlay);
-
-  // Focus on input
+  // Focus on the modal (interrupt sequence takes care of itself)
   setTimeout(() => {
     const input = document.getElementById('cooped-answer-input');
     if (input) input.focus();
@@ -1444,7 +1433,9 @@ async function showReEngagementChallenge(messageData) {
 }
 
 /**
- * Create re-engagement overlay element with special messaging
+ * DEPRECATED: Create re-engagement overlay element
+ * This function is no longer used - replaced by showInterruptSequenceInline()
+ * Kept for reference only - uses the new 3-slide interrupt sequence instead
  */
 function createReEngagementOverlay(challenge, blockedUrl) {
   const overlay = document.createElement('div');
@@ -1524,6 +1515,9 @@ function createReEngagementOverlay(challenge, blockedUrl) {
  * Create and show challenge overlay
  */
 async function showChallengeOverlay(messageData) {
+  // Use the new 3-slide interrupt sequence instead of old challenge overlay
+  showInterruptSequenceInline();
+
   isOverlayActive = true;
   challengeStartTime = Date.now();
 
@@ -1534,39 +1528,16 @@ async function showChallengeOverlay(messageData) {
   if (window.location.hostname.includes('youtube.com')) {
     pauseYouTubeVideo();
   }
-
-  // Get enabled challenge types from message
-  const enabledTypes = messageData.enabledTypes || ['trivia', 'math', 'word'];
-
-  // Use adaptive difficulty based on user level
-  const state = await getAppState();
-  const difficulty = getAdaptiveDifficultyWithVariety(state.mascot.currentStage, state.user.stats.experience);
-  const enabledCategories = state.settings.enabledCategories;
-
-  // Pick a random challenge type from enabled types
-  const randomType = enabledTypes[Math.floor(Math.random() * enabledTypes.length)];
-
-  // Get a random challenge with category filtering (now async)
-  currentChallenge = await getRandomChallenge(randomType, difficulty, enabledCategories);
-
-  // Save challenge to session storage to prevent bypass via refresh
-  await saveCurrentChallenge(currentChallenge, messageData.url);
-
-  // Create overlay
-  const overlay = createOverlayElement(currentChallenge);
-  document.body.appendChild(overlay);
-
-  // Focus on input after render
-  setTimeout(() => {
-    const input = document.getElementById('cooped-answer-input');
-    if (input) input.focus();
-  }, 100);
 }
 
 /**
  * Show a saved challenge overlay (from previous page load)
+ * Now uses the new 3-slide interrupt sequence instead of old overlay
  */
 function showSavedChallengeOverlay(savedChallengeData) {
+  // Use the new 3-slide interrupt sequence
+  showInterruptSequenceInline();
+
   isOverlayActive = true;
   currentChallenge = savedChallengeData.challenge;
   challengeStartTime = savedChallengeData.startTime;
@@ -1577,20 +1548,12 @@ function showSavedChallengeOverlay(savedChallengeData) {
   if (window.location.hostname.includes('youtube.com')) {
     pauseYouTubeVideo();
   }
-
-  // Create overlay
-  const overlay = createOverlayElement(currentChallenge);
-  document.body.appendChild(overlay);
-
-  // Focus on input
-  setTimeout(() => {
-    const input = document.getElementById('cooped-answer-input');
-    if (input) input.focus();
-  }, 100);
 }
 
 /**
- * Create overlay DOM element
+ * DEPRECATED: Create overlay DOM element
+ * This function is no longer used - replaced by showInterruptSequenceInline()
+ * Kept for reference only - uses the new 3-slide interrupt sequence instead
  */
 function createOverlayElement(challenge) {
   const overlay = document.createElement('div');
