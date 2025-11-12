@@ -1105,7 +1105,7 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
   detectiveContainer.style.alignItems = 'center';
   detectiveContainer.style.justifyContent = 'center';
   detectiveContainer.style.cursor = 'grab';
-  detectiveContainer.style.minHeight = '400px';
+  detectiveContainer.style.minHeight = '250px';
 
   layoutContainer.appendChild(detectiveContainer);
 
@@ -1295,51 +1295,112 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
     optionBtn.addEventListener('click', () => {
       if (answered) return;
 
-      answered = true;
+      // Track which option was selected
+      selectedAnswer = option;
 
-      // Clear any previous selection styling
+      // Visual feedback - highlight selected option
       Array.from(optionsContainer.children).forEach(btn => {
-        btn.style.borderColor = '#ccc';
-        btn.style.backgroundColor = '#fff';
+        if (btn === optionBtn) {
+          btn.style.borderColor = '#333';
+          btn.style.backgroundColor = '#f0f0f0';
+        } else {
+          btn.style.borderColor = '#ccc';
+          btn.style.backgroundColor = '#fff';
+        }
       });
-
-      if (option === question.correctAnswer) {
-        // Correct answer
-        optionBtn.style.borderColor = '#4CAF50';
-        optionBtn.style.backgroundColor = '#c8e6c9';
-        optionBtn.style.color = '#2e7d32';
-
-        // Advance to next page after a short delay
-        setTimeout(() => {
-          advanceInterruptPageInline();
-        }, 1000);
-      } else {
-        // Wrong answer
-        optionBtn.style.borderColor = '#f44336';
-        optionBtn.style.backgroundColor = '#ffcdd2';
-        optionBtn.style.color = '#c62828';
-
-        // Reset after 1 second to allow retry
-        setTimeout(() => {
-          answered = false;
-          optionBtn.style.borderColor = '#ccc';
-          optionBtn.style.backgroundColor = '#fff';
-          optionBtn.style.color = '#333';
-
-          // Reset all buttons
-          Array.from(optionsContainer.children).forEach(btn => {
-            btn.style.borderColor = '#ccc';
-            btn.style.backgroundColor = '#fff';
-            btn.style.color = '#333';
-          });
-        }, 1000);
-      }
     });
 
     optionsContainer.appendChild(optionBtn);
   });
 
   layoutContainer.appendChild(optionsContainer);
+
+  // ===== SUBMIT BUTTON =====
+  const submitBtn = document.createElement('button');
+  submitBtn.textContent = 'Check Answer';
+  submitBtn.style.padding = '15px 35px';
+  submitBtn.style.fontSize = '16px';
+  submitBtn.style.backgroundColor = '#333';
+  submitBtn.style.color = '#fff';
+  submitBtn.style.border = 'none';
+  submitBtn.style.borderRadius = '4px';
+  submitBtn.style.cursor = 'pointer';
+  submitBtn.style.marginTop = '10px';
+  submitBtn.style.fontWeight = 'bold';
+  submitBtn.style.transition = 'all 0.2s ease';
+
+  submitBtn.addEventListener('mouseenter', () => {
+    submitBtn.style.backgroundColor = '#555';
+  });
+
+  submitBtn.addEventListener('mouseleave', () => {
+    submitBtn.style.backgroundColor = '#333';
+  });
+
+  submitBtn.addEventListener('click', () => {
+    if (!selectedAnswer) {
+      submitBtn.textContent = 'Please select an answer';
+      setTimeout(() => {
+        submitBtn.textContent = 'Check Answer';
+      }, 1500);
+      return;
+    }
+
+    answered = true;
+    submitBtn.disabled = true;
+
+    if (selectedAnswer === question.correctAnswer) {
+      // Correct answer
+      submitBtn.style.backgroundColor = '#4CAF50';
+      submitBtn.style.color = '#fff';
+      submitBtn.textContent = 'Correct!';
+
+      // Highlight correct option
+      Array.from(optionsContainer.children).forEach(btn => {
+        if (btn.textContent === question.correctAnswer) {
+          btn.style.borderColor = '#4CAF50';
+          btn.style.backgroundColor = '#c8e6c9';
+          btn.style.color = '#2e7d32';
+        }
+      });
+
+      // Advance to next page after a short delay
+      setTimeout(() => {
+        advanceInterruptPageInline();
+      }, 1000);
+    } else {
+      // Wrong answer
+      submitBtn.style.backgroundColor = '#f44336';
+      submitBtn.textContent = 'Wrong! Try again';
+
+      // Highlight wrong option
+      Array.from(optionsContainer.children).forEach(btn => {
+        if (btn.textContent === selectedAnswer) {
+          btn.style.borderColor = '#f44336';
+          btn.style.backgroundColor = '#ffcdd2';
+          btn.style.color = '#c62828';
+        }
+      });
+
+      // Reset after 2 seconds to allow retry
+      setTimeout(() => {
+        answered = false;
+        selectedAnswer = null;
+        submitBtn.disabled = false;
+        submitBtn.style.backgroundColor = '#333';
+        submitBtn.textContent = 'Check Answer';
+
+        // Reset all buttons
+        Array.from(optionsContainer.children).forEach(btn => {
+          btn.style.borderColor = '#ccc';
+          btn.style.backgroundColor = '#fff';
+          btn.style.color = '#333';
+        });
+      }, 2000);
+    }
+  });
+
+  layoutContainer.appendChild(submitBtn);
   contentEl.appendChild(layoutContainer);
 }
 
