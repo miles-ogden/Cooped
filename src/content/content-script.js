@@ -119,20 +119,8 @@ function renderInterruptPageInline(pageNum) {
   if (pageNum === 1) {
     renderPage1Inline(headerEl);
   } else if (pageNum === 2) {
-    // Randomly select game type if not already set
-    if (!currentGameType || currentGameType === 'random') {
-      const gameTypes = ['vocabulary', 'math', 'history'];
-      currentGameType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
-      console.log('[INTERRUPT] Randomly selected game type:', currentGameType);
-    }
-
-    if (currentGameType === 'vocabulary') {
-      renderVocabularyChallengeInline(headerEl, contentEl);
-    } else if (currentGameType === 'math') {
-      renderMathChallengeInline(headerEl, contentEl);
-    } else if (currentGameType === 'history') {
-      renderHistoryChallengeInline(headerEl, contentEl);
-    }
+    // TESTING: Always show history game for debugging
+    renderHistoryChallengeInline(headerEl, contentEl);
   } else if (pageNum === 3) {
     renderPage3Inline(headerEl, contentEl);
   }
@@ -1075,9 +1063,15 @@ function renderHistoryChallengeInline(headerEl, contentEl) {
 function renderHistoryGameUI(headerEl, contentEl, question) {
   console.log('[INTERRUPT] renderHistoryGameUI called with question:', question.correctAnswer);
 
-  // Track selected answer state
-  let selectedAnswer = null;
+  // Track magnifying glass state and clues discovered
+  let magnifyingGlassX = 0;
+  let magnifyingGlassY = 0;
+  let isDragging = false;
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
+  let discoveredClues = new Set(); // Track which clues have been revealed
   let answered = false;
+  const MAGNIFY_RADIUS = 60; // Radius of magnifying glass effect
 
   // Create main layout container
   const layoutContainer = document.createElement('div');
@@ -1086,65 +1080,180 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
   layoutContainer.style.width = '100%';
   layoutContainer.style.height = '100%';
   layoutContainer.style.gap = '20px';
-  layoutContainer.style.alignItems = 'center';
-  layoutContainer.style.justifyContent = 'flex-start';
 
-  // ===== CLUES SECTION =====
-  const cluesContainer = document.createElement('div');
-  cluesContainer.style.flex = '0 0 auto';
-  cluesContainer.style.width = '100%';
-  cluesContainer.style.backgroundColor = '#f5f5f5';
-  cluesContainer.style.padding = '20px';
-  cluesContainer.style.borderRadius = '4px';
-  cluesContainer.style.fontSize = '16px';
-  cluesContainer.style.lineHeight = '1.8';
-  cluesContainer.style.color = '#333';
+  // ===== TOP: Detective instruction =====
+  const instructionContainer = document.createElement('div');
+  instructionContainer.style.flex = '0 0 auto';
+  instructionContainer.style.backgroundColor = '#f5f5f5';
+  instructionContainer.style.padding = '20px';
+  instructionContainer.style.borderRadius = '4px';
+  instructionContainer.style.fontSize = '16px';
+  instructionContainer.style.lineHeight = '1.6';
+  instructionContainer.style.color = '#333';
+  instructionContainer.style.textAlign = 'center';
+  instructionContainer.textContent = "You're a history detective! Use the magnifying glass to uncover clues and discover who or what this is.";
+  layoutContainer.appendChild(instructionContainer);
 
-  // Clue 1
-  const clue1Div = document.createElement('div');
-  clue1Div.style.marginBottom = '12px';
-  const clue1Label = document.createElement('strong');
-  clue1Label.textContent = 'Clue 1: ';
-  clue1Label.style.color = '#666';
-  const clue1Text = document.createElement('span');
-  clue1Text.textContent = question.clue1;
-  clue1Div.appendChild(clue1Label);
-  clue1Div.appendChild(clue1Text);
-  cluesContainer.appendChild(clue1Div);
+  // ===== MIDDLE: Detective clues area with magnifying glass =====
+  const detectiveContainer = document.createElement('div');
+  detectiveContainer.style.flex = '1';
+  detectiveContainer.style.position = 'relative';
+  detectiveContainer.style.backgroundColor = '#fafafa';
+  detectiveContainer.style.borderRadius = '4px';
+  detectiveContainer.style.overflow = 'hidden';
+  detectiveContainer.style.display = 'flex';
+  detectiveContainer.style.alignItems = 'center';
+  detectiveContainer.style.justifyContent = 'center';
+  detectiveContainer.style.cursor = 'grab';
 
-  // Clue 2
-  const clue2Div = document.createElement('div');
-  clue2Div.style.marginBottom = '12px';
-  const clue2Label = document.createElement('strong');
-  clue2Label.textContent = 'Clue 2: ';
-  clue2Label.style.color = '#666';
-  const clue2Text = document.createElement('span');
-  clue2Text.textContent = question.clue2;
-  clue2Div.appendChild(clue2Label);
-  clue2Div.appendChild(clue2Text);
-  cluesContainer.appendChild(clue2Div);
+  // Create clue text elements positioned randomly
+  const clues = [
+    { text: question.clue1, id: 'clue1' },
+    { text: question.clue2, id: 'clue2' },
+    { text: question.clue3, id: 'clue3' }
+  ];
 
-  // Clue 3
-  const clue3Div = document.createElement('div');
-  const clue3Label = document.createElement('strong');
-  clue3Label.textContent = 'Clue 3: ';
-  clue3Label.style.color = '#666';
-  const clue3Text = document.createElement('span');
-  clue3Text.textContent = question.clue3;
-  clue3Div.appendChild(clue3Label);
-  clue3Div.appendChild(clue3Text);
-  cluesContainer.appendChild(clue3Div);
+  // Generate random positions for clues (avoiding overlap)
+  const clueElements = [];
+  const positions = [];
 
-  layoutContainer.appendChild(cluesContainer);
+  clues.forEach((clue) => {
+    const clueEl = document.createElement('div');
+    clueEl.id = clue.id;
+    clueEl.textContent = clue.text;
+    clueEl.style.position = 'absolute';
+    clueEl.style.fontSize = '16px';
+    clueEl.style.lineHeight = '1.5';
+    clueEl.style.maxWidth = '200px';
+    clueEl.style.color = '#f5f5f5'; // Hidden color - same as background
+    clueEl.style.cursor = 'default';
+    clueEl.style.fontWeight = 'bold';
+    clueEl.style.userSelect = 'none';
+    clueEl.style.textAlign = 'center';
+    clueEl.style.padding = '10px';
+    clueEl.style.transition = 'color 0.2s ease';
 
-  // ===== ANSWER OPTIONS (Multiple Choice Buttons) =====
+    // Random positioning
+    let x, y, overlapping;
+    do {
+      overlapping = false;
+      x = Math.random() * (detectiveContainer.offsetWidth - 220);
+      y = Math.random() * (detectiveContainer.offsetHeight - 100);
+
+      // Check for overlap with existing positions
+      for (let pos of positions) {
+        const distance = Math.sqrt(
+          Math.pow(x - pos.x, 2) + Math.pow(y - pos.y, 2)
+        );
+        if (distance < 250) {
+          overlapping = true;
+          break;
+        }
+      }
+    } while (overlapping && positions.length > 0);
+
+    clueEl.style.left = x + 'px';
+    clueEl.style.top = y + 'px';
+    positions.push({ x, y });
+
+    detectiveContainer.appendChild(clueEl);
+    clueElements.push({ element: clueEl, id: clue.id, x, y });
+  });
+
+  layoutContainer.appendChild(detectiveContainer);
+
+  // ===== Magnifying glass =====
+  const magnifyingGlass = document.createElement('img');
+  magnifyingGlass.src = chrome.runtime.getURL('assets/Magnifying_glass_icon.svg.png');
+  magnifyingGlass.alt = 'Magnifying Glass';
+  magnifyingGlass.style.position = 'absolute';
+  magnifyingGlass.style.width = '120px';
+  magnifyingGlass.style.height = '120px';
+  magnifyingGlass.style.cursor = 'grab';
+  magnifyingGlass.style.userSelect = 'none';
+  magnifyingGlass.style.zIndex = '1000';
+  magnifyingGlass.style.pointerEvents = 'auto';
+  magnifyingGlass.style.left = '50px';
+  magnifyingGlass.style.top = '50px';
+
+  detectiveContainer.appendChild(magnifyingGlass);
+
+  // Mouse move handler to reveal text under magnifying glass
+  detectiveContainer.addEventListener('mousemove', (e) => {
+    const rect = detectiveContainer.getBoundingClientRect();
+    magnifyingGlassX = e.clientX - rect.left - 60; // Center on cursor
+    magnifyingGlassY = e.clientY - rect.top - 60;
+
+    magnifyingGlass.style.left = magnifyingGlassX + 'px';
+    magnifyingGlass.style.top = magnifyingGlassY + 'px';
+
+    // Check which clues are under the magnifying glass
+    clueElements.forEach(({ element, id, x, y }) => {
+      const distance = Math.sqrt(
+        Math.pow(magnifyingGlassX + 60 - (x + 100), 2) +
+        Math.pow(magnifyingGlassY + 60 - (y + 50), 2)
+      );
+
+      if (distance < MAGNIFY_RADIUS) {
+        element.style.color = '#333'; // Reveal text
+        discoveredClues.add(id);
+      } else {
+        element.style.color = '#f5f5f5'; // Hide text
+      }
+    });
+  });
+
+  // Dragging magnifying glass
+  magnifyingGlass.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    const rect = magnifyingGlass.getBoundingClientRect();
+    dragOffsetX = e.clientX - rect.left;
+    dragOffsetY = e.clientY - rect.top;
+    magnifyingGlass.style.cursor = 'grabbing';
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const rect = detectiveContainer.getBoundingClientRect();
+    magnifyingGlassX = e.clientX - rect.left - dragOffsetX;
+    magnifyingGlassY = e.clientY - rect.top - dragOffsetY;
+
+    // Constrain within bounds
+    magnifyingGlassX = Math.max(0, Math.min(magnifyingGlassX, detectiveContainer.offsetWidth - 120));
+    magnifyingGlassY = Math.max(0, Math.min(magnifyingGlassY, detectiveContainer.offsetHeight - 120));
+
+    magnifyingGlass.style.left = magnifyingGlassX + 'px';
+    magnifyingGlass.style.top = magnifyingGlassY + 'px';
+
+    // Update revealed clues
+    clueElements.forEach(({ element, id, x, y }) => {
+      const distance = Math.sqrt(
+        Math.pow(magnifyingGlassX + 60 - (x + 100), 2) +
+        Math.pow(magnifyingGlassY + 60 - (y + 50), 2)
+      );
+
+      if (distance < MAGNIFY_RADIUS) {
+        element.style.color = '#333';
+        discoveredClues.add(id);
+      } else {
+        element.style.color = '#f5f5f5';
+      }
+    });
+  });
+
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+    magnifyingGlass.style.cursor = 'grab';
+  });
+
+  // ===== BOTTOM: Multiple choice answer buttons =====
   const optionsContainer = document.createElement('div');
+  optionsContainer.style.flex = '0 0 auto';
   optionsContainer.style.display = 'grid';
   optionsContainer.style.gridTemplateColumns = '1fr 1fr';
   optionsContainer.style.gap = '12px';
   optionsContainer.style.width = '100%';
-  optionsContainer.style.flex = '1';
-  optionsContainer.style.alignContent = 'start';
+  optionsContainer.style.padding = '0';
 
   question.options.forEach((option) => {
     const optionBtn = document.createElement('button');
