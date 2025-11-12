@@ -43,7 +43,9 @@
   "web_accessible_resources": [
     {
       "resources": [
+        "assets/*.png",
         "src/assets/mascot/*.png",
+        "src/assets/mascot/*.svg",
         "src/assets/icons/*.png",
         "src/popup/earn-eggs.html",
         "src/popup/earn-eggs.css",
@@ -52,6 +54,8 @@
         "src/utils/api.js",
         "src/utils/storage.js",
         "src/utils/mascot.js",
+        "src/utils/time-tracking.js",
+        "src/utils/platform-detection.js",
         "src/types/types.js",
         "src/content/interrupt-sequence.js",
         "src/content/interrupt-overlay.css"

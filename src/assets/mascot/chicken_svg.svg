@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1393.78" height="964.871" viewBox="0 0 1393.78 964.871">
+  <g id="a" data-name="FootLeft">
+    <polygon id="b" data-name="Foo" points="852.83 957.161 734.206 957.161 776.79 897.849 852.83 957.161" fill="#f7941d"/>
+  </g>
+  <g id="c" data-name="LegLeftBottom">
+    <polygon points="803.894 951.109 786.205 950.92 721.956 840.47 766.14 819.595 803.894 951.109" fill="#f7941d"/>
+  </g>
+  <g id="d" data-name="LegLeftTop">
+    <path d="M760.214,872.287l-19.979,15.745-127.917-174.229c-14.456-19.689-2.92-47.696,21.209-51.492l97.153-15.287c32.277-5.079,60.977,20.993,59.011,53.608l-7.852,130.297c-.979,16.24-8.847,31.288-21.625,41.358Z" fill="#fff"/>
+  </g>
+  <g id="e" data-name="FootRight">
+    <polygon points="976.893 957.161 858.269 957.161 900.853 897.849 976.893 957.161" fill="#f7941d"/>
+  </g>
+  <g id="f" data-name="LegRightBottom">
+    <polygon points="920.581 950.148 906.533 952.336 855.075 835.61 891.568 818.368 920.581 950.148" fill="#f7941d"/>
+  </g>
+  <g id="g" data-name="LegRightTop">
+    <path d="M891.983,870.554l-24.424,16.091-70.33-155.175c-11.424-25.206,4.673-54.3,32.097-58.011l81.025-10.967c30.188-4.086,54.476,24.44,45.63,53.59l-35.16,115.855c-4.809,15.845-15.011,29.507-28.839,38.617Z" fill="#fff"/>
+  </g>
+  <g id="h" data-name="BeakBottom">
+    <g id="i" data-name="BeakBottom">
+      <polygon points="1098.991 194.365 1054.151 228.765 1045.711 197.735 1098.991 194.365" fill="#f7941d"/>
+    </g>
+  </g>
+  <g id="j" data-name="Beaktop">
+    <g id="k" data-name="BeakTop">
+      <polygon points="1098.991 194.35 1042.509 165.845 1045.712 197.736 1098.991 194.35" fill="#f7941d"/>
+    </g>
+  </g>
+  <g id="l" data-name="Gobble3">
+    <ellipse cx="1034.297" cy="211.718" rx="28.673" ry="60.216" transform="translate(-12.318 350.253) rotate(-19.109)" fill="#ec008c"/>
+  </g>
+  <g id="m" data-name="Gobble2">
+    <ellipse id="n" data-name="Gobble2" cx="897.87" cy="106.313" rx="26.569" ry="55.695" transform="translate(299.293 783.941) rotate(-55.297)" fill="#ec008c"/>
+  </g>
+  <g id="o" data-name="Gobble1">
+    <ellipse id="p" data-name="Gobble1" cx="950.522" cy="111.318" rx="16.442" ry="34.466" transform="translate(119.683 586.28) rotate(-36.435)" fill="#ec008c"/>
+  </g>
+  <g id="q" data-name="Neck">
+    <path id="r" data-name="Neck" d="M1059.311,529.945c0,62.97-50.96,114.02-113.8,114.02s-113.8-51.05-113.8-114.02l20.14-320.42c0-55.78,45.22-101.01,101.01-101.01s101.01,45.23,101.01,101.01v.35l5.44,320.07Z" fill="#fff"/>
+  </g>
+  <g id="s" data-name="Body">
+    <path d="M854.161,793.325c-219.788-.005-370.022-174.064-415.24-227.073l56.647-14.523-15.389-20.79,429.671-140.666c73.79-22.161,146.064,59.167,149.661,136.129,8.293,177.453-82.618,266.926-205.35,266.923Z" fill="#fff"/>
+  </g>
+  <g id="t" data-name="WingRig">
+    <path d="M677.684,638.12c5.929,4.532,19.65,13.735,39.517,16.02,24.397,2.806,42.77-6.58,49.028-10.148" fill="none" stroke="#231f20" stroke-miterlimit="10" stroke-width="6"/>
+    <path d="M768.759,658.885c7.249,1.386,59.266,10.692,104.816-12.047,52.243-26.08,48.913-70.817,48.561-74.359" fill="none" stroke="#231f20" stroke-miterlimit="10" stroke-width="6"/>
+  </g>
+  <g id="v" data-name="EyeWhites">
+    <circle id="w" data-name="Whites" cx="952.861" cy="209.528" r="63.979" fill="#fff" stroke="#231f20" stroke-miterlimit="10" stroke-width="4"/>
+  </g>
+  <g id="x" data-name="EyePupil">
+    <circle id="y" data-name="Pupil" cx="952.428" cy="209.528" r="37.167" fill="#231f20"/>
+  </g>
+  <g id="z" data-name="EyeHighlight">
+    <circle id="aa" data-name="Highlight" cx="926.314" cy="185.533" r="9.868" fill="#fff"/>
+  </g>
+</svg>
