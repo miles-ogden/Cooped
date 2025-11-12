@@ -1132,7 +1132,7 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
     clueEl.style.fontSize = '16px';
     clueEl.style.lineHeight = '1.5';
     clueEl.style.maxWidth = '200px';
-    clueEl.style.color = '#e8e8e8'; // Hidden color - very light gray, almost same as background
+    clueEl.style.color = '#fafafa'; // Hidden color - matches background exactly
     clueEl.style.cursor = 'default';
     clueEl.style.fontWeight = 'bold';
     clueEl.style.userSelect = 'none';
@@ -1203,7 +1203,7 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
         element.style.color = '#000'; // Reveal text - pure black
         discoveredClues.add(id);
       } else {
-        element.style.color = '#e8e8e8'; // Hide text - light gray
+        element.style.color = '#fafafa'; // Hide text - matches background
       }
     });
   });
@@ -1241,7 +1241,7 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
         element.style.color = '#000';
         discoveredClues.add(id);
       } else {
-        element.style.color = '#e8e8e8';
+        element.style.color = '#fafafa';
       }
     });
   });
