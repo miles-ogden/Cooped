@@ -985,40 +985,109 @@ function renderMathChallengeInline(_, contentEl) {
 function renderPage3Inline(headerEl, contentEl) {
   console.log('[INTERRUPT] renderPage3Inline called');
 
+  // Add chicken image
+  const chickenDiv = document.createElement('div');
+  chickenDiv.className = 'cooped-interrupt-chicken-image';
+  const img = document.createElement('img');
+  img.src = chrome.runtime.getURL('src/assets/mascot/chicken_svg.svg');
+  img.alt = 'Cooped Chicken';
+  chickenDiv.appendChild(img);
+  headerEl.appendChild(chickenDiv);
+
   // Add title to header
   const title = document.createElement('h1');
   title.className = 'cooped-interrupt-title';
-  title.textContent = 'Nice Work!';
+  title.textContent = 'Nice Job...';
   headerEl.appendChild(title);
 
   const subtitle = document.createElement('p');
   subtitle.className = 'cooped-interrupt-subtitle';
-  subtitle.textContent = 'Take a breather';
+  subtitle.textContent = 'You SURE you wanna keep scrolling?';
   headerEl.appendChild(subtitle);
 
-  // Add reflection content
-  const text = document.createElement('div');
-  text.style.color = '#333';
-  text.style.fontSize = '15px';
-  text.style.textAlign = 'center';
-  text.style.padding = '20px';
-  text.style.lineHeight = '1.6';
-  text.innerHTML = 'You passed the challenge!<br>Take a moment to reflect on your browsing habits.';
-  contentEl.appendChild(text);
+  // Create content layout
+  const contentLayout = document.createElement('div');
+  contentLayout.style.display = 'flex';
+  contentLayout.style.flexDirection = 'column';
+  contentLayout.style.width = '100%';
+  contentLayout.style.height = '100%';
+  contentLayout.style.gap = '20px';
+  contentLayout.style.alignItems = 'center';
+  contentLayout.style.justifyContent = 'space-between';
 
-  // Add action button
-  const btn = document.createElement('button');
-  btn.textContent = 'Continue';
-  btn.style.padding = '12px 30px';
-  btn.style.fontSize = '14px';
-  btn.style.backgroundColor = '#333';
-  btn.style.color = '#fff';
-  btn.style.border = 'none';
-  btn.style.borderRadius = '4px';
-  btn.style.cursor = 'pointer';
-  btn.style.marginTop = '20px';
-  btn.onclick = closeInterruptSequenceInline;
-  contentEl.appendChild(btn);
+  // Add spacer for content
+  const spacer = document.createElement('div');
+  spacer.style.flex = '1';
+  contentLayout.appendChild(spacer);
+
+  // Button container at bottom
+  const buttonContainer = document.createElement('div');
+  buttonContainer.style.display = 'flex';
+  buttonContainer.style.gap = '20px';
+  buttonContainer.style.width = '100%';
+  buttonContainer.style.justifyContent = 'center';
+  buttonContainer.style.flexWrap = 'wrap';
+  buttonContainer.style.paddingBottom = '20px';
+
+  // "Return to Safety" button - closes the tab
+  const safetyBtn = document.createElement('button');
+  safetyBtn.textContent = 'Return to Safety';
+  safetyBtn.style.padding = '15px 35px';
+  safetyBtn.style.fontSize = '16px';
+  safetyBtn.style.backgroundColor = '#4CAF50';
+  safetyBtn.style.color = '#fff';
+  safetyBtn.style.border = 'none';
+  safetyBtn.style.borderRadius = '4px';
+  safetyBtn.style.cursor = 'pointer';
+  safetyBtn.style.fontWeight = 'bold';
+  safetyBtn.style.transition = 'all 0.2s ease';
+  safetyBtn.style.minWidth = '150px';
+
+  safetyBtn.addEventListener('mouseenter', () => {
+    safetyBtn.style.backgroundColor = '#45a049';
+  });
+
+  safetyBtn.addEventListener('mouseleave', () => {
+    safetyBtn.style.backgroundColor = '#4CAF50';
+  });
+
+  safetyBtn.addEventListener('click', () => {
+    // Close the current tab
+    chrome.runtime.sendMessage({ action: 'closeTab' });
+  });
+
+  // "Proceed into Danger" button - proceeds to the website
+  const dangerBtn = document.createElement('button');
+  dangerBtn.textContent = 'Proceed into Danger';
+  dangerBtn.style.padding = '15px 35px';
+  dangerBtn.style.fontSize = '16px';
+  dangerBtn.style.backgroundColor = '#f44336';
+  dangerBtn.style.color = '#fff';
+  dangerBtn.style.border = 'none';
+  dangerBtn.style.borderRadius = '4px';
+  dangerBtn.style.cursor = 'pointer';
+  dangerBtn.style.fontWeight = 'bold';
+  dangerBtn.style.transition = 'all 0.2s ease';
+  dangerBtn.style.minWidth = '150px';
+
+  dangerBtn.addEventListener('mouseenter', () => {
+    dangerBtn.style.backgroundColor = '#da190b';
+  });
+
+  dangerBtn.addEventListener('mouseleave', () => {
+    dangerBtn.style.backgroundColor = '#f44336';
+  });
+
+  dangerBtn.addEventListener('click', () => {
+    // Close overlay to allow access to the website
+    closeInterruptSequenceInline();
+  });
+
+  buttonContainer.appendChild(safetyBtn);
+  buttonContainer.appendChild(dangerBtn);
+  contentLayout.appendChild(buttonContainer);
+
+  contentEl.appendChild(contentLayout);
 }
 
 /**

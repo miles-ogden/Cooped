@@ -150,6 +150,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     });
     sendResponse({ success: true });
+  } else if (message.action === 'closeTab') {
+    // User clicked "Return to Safety" - close the current tab
+    console.log('[SERVICE-WORKER] Closing tab:', sender.tab.id);
+    chrome.tabs.remove(sender.tab.id, () => {
+      sendResponse({ success: true });
+    });
+    return true; // Keep message channel open for async response
   }
 });
 
