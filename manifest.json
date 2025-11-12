@@ -72,7 +72,8 @@
         "src/content/interrupt-sequence.js",
         "src/content/interrupt-overlay.css",
         "src/content/vocabulary-questions.js",
-        "src/content/math-questions.js"
+        "src/content/math-questions.js",
+        "src/content/history-questions.js"
       ],
       "matches": ["<all_urls>"]
     }

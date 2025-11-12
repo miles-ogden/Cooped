@@ -45,6 +45,7 @@ function showInterruptSequenceInline() {
 
   console.log('[INTERRUPT] Creating new interrupt overlay');
   currentInterruptPage = 1;
+  currentGameType = 'random'; // Reset game type to pick a new random one
 
   // Create overlay container
   interruptOverlayElement = document.createElement('div');
@@ -118,12 +119,19 @@ function renderInterruptPageInline(pageNum) {
   if (pageNum === 1) {
     renderPage1Inline(headerEl);
   } else if (pageNum === 2) {
-    // Randomly select game type (for now, showing math game)
-    const gameType = currentGameType || 'math'; // Default to math for testing
-    if (gameType === 'vocabulary') {
+    // Randomly select game type if not already set
+    if (!currentGameType || currentGameType === 'random') {
+      const gameTypes = ['vocabulary', 'math', 'history'];
+      currentGameType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
+      console.log('[INTERRUPT] Randomly selected game type:', currentGameType);
+    }
+
+    if (currentGameType === 'vocabulary') {
       renderVocabularyChallengeInline(headerEl, contentEl);
-    } else if (gameType === 'math') {
+    } else if (currentGameType === 'math') {
       renderMathChallengeInline(headerEl, contentEl);
+    } else if (currentGameType === 'history') {
+      renderHistoryChallengeInline(headerEl, contentEl);
     }
   } else if (pageNum === 3) {
     renderPage3Inline(headerEl, contentEl);
@@ -1021,6 +1029,204 @@ function renderMathGameUI(_, contentEl, question) {
 
     isAnimating = false;
   }
+}
+
+/**
+ * Game 3: History Challenge - 3 clues with multiple choice
+ */
+function renderHistoryChallengeInline(headerEl, contentEl) {
+  console.log('[INTERRUPT] renderHistoryChallengeInline called');
+
+  // Add title to header
+  const title = document.createElement('h1');
+  title.className = 'cooped-interrupt-title';
+  title.textContent = 'History Challenge';
+  headerEl.appendChild(title);
+
+  const subtitle = document.createElement('p');
+  subtitle.className = 'cooped-interrupt-subtitle';
+  subtitle.textContent = 'Can you guess who or what this is?';
+  headerEl.appendChild(subtitle);
+
+  // Dynamically load history questions and select a random one
+  import('./history-questions.js').then(module => {
+    const question = module.getRandomHistoryQuestion();
+    console.log('[INTERRUPT] Selected history question:', question.correctAnswer);
+    renderHistoryGameUI(headerEl, contentEl, question);
+  }).catch(err => {
+    console.error('[INTERRUPT] Error loading history questions:', err);
+    // Fallback question if import fails
+    const fallbackQuestion = {
+      clue1: 'I was the first President of the United States.',
+      clue2: 'I led the American Revolutionary War against British rule.',
+      clue3: 'My face appears on the one dollar bill.',
+      correctAnswer: 'George Washington',
+      options: ['George Washington', 'Thomas Jefferson', 'Benjamin Franklin', 'John Adams'],
+      difficulty: 1,
+      category: 'Presidents'
+    };
+    renderHistoryGameUI(headerEl, contentEl, fallbackQuestion);
+  });
+}
+
+/**
+ * Render the history game UI with a specific question
+ */
+function renderHistoryGameUI(headerEl, contentEl, question) {
+  console.log('[INTERRUPT] renderHistoryGameUI called with question:', question.correctAnswer);
+
+  // Track selected answer state
+  let selectedAnswer = null;
+  let answered = false;
+
+  // Create main layout container
+  const layoutContainer = document.createElement('div');
+  layoutContainer.style.display = 'flex';
+  layoutContainer.style.flexDirection = 'column';
+  layoutContainer.style.width = '100%';
+  layoutContainer.style.height = '100%';
+  layoutContainer.style.gap = '20px';
+  layoutContainer.style.alignItems = 'center';
+  layoutContainer.style.justifyContent = 'flex-start';
+
+  // ===== CLUES SECTION =====
+  const cluesContainer = document.createElement('div');
+  cluesContainer.style.flex = '0 0 auto';
+  cluesContainer.style.width = '100%';
+  cluesContainer.style.backgroundColor = '#f5f5f5';
+  cluesContainer.style.padding = '20px';
+  cluesContainer.style.borderRadius = '4px';
+  cluesContainer.style.fontSize = '16px';
+  cluesContainer.style.lineHeight = '1.8';
+  cluesContainer.style.color = '#333';
+
+  // Clue 1
+  const clue1Div = document.createElement('div');
+  clue1Div.style.marginBottom = '12px';
+  const clue1Label = document.createElement('strong');
+  clue1Label.textContent = 'Clue 1: ';
+  clue1Label.style.color = '#666';
+  const clue1Text = document.createElement('span');
+  clue1Text.textContent = question.clue1;
+  clue1Div.appendChild(clue1Label);
+  clue1Div.appendChild(clue1Text);
+  cluesContainer.appendChild(clue1Div);
+
+  // Clue 2
+  const clue2Div = document.createElement('div');
+  clue2Div.style.marginBottom = '12px';
+  const clue2Label = document.createElement('strong');
+  clue2Label.textContent = 'Clue 2: ';
+  clue2Label.style.color = '#666';
+  const clue2Text = document.createElement('span');
+  clue2Text.textContent = question.clue2;
+  clue2Div.appendChild(clue2Label);
+  clue2Div.appendChild(clue2Text);
+  cluesContainer.appendChild(clue2Div);
+
+  // Clue 3
+  const clue3Div = document.createElement('div');
+  const clue3Label = document.createElement('strong');
+  clue3Label.textContent = 'Clue 3: ';
+  clue3Label.style.color = '#666';
+  const clue3Text = document.createElement('span');
+  clue3Text.textContent = question.clue3;
+  clue3Div.appendChild(clue3Label);
+  clue3Div.appendChild(clue3Text);
+  cluesContainer.appendChild(clue3Div);
+
+  layoutContainer.appendChild(cluesContainer);
+
+  // ===== ANSWER OPTIONS (Multiple Choice Buttons) =====
+  const optionsContainer = document.createElement('div');
+  optionsContainer.style.display = 'grid';
+  optionsContainer.style.gridTemplateColumns = '1fr 1fr';
+  optionsContainer.style.gap = '12px';
+  optionsContainer.style.width = '100%';
+  optionsContainer.style.flex = '1';
+  optionsContainer.style.alignContent = 'start';
+
+  question.options.forEach((option) => {
+    const optionBtn = document.createElement('button');
+    optionBtn.textContent = option;
+    optionBtn.style.padding = '16px 12px';
+    optionBtn.style.fontSize = '14px';
+    optionBtn.style.border = '2px solid #ccc';
+    optionBtn.style.backgroundColor = '#fff';
+    optionBtn.style.color = '#333';
+    optionBtn.style.cursor = 'pointer';
+    optionBtn.style.borderRadius = '4px';
+    optionBtn.style.fontWeight = 'bold';
+    optionBtn.style.transition = 'all 0.2s ease';
+    optionBtn.style.minHeight = '60px';
+    optionBtn.style.display = 'flex';
+    optionBtn.style.alignItems = 'center';
+    optionBtn.style.justifyContent = 'center';
+    optionBtn.style.textAlign = 'center';
+
+    optionBtn.addEventListener('mouseenter', () => {
+      if (!answered) {
+        optionBtn.style.borderColor = '#333';
+        optionBtn.style.backgroundColor = '#f0f0f0';
+      }
+    });
+
+    optionBtn.addEventListener('mouseleave', () => {
+      if (!answered) {
+        optionBtn.style.borderColor = '#ccc';
+        optionBtn.style.backgroundColor = '#fff';
+      }
+    });
+
+    optionBtn.addEventListener('click', () => {
+      if (answered) return;
+
+      answered = true;
+
+      // Clear any previous selection styling
+      Array.from(optionsContainer.children).forEach(btn => {
+        btn.style.borderColor = '#ccc';
+        btn.style.backgroundColor = '#fff';
+      });
+
+      if (option === question.correctAnswer) {
+        // Correct answer
+        optionBtn.style.borderColor = '#4CAF50';
+        optionBtn.style.backgroundColor = '#c8e6c9';
+        optionBtn.style.color = '#2e7d32';
+
+        // Advance to next page after a short delay
+        setTimeout(() => {
+          advanceInterruptPageInline();
+        }, 1000);
+      } else {
+        // Wrong answer
+        optionBtn.style.borderColor = '#f44336';
+        optionBtn.style.backgroundColor = '#ffcdd2';
+        optionBtn.style.color = '#c62828';
+
+        // Reset after 1 second to allow retry
+        setTimeout(() => {
+          answered = false;
+          optionBtn.style.borderColor = '#ccc';
+          optionBtn.style.backgroundColor = '#fff';
+          optionBtn.style.color = '#333';
+
+          // Reset all buttons
+          Array.from(optionsContainer.children).forEach(btn => {
+            btn.style.borderColor = '#ccc';
+            btn.style.backgroundColor = '#fff';
+            btn.style.color = '#333';
+          });
+        }, 1000);
+      }
+    });
+
+    optionsContainer.appendChild(optionBtn);
+  });
+
+  layoutContainer.appendChild(optionsContainer);
+  contentEl.appendChild(layoutContainer);
 }
 
 /**
