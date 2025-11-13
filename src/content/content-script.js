@@ -9,13 +9,1599 @@ let recordSession, getAppState, saveCurrentChallenge, getCurrentChallenge, clear
 let calculateXPReward, getMascotMessage, checkLevelUp, getAdaptiveDifficultyWithVariety;
 let setSiteInterval, checkSiteInterval, addEggs, startTimeTrackingSession;
 let checkDoNotBotherMe, recordYouTubeActivity, analyzeYouTubeActivity, checkYouTubeShorts;
+let updateTabVisibility, updateMediaPauseState, setActivityState, ACTIVITY_STATE, accumulateTime, getTimeTrackingRecord;
+let detectPlatform, isOnYouTubeShorts, handleYouTubeShortsDetection, handleYouTubeLongFormDetection;
+let recordYouTubeProductivityResponse, handleMediaPauseChange, handleTabVisibilityChange;
+let showInterruptSequence;
+
+// Set up message listener BEFORE modules load, store message for when ready
+let pendingMessages = [];
+let modulesReady = false;
+
+// Interrupt sequence overlay state
+let interruptOverlayElement = null;
+let currentInterruptPage = 1;
+let currentGameType = 'math'; // Track which game is being played (vocabulary, math, etc.)
+
+/**
+ * Show the interrupt sequence overlay (inline implementation)
+ */
+function showInterruptSequenceInline() {
+  console.log('[INTERRUPT] showInterruptSequenceInline called');
+
+  if (interruptOverlayElement && interruptOverlayElement.isConnected) {
+    console.log('[INTERRUPT] Overlay already showing, returning');
+    return;
+  }
+
+  if (!document.body) {
+    console.log('[INTERRUPT] document.body not ready, waiting for DOMContentLoaded');
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('[INTERRUPT] DOM ready, retrying interrupt overlay');
+      showInterruptSequenceInline();
+    }, { once: true });
+    return;
+  }
+
+  console.log('[INTERRUPT] Creating new interrupt overlay');
+  currentInterruptPage = 1;
+  currentGameType = 'random'; // Reset game type to pick a new random one
+
+  // Create overlay container
+  interruptOverlayElement = document.createElement('div');
+  interruptOverlayElement.id = 'cooped-interrupt-overlay';
+
+  // Create modal box (white square in center)
+  const modal = document.createElement('div');
+  modal.className = 'cooped-interrupt-modal';
+  modal.id = 'cooped-interrupt-modal';
+
+  // Create header
+  const header = document.createElement('div');
+  header.className = 'cooped-interrupt-header';
+  header.id = 'cooped-interrupt-header';
+  modal.appendChild(header);
+
+  // Create content area
+  const content = document.createElement('div');
+  content.className = 'cooped-interrupt-content';
+  content.id = 'cooped-interrupt-content';
+  modal.appendChild(content);
+
+  // Create navigation arrow at bottom
+  const arrow = document.createElement('div');
+  arrow.className = 'cooped-interrupt-arrow';
+  arrow.innerHTML = '↓';
+  modal.appendChild(arrow);
+
+  interruptOverlayElement.appendChild(modal);
+
+  // Add click event listeners
+  interruptOverlayElement.addEventListener('click', (e) => {
+    // Don't advance if on page 2 (quiz page) - user must answer correctly
+    if (currentInterruptPage === 2) {
+      return;
+    }
+
+    if (e.target === arrow || e.target.closest('.cooped-interrupt-arrow')) {
+      advanceInterruptPageInline();
+    } else if (!e.target.closest('button, input, textarea')) {
+      advanceInterruptPageInline();
+    }
+  });
+
+  // Append to body
+  if (document.body) {
+    document.body.appendChild(interruptOverlayElement);
+    console.log('[INTERRUPT] Overlay appended to DOM');
+    renderInterruptPageInline(1);
+    console.log('[INTERRUPT] Page 1 rendered');
+  } else {
+    console.log('[INTERRUPT] ERROR: No document.body available');
+  }
+}
+
+/**
+ * Render a specific interrupt page
+ */
+function renderInterruptPageInline(pageNum) {
+  const headerEl = document.getElementById('cooped-interrupt-header');
+  const contentEl = document.getElementById('cooped-interrupt-content');
+
+  if (!headerEl || !contentEl) {
+    console.log('[INTERRUPT] Header or content element not found');
+    return;
+  }
+
+  headerEl.innerHTML = '';
+  contentEl.innerHTML = '';
+
+  if (pageNum === 1) {
+    renderPage1Inline(headerEl);
+  } else if (pageNum === 2) {
+    // Randomly select a challenge type
+    const challengeTypes = ['vocabulary', 'math', 'history'];
+    const randomChallenge = challengeTypes[Math.floor(Math.random() * challengeTypes.length)];
+    console.log('[INTERRUPT] Selected random challenge:', randomChallenge);
+
+    if (randomChallenge === 'vocabulary') {
+      renderVocabularyChallengeInline(headerEl, contentEl);
+    } else if (randomChallenge === 'math') {
+      renderMathChallengeInline(headerEl, contentEl);
+    } else if (randomChallenge === 'history') {
+      renderHistoryChallengeInline(headerEl, contentEl);
+    }
+  } else if (pageNum === 3) {
+    renderPage3Inline(headerEl, contentEl);
+  }
+}
+
+/**
+ * Page 1: Chicken + "Funny seeing you here" message
+ */
+function renderPage1Inline(headerEl) {
+  console.log('[INTERRUPT] renderPage1Inline called');
+
+  // Add chicken image
+  const chickenDiv = document.createElement('div');
+  chickenDiv.className = 'cooped-interrupt-chicken-image';
+  const img = document.createElement('img');
+  img.src = chrome.runtime.getURL('src/assets/mascot/chicken_svg.svg');
+  img.alt = 'Cooped Chicken';
+  chickenDiv.appendChild(img);
+  headerEl.appendChild(chickenDiv);
+
+  // Add big title message
+  const title = document.createElement('h1');
+  title.className = 'cooped-interrupt-title page-1-title';
+  title.textContent = 'Funny seeing you here...';
+  headerEl.appendChild(title);
+
+  console.log('[INTERRUPT] Page 1 rendered');
+}
+
+/**
+ * Game 1: Vocabulary Challenge - Fill in the blank
+ */
+function renderVocabularyChallengeInline(headerEl, contentEl) {
+  console.log('[INTERRUPT] renderVocabularyChallengeInline called');
+
+  // Add title to header
+  const title = document.createElement('h1');
+  title.className = 'cooped-interrupt-title';
+  title.textContent = 'Vocabulary Challenge';
+  headerEl.appendChild(title);
+
+  const subtitle = document.createElement('p');
+  subtitle.className = 'cooped-interrupt-subtitle';
+  subtitle.textContent = 'Help the chicken pick the right word!';
+  headerEl.appendChild(subtitle);
+
+  // Dynamically load vocabulary questions and select a random one
+  import('./vocabulary-questions.js').then(module => {
+    const question = module.getRandomVocabularyQuestion();
+    console.log('[INTERRUPT] Selected vocabulary question:', question.correctAnswer);
+    renderVocabularyGameUI(headerEl, contentEl, question);
+  }).catch(err => {
+    console.error('[INTERRUPT] Error loading vocabulary questions:', err);
+    // Fallback question if import fails
+    const fallbackQuestion = {
+      sentence: 'The teacher gave a __________ explanation that helped everyone understand the concept.',
+      correctAnswer: 'lucid',
+      options: ['lucid', 'vague', 'confusing', 'incoherent'],
+      difficulty: 1
+    };
+    renderVocabularyGameUI(headerEl, contentEl, fallbackQuestion);
+  });
+}
+
+/**
+ * Render the vocabulary game UI with a specific question
+ */
+function renderVocabularyGameUI(headerEl, contentEl, question) {
+  // Track which word is placed in blank and chicken animation state
+  let selectedWord = null;
+  let isAnimating = false;
+
+  // Create main layout container (flex for sentence on top, content on bottom)
+  const layoutContainer = document.createElement('div');
+  layoutContainer.style.display = 'flex';
+  layoutContainer.style.flexDirection = 'column';
+  layoutContainer.style.width = '100%';
+  layoutContainer.style.height = '100%';
+  layoutContainer.style.gap = '20px';
+
+  // ===== TOP: Sentence with blank =====
+  const sentenceContainer = document.createElement('div');
+  sentenceContainer.style.flex = '0 0 auto';
+  sentenceContainer.style.backgroundColor = '#f5f5f5';
+  sentenceContainer.style.padding = '20px';
+  sentenceContainer.style.borderRadius = '4px';
+  sentenceContainer.style.fontSize = '18px';
+  sentenceContainer.style.lineHeight = '1.6';
+  sentenceContainer.style.color = '#333';
+  sentenceContainer.style.textAlign = 'center';
+
+  // Split sentence into parts before and after blank
+  const sentenceMatch = question.sentence.match(/^(.*?)\s*__________\s*(.*)$/);
+  const sentenceBefore = sentenceMatch ? sentenceMatch[1] : 'Fill in the blank:';
+  const sentenceAfter = sentenceMatch ? sentenceMatch[2] : '';
+
+  const sentenceText = document.createElement('span');
+  sentenceText.textContent = sentenceBefore + ' ';
+  sentenceContainer.appendChild(sentenceText);
+
+  // Create blank space
+  const blank = document.createElement('div');
+  blank.id = 'vocab-blank';
+  blank.style.display = 'inline-block';
+  blank.style.minWidth = '150px';
+  blank.style.height = '40px';
+  blank.style.border = '3px solid #333';
+  blank.style.borderRadius = '4px';
+  blank.style.backgroundColor = '#fff';
+  blank.style.padding = '4px 12px';
+  blank.style.fontWeight = 'bold';
+  blank.style.color = '#666';
+  blank.style.textAlign = 'center';
+  blank.style.lineHeight = '32px';
+  blank.style.verticalAlign = 'middle';
+  blank.style.cursor = 'pointer';
+  blank.style.fontSize = '18px';
+  blank.textContent = '_____';
+
+  sentenceContainer.appendChild(blank);
+
+  if (sentenceAfter) {
+    const sentenceAfterSpan = document.createElement('span');
+    sentenceAfterSpan.textContent = ' ' + sentenceAfter;
+    sentenceContainer.appendChild(sentenceAfterSpan);
+  }
+
+  layoutContainer.appendChild(sentenceContainer);
+
+  // ===== BOTTOM: Chicken on left, words on right =====
+  const bottomContainer = document.createElement('div');
+  bottomContainer.style.display = 'flex';
+  bottomContainer.style.flex = '1';
+  bottomContainer.style.gap = '30px';
+  bottomContainer.style.alignItems = 'flex-start';
+
+  // LEFT: Chicken image
+  const chickenWrapper = document.createElement('div');
+  chickenWrapper.style.flex = '0 0 350px';
+  chickenWrapper.style.position = 'relative';
+  chickenWrapper.style.height = '350px';
+  chickenWrapper.style.display = 'flex';
+  chickenWrapper.style.alignItems = 'center';
+  chickenWrapper.style.justifyContent = 'center';
+
+  const chickenImg = document.createElement('img');
+  chickenImg.id = 'vocab-chicken-img';
+  chickenImg.src = chrome.runtime.getURL('src/assets/mascot/chicken_svg.svg');
+  chickenImg.alt = 'Cooped Chicken';
+  chickenImg.style.maxWidth = '100%';
+  chickenImg.style.maxHeight = '100%';
+  chickenImg.style.objectFit = 'contain';
+  chickenImg.style.transition = 'transform 0.3s ease';
+
+  chickenWrapper.appendChild(chickenImg);
+  bottomContainer.appendChild(chickenWrapper);
+
+  // RIGHT: Word options (vertical stack)
+  const wordsContainer = document.createElement('div');
+  wordsContainer.id = 'vocab-words-container';
+  wordsContainer.style.display = 'flex';
+  wordsContainer.style.flexDirection = 'column';
+  wordsContainer.style.gap = '15px';
+  wordsContainer.style.flex = '1';
+  wordsContainer.style.justifyContent = 'flex-start';
+  wordsContainer.style.paddingTop = '20px';
+
+  // Create word buttons
+  question.options.forEach((word, index) => {
+    const wordBtn = document.createElement('button');
+    wordBtn.textContent = word;
+    wordBtn.className = 'vocab-word-option';
+    wordBtn.id = `vocab-word-${index}`;
+    wordBtn.style.padding = '15px 20px';
+    wordBtn.style.fontSize = '16px';
+    wordBtn.style.border = '2px solid #333';
+    wordBtn.style.backgroundColor = '#fff';
+    wordBtn.style.color = '#333';
+    wordBtn.style.cursor = 'pointer';
+    wordBtn.style.borderRadius = '4px';
+    wordBtn.style.fontWeight = 'bold';
+    wordBtn.style.transition = 'all 0.2s ease';
+    wordBtn.style.userSelect = 'none';
+    wordBtn.style.width = '100%';
+    wordBtn.dataset.word = word;
+    wordBtn.dataset.inBlank = 'false';
+
+    // Click handler to move word to blank WITH ANIMATION
+    wordBtn.addEventListener('click', async () => {
+      if (isAnimating) return;
+
+      if (wordBtn.dataset.inBlank === 'true') {
+        // Word is in blank, move it back (no animation)
+        wordBtn.dataset.inBlank = 'false';
+        wordBtn.style.opacity = '1';
+        wordBtn.style.transform = 'scale(1)';
+        selectedWord = null;
+        updateBlank();
+        chickenImg.style.transform = 'translate(0, 0)';
+      } else {
+        // New word selected - play animation
+        isAnimating = true;
+
+        // Move any previously selected word back
+        if (selectedWord) {
+          const prevBtn = document.getElementById(`vocab-word-${question.options.indexOf(selectedWord)}`);
+          prevBtn.dataset.inBlank = 'false';
+          prevBtn.style.opacity = '1';
+          prevBtn.style.transform = 'scale(1)';
+        }
+
+        // Get word button position
+        const wordRect = wordBtn.getBoundingClientRect();
+        const containerRect = chickenWrapper.getBoundingClientRect();
+        const blankRect = blank.getBoundingClientRect();
+
+        // Calculate distances for chicken to move
+        const toWordX = wordRect.left - containerRect.left - 50; // Center of word
+        const toWordY = wordRect.top - containerRect.top;
+        const toBlankX = blankRect.left - containerRect.left - 50;
+        const toBlankY = blankRect.top - containerRect.top;
+
+        // Move chicken to word
+        chickenImg.style.transition = 'transform 0.5s ease';
+        chickenImg.style.transform = `translate(${toWordX}px, ${toWordY}px)`;
+
+        // Wait for chicken to reach word
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Move chicken to blank
+        chickenImg.style.transition = 'transform 0.5s ease';
+        chickenImg.style.transform = `translate(${toBlankX}px, ${toBlankY}px)`;
+
+        // Wait for chicken to reach blank
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Reset chicken position
+        chickenImg.style.transition = 'transform 0.3s ease';
+        chickenImg.style.transform = 'translate(0, 0)';
+
+        // Update UI
+        wordBtn.dataset.inBlank = 'true';
+        wordBtn.style.opacity = '0.5';
+        wordBtn.style.transform = 'scale(0.9)';
+        selectedWord = word;
+        updateBlank();
+
+        isAnimating = false;
+      }
+    });
+
+    wordsContainer.appendChild(wordBtn);
+  });
+
+  bottomContainer.appendChild(wordsContainer);
+  layoutContainer.appendChild(bottomContainer);
+
+  contentEl.appendChild(layoutContainer);
+
+  // Add submit button at the bottom
+  const submitBtn = document.createElement('button');
+  submitBtn.textContent = 'Check Answer';
+  submitBtn.style.padding = '15px 35px';
+  submitBtn.style.fontSize = '16px';
+  submitBtn.style.backgroundColor = '#333';
+  submitBtn.style.color = '#fff';
+  submitBtn.style.border = 'none';
+  submitBtn.style.borderRadius = '4px';
+  submitBtn.style.cursor = 'pointer';
+  submitBtn.style.marginTop = 'auto';
+  submitBtn.style.fontWeight = 'bold';
+
+  submitBtn.addEventListener('click', () => {
+    if (selectedWord === question.correctAnswer) {
+      // Correct! Move to next page
+      advanceInterruptPageInline();
+    } else {
+      // Wrong answer
+      blank.style.backgroundColor = '#ffcccc';
+      submitBtn.textContent = 'Try Again';
+      setTimeout(() => {
+        blank.style.backgroundColor = '#fff';
+      }, 1000);
+    }
+  });
+
+  contentEl.appendChild(submitBtn);
+
+  // Helper function to update blank display
+  function updateBlank() {
+    const blank = document.getElementById('vocab-blank');
+    if (selectedWord) {
+      blank.textContent = selectedWord;
+      blank.style.color = '#333';
+    } else {
+      blank.textContent = '_____';
+      blank.style.color = '#666';
+    }
+  }
+}
+
+/**
+ * Chicken Scratch Drawing Overlay
+ */
+function showChickenScratchOverlay(problem = null) {
+  // Check if overlay already exists
+  const existingOverlay = document.getElementById('chicken-scratch-overlay');
+  if (existingOverlay) {
+    // Update problem text if provided
+    if (problem) {
+      const problemDisplay = existingOverlay.querySelector('[data-problem-display]');
+      if (problemDisplay) {
+        problemDisplay.textContent = problem;
+      }
+    }
+    existingOverlay.style.display = 'flex';
+    return;
+  }
+
+  // Create overlay container
+  const overlay = document.createElement('div');
+  overlay.id = 'chicken-scratch-overlay';
+  overlay.style.position = 'fixed';
+  overlay.style.top = '50%';
+  overlay.style.left = '50%';
+  overlay.style.transform = 'translate(-50%, -50%)';
+  overlay.style.backgroundColor = '#d4b5a0'; // Tan color
+  overlay.style.borderRadius = '8px';
+  overlay.style.padding = '20px';
+  overlay.style.zIndex = '2147483648'; // Higher than main modal
+  overlay.style.display = 'flex';
+  overlay.style.flexDirection = 'column';
+  overlay.style.gap = '15px';
+  overlay.style.boxShadow = '0 10px 40px rgba(0, 0, 0, 0.3)';
+  overlay.style.width = '500px';
+  overlay.style.maxWidth = '90vw';
+
+  // Header with back button and title
+  const header = document.createElement('div');
+  header.style.display = 'flex';
+  header.style.justifyContent = 'space-between';
+  header.style.alignItems = 'center';
+
+  const backBtn = document.createElement('button');
+  backBtn.textContent = '← Back';
+  backBtn.style.padding = '8px 16px';
+  backBtn.style.fontSize = '14px';
+  backBtn.style.border = '2px solid #333';
+  backBtn.style.backgroundColor = '#fff';
+  backBtn.style.color = '#333';
+  backBtn.style.cursor = 'pointer';
+  backBtn.style.borderRadius = '4px';
+  backBtn.style.fontWeight = 'bold';
+  backBtn.style.transition = 'all 0.2s ease';
+
+  backBtn.addEventListener('mouseenter', () => {
+    backBtn.style.backgroundColor = '#f5f5f5';
+  });
+
+  backBtn.addEventListener('mouseleave', () => {
+    backBtn.style.backgroundColor = '#fff';
+  });
+
+  backBtn.addEventListener('click', () => {
+    overlay.style.display = 'none';
+  });
+
+  const title = document.createElement('h2');
+  title.textContent = 'Chicken Scratch';
+  title.style.fontSize = '18px';
+  title.style.fontWeight = 'bold';
+  title.style.color = '#333';
+  title.style.margin = '0';
+  title.style.flex = '1';
+  title.style.textAlign = 'center';
+
+  header.appendChild(backBtn);
+  header.appendChild(title);
+
+  // Top right buttons (undo and clear)
+  const toolsContainer = document.createElement('div');
+  toolsContainer.style.display = 'flex';
+  toolsContainer.style.gap = '10px';
+  toolsContainer.style.justifyContent = 'flex-end';
+
+  const undoDrawBtn = document.createElement('button');
+  undoDrawBtn.textContent = '↶ Undo';
+  undoDrawBtn.style.padding = '8px 16px';
+  undoDrawBtn.style.fontSize = '12px';
+  undoDrawBtn.style.border = '2px solid #666';
+  undoDrawBtn.style.backgroundColor = '#fff';
+  undoDrawBtn.style.color = '#333';
+  undoDrawBtn.style.cursor = 'pointer';
+  undoDrawBtn.style.borderRadius = '4px';
+  undoDrawBtn.style.fontWeight = 'bold';
+  undoDrawBtn.style.transition = 'all 0.2s ease';
+
+  const clearDrawBtn = document.createElement('button');
+  clearDrawBtn.textContent = '✕ Clear';
+  clearDrawBtn.style.padding = '8px 16px';
+  clearDrawBtn.style.fontSize = '12px';
+  clearDrawBtn.style.border = '2px solid #666';
+  clearDrawBtn.style.backgroundColor = '#fff';
+  clearDrawBtn.style.color = '#333';
+  clearDrawBtn.style.cursor = 'pointer';
+  clearDrawBtn.style.borderRadius = '4px';
+  clearDrawBtn.style.fontWeight = 'bold';
+  clearDrawBtn.style.transition = 'all 0.2s ease';
+
+  toolsContainer.appendChild(undoDrawBtn);
+  toolsContainer.appendChild(clearDrawBtn);
+
+  overlay.appendChild(header);
+
+  // Math problem display on the paper
+  const problemDisplay = document.createElement('div');
+  problemDisplay.setAttribute('data-problem-display', 'true');
+  problemDisplay.style.fontSize = '20px';
+  problemDisplay.style.fontWeight = 'bold';
+  problemDisplay.style.color = '#333';
+  problemDisplay.style.textAlign = 'center';
+  problemDisplay.style.marginBottom = '10px';
+
+  // Display the problem (use passed parameter or fallback)
+  problemDisplay.textContent = problem || '50 ÷ 2 = ?';
+  overlay.appendChild(problemDisplay);
+
+  // Canvas for drawing
+  const canvas = document.createElement('canvas');
+  canvas.width = 450;
+  canvas.height = 300;
+  canvas.style.backgroundColor = '#ffffff';
+  canvas.style.border = '2px solid #333';
+  canvas.style.borderRadius = '4px';
+  canvas.style.cursor = `url('${chrome.runtime.getURL('assets/pencil.png')}') 8 24, auto`;
+  canvas.style.display = 'block';
+  canvas.style.margin = '0 auto';
+
+  const ctx = canvas.getContext('2d');
+  let isDrawing = false;
+  let lastX = 0;
+  let lastY = 0;
+  const drawHistory = [];
+
+  // Save initial state
+  drawHistory.push(canvas.toDataURL());
+
+  // Drawing functions
+  const startDrawing = (e) => {
+    isDrawing = true;
+    const rect = canvas.getBoundingClientRect();
+    lastX = e.clientX - rect.left;
+    lastY = e.clientY - rect.top;
+  };
+
+  const draw = (e) => {
+    if (!isDrawing) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(currentX, currentY);
+    ctx.stroke();
+
+    lastX = currentX;
+    lastY = currentY;
+  };
+
+  const stopDrawing = () => {
+    if (isDrawing) {
+      isDrawing = false;
+      // Save to history after drawing ends
+      drawHistory.push(canvas.toDataURL());
+    }
+  };
+
+  canvas.addEventListener('mousedown', startDrawing);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', stopDrawing);
+  canvas.addEventListener('mouseout', stopDrawing);
+
+  // Undo functionality
+  undoDrawBtn.addEventListener('click', () => {
+    if (drawHistory.length > 1) {
+      drawHistory.pop(); // Remove current state
+      const imageData = new Image();
+      imageData.src = drawHistory[drawHistory.length - 1];
+      imageData.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(imageData, 0, 0);
+      };
+    }
+  });
+
+  // Clear functionality
+  clearDrawBtn.addEventListener('click', () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawHistory.length = 0;
+    drawHistory.push(canvas.toDataURL());
+  });
+
+  overlay.appendChild(canvas);
+  overlay.appendChild(toolsContainer);
+
+  // Add overlay to body
+  document.body.appendChild(overlay);
+}
+
+/**
+ * Game 2: Math Challenge - Drag eggs to accumulate answer
+ */
+function renderMathChallengeInline(_, contentEl) {
+  console.log('[INTERRUPT] renderMathChallengeInline called');
+
+  // Dynamically load math questions and render the game
+  Promise.all([
+    import('./math-questions.js')
+  ]).then(([mathModule]) => {
+    const question = mathModule.getRandomMathQuestion();
+    renderMathGameUI(_, contentEl, question);
+  }).catch(err => {
+    console.error('[INTERRUPT] Failed to load math questions:', err);
+    // Fallback to hardcoded question
+    const fallbackQuestion = {
+      question: '50 ÷ 2 = ?',
+      answer: 25
+    };
+    renderMathGameUI(_, contentEl, fallbackQuestion);
+  });
+}
+
+/**
+ * Render the math game UI with a specific question
+ */
+function renderMathGameUI(_, contentEl, question) {
+  console.log('[INTERRUPT] renderMathGameUI called with question:', question);
+
+  // Normalize question data for both formats (question/answer vs problem/correctAnswer)
+  const problem = question.question || question.problem;
+  const correctAnswer = question.answer !== undefined ? question.answer : question.correctAnswer;
+
+  // Track accumulated eggs and animation state
+  let accumulatedEggs = 0;
+  let isAnimating = false;
+  let eggHistory = [0]; // Track history of egg totals for undo functionality
+
+  // Drawing canvas state (preserved across show/hide)
+  let drawingCanvas = null;
+  let drawingContext = null;
+  let drawingHistory = [];
+
+  // Create main layout container (column: question, buttons, chicken, total, submit)
+  const layoutContainer = document.createElement('div');
+  layoutContainer.style.display = 'flex';
+  layoutContainer.style.flexDirection = 'column';
+  layoutContainer.style.width = '100%';
+  layoutContainer.style.height = '100%';
+  layoutContainer.style.gap = '15px';
+  layoutContainer.style.alignItems = 'center';
+  layoutContainer.style.justifyContent = 'space-between';
+  layoutContainer.style.position = 'relative';
+
+  // ===== TOP: Math Question =====
+  const questionContainer = document.createElement('div');
+  questionContainer.style.flex = '0 0 auto';
+  questionContainer.style.fontSize = '32px';
+  questionContainer.style.fontWeight = 'bold';
+  questionContainer.style.color = '#333';
+  questionContainer.style.textAlign = 'center';
+  questionContainer.style.marginTop = '20px'; // Move question down
+  questionContainer.style.position = 'relative';
+  questionContainer.style.width = '100%';
+  questionContainer.style.display = 'flex';
+  questionContainer.style.justifyContent = 'center';
+  questionContainer.textContent = problem;
+
+  // Chicken scratch button (top right)
+  const scratchBtn = document.createElement('button');
+  scratchBtn.style.position = 'absolute';
+  scratchBtn.style.right = '20px';
+  scratchBtn.style.top = '0';
+  scratchBtn.style.width = '50px';
+  scratchBtn.style.height = '50px';
+  scratchBtn.style.padding = '0';
+  scratchBtn.style.border = 'none';
+  scratchBtn.style.backgroundColor = 'transparent';
+  scratchBtn.style.cursor = 'pointer';
+  scratchBtn.style.display = 'flex';
+  scratchBtn.style.alignItems = 'center';
+  scratchBtn.style.justifyContent = 'center';
+  scratchBtn.style.transition = 'transform 0.2s ease';
+
+  const scratchImg = document.createElement('img');
+  scratchImg.src = chrome.runtime.getURL('assets/chicken_scratch.png');
+  scratchImg.alt = 'Chicken Scratch';
+  scratchImg.style.width = '40px';
+  scratchImg.style.height = '40px';
+  scratchImg.style.objectFit = 'contain';
+  scratchBtn.appendChild(scratchImg);
+
+  scratchBtn.addEventListener('mouseenter', () => {
+    scratchBtn.style.transform = 'scale(1.1)';
+  });
+
+  scratchBtn.addEventListener('mouseleave', () => {
+    scratchBtn.style.transform = 'scale(1)';
+  });
+
+  scratchBtn.addEventListener('click', () => {
+    showChickenScratchOverlay(problem);
+  });
+
+  questionContainer.appendChild(scratchBtn);
+  layoutContainer.appendChild(questionContainer);
+
+  // ===== EGG BUTTONS (4 buttons with denominations) =====
+  const buttonsContainer = document.createElement('div');
+  buttonsContainer.style.display = 'flex';
+  buttonsContainer.style.gap = '15px';
+  buttonsContainer.style.justifyContent = 'center';
+  buttonsContainer.style.flex = '0 0 auto';
+  buttonsContainer.style.flexWrap = 'wrap';
+  buttonsContainer.style.marginTop = '30px'; // Move buttons further down
+
+  const eggDenominations = [
+    { value: 100, label: '100 🥚' },
+    { value: 50, label: '50 🥚' },
+    { value: 10, label: '10 🥚' },
+    { value: 1, label: '1 🥚' }
+  ];
+
+  eggDenominations.forEach((denom) => {
+    const btn = document.createElement('button');
+    btn.textContent = denom.label;
+    btn.style.padding = '20px 30px';
+    btn.style.fontSize = '18px';
+    btn.style.border = '2px solid #333';
+    btn.style.backgroundColor = '#fff';
+    btn.style.color = '#333';
+    btn.style.cursor = 'pointer';
+    btn.style.borderRadius = '4px';
+    btn.style.fontWeight = 'bold';
+    btn.style.transition = 'all 0.2s ease';
+    btn.style.userSelect = 'none';
+    btn.style.minWidth = '100px';
+    btn.draggable = true;
+
+    // Click animation (full animation)
+    btn.addEventListener('click', async () => {
+      if (isAnimating) return;
+      await addEggsWithAnimation(denom.value);
+    });
+
+    btn.addEventListener('dragstart', (e) => {
+      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.setData('eggValue', denom.value);
+      btn.style.opacity = '0.5'; // Visual feedback during drag
+    });
+
+    btn.addEventListener('dragend', () => {
+      btn.style.opacity = '1'; // Restore opacity
+    });
+
+    buttonsContainer.appendChild(btn);
+  });
+
+  // Add reset/undo button below egg buttons
+  const resetContainer = document.createElement('div');
+  resetContainer.style.display = 'flex';
+  resetContainer.style.gap = '10px';
+  resetContainer.style.justifyContent = 'center';
+  resetContainer.style.flex = '0 0 auto';
+
+  const undoBtn = document.createElement('button');
+  undoBtn.textContent = '↶ Undo';
+  undoBtn.style.padding = '10px 20px';
+  undoBtn.style.fontSize = '14px';
+  undoBtn.style.border = '2px solid #ccc';
+  undoBtn.style.backgroundColor = '#fff';
+  undoBtn.style.color = '#666';
+  undoBtn.style.cursor = 'pointer';
+  undoBtn.style.borderRadius = '4px';
+  undoBtn.style.fontWeight = 'bold';
+  undoBtn.style.transition = 'all 0.2s ease';
+
+  undoBtn.addEventListener('click', () => {
+    // Go back one step in history
+    if (eggHistory.length > 1) {
+      eggHistory.pop(); // Remove current state
+      accumulatedEggs = eggHistory[eggHistory.length - 1]; // Restore previous state
+      const totalDisplay = document.getElementById('math-total-display');
+      totalDisplay.textContent = `Total: ${accumulatedEggs} 🥚`;
+    }
+  });
+
+  undoBtn.addEventListener('mouseenter', () => {
+    undoBtn.style.borderColor = '#999';
+    undoBtn.style.color = '#333';
+  });
+
+  undoBtn.addEventListener('mouseleave', () => {
+    undoBtn.style.borderColor = '#ccc';
+    undoBtn.style.color = '#666';
+  });
+
+  const resetBtn = document.createElement('button');
+  resetBtn.textContent = '⟲ Reset';
+  resetBtn.style.padding = '10px 20px';
+  resetBtn.style.fontSize = '14px';
+  resetBtn.style.border = '2px solid #ccc';
+  resetBtn.style.backgroundColor = '#fff';
+  resetBtn.style.color = '#666';
+  resetBtn.style.cursor = 'pointer';
+  resetBtn.style.borderRadius = '4px';
+  resetBtn.style.fontWeight = 'bold';
+  resetBtn.style.transition = 'all 0.2s ease';
+
+  resetBtn.addEventListener('click', () => {
+    accumulatedEggs = 0;
+    eggHistory = [0]; // Clear history and reset to initial state
+    const totalDisplay = document.getElementById('math-total-display');
+    totalDisplay.textContent = `Total: ${accumulatedEggs} 🥚`;
+  });
+
+  resetBtn.addEventListener('mouseenter', () => {
+    resetBtn.style.borderColor = '#999';
+    resetBtn.style.color = '#333';
+  });
+
+  resetBtn.addEventListener('mouseleave', () => {
+    resetBtn.style.borderColor = '#ccc';
+    resetBtn.style.color = '#666';
+  });
+
+  resetContainer.appendChild(undoBtn);
+  resetContainer.appendChild(resetBtn);
+  layoutContainer.appendChild(buttonsContainer);
+  layoutContainer.appendChild(resetContainer);
+
+  // ===== MIDDLE: Chicken on Nest =====
+  const chickenNestContainer = document.createElement('div');
+  chickenNestContainer.style.flex = '1';
+  chickenNestContainer.style.display = 'flex';
+  chickenNestContainer.style.alignItems = 'center';
+  chickenNestContainer.style.justifyContent = 'center';
+  chickenNestContainer.style.position = 'relative';
+  chickenNestContainer.style.width = '100%';
+  chickenNestContainer.style.minHeight = '250px';
+
+  // Nest background image
+  const nestBackground = document.createElement('div');
+  nestBackground.style.position = 'absolute';
+  nestBackground.style.width = '300px';
+  nestBackground.style.height = '200px';
+  nestBackground.style.backgroundImage = `url('${chrome.runtime.getURL('src/assets/nest.png')}')`;
+  nestBackground.style.backgroundSize = 'contain';
+  nestBackground.style.backgroundRepeat = 'no-repeat';
+  nestBackground.style.backgroundPosition = 'center';
+  nestBackground.style.bottom = '0';
+  chickenNestContainer.appendChild(nestBackground);
+
+  // Chicken SVG (positioned to sit on nest)
+  const chickenWrapper = document.createElement('div');
+  chickenWrapper.id = 'math-chicken-wrapper';
+  chickenWrapper.style.position = 'absolute';
+  chickenWrapper.style.bottom = '0px';
+  chickenWrapper.style.width = '280px';
+  chickenWrapper.style.height = '280px';
+  chickenWrapper.style.display = 'flex';
+  chickenWrapper.style.alignItems = 'center';
+  chickenWrapper.style.justifyContent = 'center';
+  chickenWrapper.style.transition = 'transform 0.4s ease';
+  chickenWrapper.style.zIndex = '10';
+
+  const chickenImg = document.createElement('img');
+  chickenImg.id = 'math-chicken-img';
+  chickenImg.src = chrome.runtime.getURL('src/assets/mascot/chicken_svg.svg');
+  chickenImg.alt = 'Cooped Chicken';
+  chickenImg.style.maxWidth = '100%';
+  chickenImg.style.maxHeight = '100%';
+  chickenImg.style.objectFit = 'contain';
+
+  chickenWrapper.appendChild(chickenImg);
+  chickenNestContainer.appendChild(chickenWrapper);
+
+  // Allow dropping eggs onto chicken/nest
+  chickenNestContainer.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+
+    // Move chicken up when dragging over
+    const chickenWrapper = document.getElementById('math-chicken-wrapper');
+    if (chickenWrapper && chickenWrapper.style.transform !== 'translateY(-60px)') {
+      chickenWrapper.style.transition = 'transform 0.2s ease'; // Faster for drag preview
+      chickenWrapper.style.transform = 'translateY(-60px)';
+    }
+  });
+
+  chickenNestContainer.addEventListener('dragleave', () => {
+    // Move chicken back down when leaving
+    const chickenWrapper = document.getElementById('math-chicken-wrapper');
+    if (chickenWrapper) {
+      chickenWrapper.style.transition = 'transform 0.2s ease';
+      chickenWrapper.style.transform = 'translateY(0)';
+    }
+  });
+
+  chickenNestContainer.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    const eggValue = parseInt(e.dataTransfer.getData('eggValue'), 10);
+    if (!isNaN(eggValue)) {
+      // Reset chicken position with smooth animation
+      const chickenWrapper = document.getElementById('math-chicken-wrapper');
+      chickenWrapper.style.transition = 'transform 0.4s ease';
+      chickenWrapper.style.transform = 'translateY(0)';
+
+      // Wait for chicken to return
+      await new Promise(resolve => setTimeout(resolve, 400));
+
+      // Update egg total and record in history
+      accumulatedEggs += eggValue;
+      eggHistory.push(accumulatedEggs); // Record this new state
+      const totalDisplay = document.getElementById('math-total-display');
+      totalDisplay.textContent = `Total: ${accumulatedEggs} 🥚`;
+    }
+  });
+
+  layoutContainer.appendChild(chickenNestContainer);
+
+  // ===== BOTTOM: Accumulated eggs display =====
+  const totalContainer = document.createElement('div');
+  totalContainer.id = 'math-total-display';
+  totalContainer.style.flex = '0 0 auto';
+  totalContainer.style.fontSize = '28px';
+  totalContainer.style.fontWeight = 'bold';
+  totalContainer.style.color = '#333';
+  totalContainer.style.textAlign = 'center';
+  totalContainer.textContent = `Total: ${accumulatedEggs} 🥚`;
+  layoutContainer.appendChild(totalContainer);
+
+  // ===== SUBMIT BUTTON =====
+  const submitBtn = document.createElement('button');
+  submitBtn.textContent = 'Check Answer';
+  submitBtn.style.padding = '15px 35px';
+  submitBtn.style.fontSize = '16px';
+  submitBtn.style.backgroundColor = '#333';
+  submitBtn.style.color = '#fff';
+  submitBtn.style.border = 'none';
+  submitBtn.style.borderRadius = '4px';
+  submitBtn.style.cursor = 'pointer';
+  submitBtn.style.fontWeight = 'bold';
+  submitBtn.style.flex = '0 0 auto';
+
+  submitBtn.addEventListener('click', () => {
+    if (accumulatedEggs === correctAnswer) {
+      // Correct! Move to next page
+      advanceInterruptPageInline();
+    } else {
+      // Wrong answer - flash feedback
+      totalContainer.style.backgroundColor = '#ffcccc';
+      submitBtn.textContent = 'Try Again';
+      setTimeout(() => {
+        totalContainer.style.backgroundColor = 'transparent';
+      }, 1000);
+    }
+  });
+
+  layoutContainer.appendChild(submitBtn);
+  contentEl.appendChild(layoutContainer);
+
+  // Helper function to add eggs with animation
+  async function addEggsWithAnimation(eggValue) {
+    if (isAnimating) return;
+    isAnimating = true;
+
+    const chickenWrapper = document.getElementById('math-chicken-wrapper');
+
+    // Move chicken up (reveal nest)
+    chickenWrapper.style.transform = 'translateY(-60px)';
+
+    // Wait for animation to complete
+    await new Promise(resolve => setTimeout(resolve, 400));
+
+    // Update egg total and record in history
+    accumulatedEggs += eggValue;
+    eggHistory.push(accumulatedEggs); // Record this new state
+    const totalDisplay = document.getElementById('math-total-display');
+    totalDisplay.textContent = `Total: ${accumulatedEggs} 🥚`;
+
+    // Return chicken to starting position
+    chickenWrapper.style.transform = 'translateY(0)';
+
+    await new Promise(resolve => setTimeout(resolve, 400));
+
+    isAnimating = false;
+  }
+}
+
+/**
+ * Game 3: History Challenge - 3 clues with multiple choice
+ */
+function renderHistoryChallengeInline(headerEl, contentEl) {
+  console.log('[HISTORY] ===== START renderHistoryChallengeInline =====');
+  console.log('[HISTORY] headerEl:', headerEl);
+  console.log('[HISTORY] contentEl:', contentEl);
+
+  // Add title to header
+  const title = document.createElement('h1');
+  title.className = 'cooped-interrupt-title';
+  title.textContent = 'History Challenge';
+  headerEl.appendChild(title);
+  console.log('[HISTORY] Title appended to header');
+
+  const subtitle = document.createElement('p');
+  subtitle.className = 'cooped-interrupt-subtitle';
+  subtitle.textContent = 'Can you guess who or what this is?';
+  headerEl.appendChild(subtitle);
+  console.log('[HISTORY] Subtitle appended to header');
+
+  // Dynamically load history questions and select a random one
+  console.log('[HISTORY] About to import history-questions.js');
+  import('./history-questions.js').then(module => {
+    console.log('[HISTORY] history-questions.js imported successfully');
+    const question = module.getRandomHistoryQuestion();
+    console.log('[HISTORY] Selected history question:', question.correctAnswer);
+    renderHistoryGameUI(headerEl, contentEl, question);
+  }).catch(err => {
+    console.error('[HISTORY] Error loading history questions:', err);
+    console.log('[HISTORY] Using fallback question');
+    // Fallback question if import fails
+    const fallbackQuestion = {
+      clue1: 'I was the first President of the United States.',
+      clue2: 'I led the American Revolutionary War against British rule.',
+      clue3: 'My face appears on the one dollar bill.',
+      correctAnswer: 'George Washington',
+      options: ['George Washington', 'Thomas Jefferson', 'Benjamin Franklin', 'John Adams'],
+      difficulty: 1,
+      category: 'Presidents'
+    };
+    renderHistoryGameUI(headerEl, contentEl, fallbackQuestion);
+  });
+}
+
+/**
+ * Render the history game UI with a specific question
+ */
+function renderHistoryGameUI(headerEl, contentEl, question) {
+  console.log('[HISTORY] ===== START renderHistoryGameUI =====');
+  console.log('[HISTORY] Question:', question.correctAnswer);
+
+  // Track magnifying glass state
+  let isDragging = false;
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
+  let answered = false;
+  let selectedAnswer = null;
+  let mouseMoved = false; // Track if mouse has moved yet
+  const MAGNIFY_RADIUS = 60;
+
+  // ===== MAIN CONTAINER (Flexbox layout) =====
+  console.log('[HISTORY] Creating layoutContainer with flexbox...');
+  const layoutContainer = document.createElement('div');
+  layoutContainer.style.display = 'flex';
+  layoutContainer.style.flexDirection = 'column';
+  layoutContainer.style.width = '100%';
+  layoutContainer.style.height = '100%';
+  layoutContainer.style.gap = '12px';
+  layoutContainer.style.padding = '8px';
+  console.log('[HISTORY] layoutContainer created');
+
+  // ===== TOP: INSTRUCTION CONTAINER =====
+  console.log('[HISTORY] Creating instructionContainer...');
+  const instructionContainer = document.createElement('div');
+  instructionContainer.style.flex = '0 0 auto';
+  instructionContainer.style.backgroundColor = '#f5f5f5';
+  instructionContainer.style.padding = '12px 15px';
+  instructionContainer.style.borderRadius = '4px';
+  instructionContainer.style.fontSize = '13px';
+  instructionContainer.style.lineHeight = '1.4';
+  instructionContainer.style.color = '#333';
+  instructionContainer.style.textAlign = 'center';
+  instructionContainer.textContent = "You're a history detective! Use the magnifying glass to uncover clues.";
+  layoutContainer.appendChild(instructionContainer);
+  console.log('[HISTORY] instructionContainer appended');
+
+  // ===== MIDDLE: DETECTIVE CANVAS WITH CLUES AND IMAGES =====
+  console.log('[HISTORY] Creating detectiveCanvas...');
+  const detectiveCanvas = document.createElement('div');
+  detectiveCanvas.style.flex = '1';
+  detectiveCanvas.style.position = 'relative';
+  detectiveCanvas.style.backgroundColor = '#fafafa';
+  detectiveCanvas.style.borderRadius = '4px';
+  detectiveCanvas.style.overflow = 'hidden';
+  detectiveCanvas.style.display = 'flex';
+  detectiveCanvas.style.alignItems = 'center';
+  detectiveCanvas.style.justifyContent = 'center';
+  layoutContainer.appendChild(detectiveCanvas);
+  console.log('[HISTORY] detectiveCanvas created and appended');
+
+  // Create clue text elements positioned randomly within detectiveCanvas
+  const clues = [
+    { text: question.clue1, id: 'clue1' },
+    { text: question.clue2, id: 'clue2' },
+    { text: question.clue3, id: 'clue3' }
+  ];
+
+  const clueElements = [];
+  const positions = [];
+  console.log('[HISTORY] Created clues array with', clues.length, 'clues');
+
+  // Generate random positions for clues
+  clues.forEach((clue, index) => {
+    console.log('[HISTORY] Creating clue', index + 1, ':', clue.id);
+    const clueEl = document.createElement('div');
+    clueEl.id = clue.id;
+    clueEl.textContent = clue.text;
+    clueEl.style.position = 'absolute';
+    clueEl.style.fontSize = '14px';
+    clueEl.style.lineHeight = '1.3';
+    clueEl.style.maxWidth = '130px';
+    clueEl.style.color = '#fafafa'; // Hidden - matches background
+    clueEl.style.cursor = 'default';
+    clueEl.style.fontWeight = 'bold';
+    clueEl.style.userSelect = 'none';
+    clueEl.style.textAlign = 'center';
+    clueEl.style.padding = '6px';
+    clueEl.style.transition = 'color 0.2s ease';
+    clueEl.style.zIndex = '1';
+
+    // Random positioning (constrained to available space)
+    let x, y, overlapping;
+    do {
+      overlapping = false;
+      // Use percentages or viewport coordinates within the flex container
+      x = Math.random() * 85; // as percentage
+      y = Math.random() * 85;
+
+      // Simple check - if positions exist, ensure minimum distance
+      for (let pos of positions) {
+        const distance = Math.sqrt(
+          Math.pow(x - pos.x, 2) + Math.pow(y - pos.y, 2)
+        );
+        if (distance < 30) {
+          overlapping = true;
+          break;
+        }
+      }
+    } while (overlapping && positions.length > 0);
+
+    clueEl.style.left = x + '%';
+    clueEl.style.top = y + '%';
+    clueEl.style.transform = 'translate(-50%, -50%)';
+    positions.push({ x, y });
+
+    detectiveCanvas.appendChild(clueEl);
+    clueElements.push({ element: clueEl, id: clue.id, x, y });
+    console.log('[HISTORY] Clue', index + 1, 'appended at position:', x + '%', y + '%');
+  });
+  console.log('[HISTORY] All clues created:', clueElements.length);
+
+  // ===== MAGNIFYING GLASS =====
+  console.log('[HISTORY] Creating magnifyingGlass...');
+  const magnifyingGlass = document.createElement('img');
+  magnifyingGlass.src = chrome.runtime.getURL('assets/Magnifying_glass_icon.svg.png');
+  magnifyingGlass.alt = 'Magnifying Glass';
+  magnifyingGlass.style.position = 'absolute';
+  magnifyingGlass.style.width = '80px';
+  magnifyingGlass.style.height = '80px';
+  magnifyingGlass.style.cursor = 'grab';
+  magnifyingGlass.style.userSelect = 'none';
+  magnifyingGlass.style.zIndex = '10';
+  magnifyingGlass.style.pointerEvents = 'auto';
+  magnifyingGlass.style.left = '50%';
+  magnifyingGlass.style.top = '50%';
+  magnifyingGlass.style.transform = 'translate(-50%, -50%)';
+  detectiveCanvas.appendChild(magnifyingGlass);
+  console.log('[HISTORY] magnifyingGlass appended');
+
+  // ===== BOTTOM: MULTIPLE CHOICE OPTIONS =====
+  console.log('[HISTORY] Creating optionsContainer...');
+  const optionsContainer = document.createElement('div');
+  optionsContainer.style.flex = '0 0 auto';
+  optionsContainer.style.display = 'grid';
+  optionsContainer.style.gridTemplateColumns = '1fr 1fr';
+  optionsContainer.style.gap = '8px';
+  optionsContainer.style.width = '100%';
+
+  question.options.forEach((option) => {
+    const optionBtn = document.createElement('button');
+    optionBtn.textContent = option;
+    optionBtn.style.padding = '10px 8px';
+    optionBtn.style.fontSize = '12px';
+    optionBtn.style.border = '2px solid #ccc';
+    optionBtn.style.backgroundColor = '#fff';
+    optionBtn.style.color = '#333';
+    optionBtn.style.cursor = 'pointer';
+    optionBtn.style.borderRadius = '4px';
+    optionBtn.style.fontWeight = 'bold';
+    optionBtn.style.transition = 'all 0.2s ease';
+    optionBtn.style.minHeight = '40px';
+    optionBtn.style.display = 'flex';
+    optionBtn.style.alignItems = 'center';
+    optionBtn.style.justifyContent = 'center';
+    optionBtn.style.textAlign = 'center';
+
+    optionBtn.addEventListener('mouseenter', () => {
+      if (!answered) {
+        optionBtn.style.borderColor = '#333';
+        optionBtn.style.backgroundColor = '#f0f0f0';
+      }
+    });
+
+    optionBtn.addEventListener('mouseleave', () => {
+      if (!answered) {
+        optionBtn.style.borderColor = '#ccc';
+        optionBtn.style.backgroundColor = '#fff';
+      }
+    });
+
+    optionBtn.addEventListener('click', () => {
+      if (answered) return;
+
+      selectedAnswer = option;
+
+      // Visual feedback
+      Array.from(optionsContainer.children).forEach(btn => {
+        if (btn === optionBtn) {
+          btn.style.borderColor = '#333';
+          btn.style.backgroundColor = '#f0f0f0';
+        } else {
+          btn.style.borderColor = '#ccc';
+          btn.style.backgroundColor = '#fff';
+        }
+      });
+    });
+
+    optionsContainer.appendChild(optionBtn);
+  });
+
+  layoutContainer.appendChild(optionsContainer);
+
+  // ===== SUBMIT BUTTON =====
+  console.log('[HISTORY] Creating submitBtn...');
+  const submitBtn = document.createElement('button');
+  submitBtn.textContent = 'Check Answer';
+  submitBtn.style.flex = '0 0 auto';
+  submitBtn.style.padding = '9px 24px';
+  submitBtn.style.fontSize = '12px';
+  submitBtn.style.backgroundColor = '#333';
+  submitBtn.style.color = '#fff';
+  submitBtn.style.border = 'none';
+  submitBtn.style.borderRadius = '4px';
+  submitBtn.style.cursor = 'pointer';
+  submitBtn.style.fontWeight = 'bold';
+  submitBtn.style.transition = 'all 0.2s ease';
+  submitBtn.style.alignSelf = 'center';
+
+  submitBtn.addEventListener('mouseenter', () => {
+    submitBtn.style.backgroundColor = '#555';
+  });
+
+  submitBtn.addEventListener('mouseleave', () => {
+    submitBtn.style.backgroundColor = '#333';
+  });
+
+  submitBtn.addEventListener('click', () => {
+    if (!selectedAnswer) {
+      submitBtn.textContent = 'Please select an answer';
+      setTimeout(() => {
+        submitBtn.textContent = 'Check Answer';
+      }, 1500);
+      return;
+    }
+
+    answered = true;
+    submitBtn.disabled = true;
+
+    if (selectedAnswer === question.correctAnswer) {
+      submitBtn.style.backgroundColor = '#4CAF50';
+      submitBtn.style.color = '#fff';
+      submitBtn.textContent = 'Correct!';
+
+      Array.from(optionsContainer.children).forEach(btn => {
+        if (btn.textContent === question.correctAnswer) {
+          btn.style.borderColor = '#4CAF50';
+          btn.style.backgroundColor = '#c8e6c9';
+          btn.style.color = '#2e7d32';
+        }
+      });
+
+      setTimeout(() => {
+        advanceInterruptPageInline();
+      }, 1000);
+    } else {
+      submitBtn.style.backgroundColor = '#f44336';
+      submitBtn.textContent = 'Wrong! Try again';
+
+      Array.from(optionsContainer.children).forEach(btn => {
+        if (btn.textContent === selectedAnswer) {
+          btn.style.borderColor = '#f44336';
+          btn.style.backgroundColor = '#ffcdd2';
+          btn.style.color = '#c62828';
+        }
+      });
+
+      setTimeout(() => {
+        answered = false;
+        selectedAnswer = null;
+        submitBtn.disabled = false;
+        submitBtn.style.backgroundColor = '#333';
+        submitBtn.textContent = 'Check Answer';
+
+        Array.from(optionsContainer.children).forEach(btn => {
+          btn.style.borderColor = '#ccc';
+          btn.style.backgroundColor = '#fff';
+          btn.style.color = '#333';
+        });
+      }, 2000);
+    }
+  });
+
+  layoutContainer.appendChild(submitBtn);
+
+  // ===== MOUSE TRACKING FOR MAGNIFYING GLASS REVEAL =====
+  console.log('[HISTORY] Setting up mouse tracking...');
+  detectiveCanvas.addEventListener('mousemove', (e) => {
+    mouseMoved = true;
+    const rect = detectiveCanvas.getBoundingClientRect();
+    const centerX = e.clientX - rect.left;
+    const centerY = e.clientY - rect.top;
+
+    // Update glass position to follow cursor
+    const glassX = (centerX / rect.width) * 100;
+    const glassY = (centerY / rect.height) * 100;
+    magnifyingGlass.style.left = glassX + '%';
+    magnifyingGlass.style.top = glassY + '%';
+    magnifyingGlass.style.transform = 'translate(-50%, -50%)';
+
+    // Check which clues are revealed (in percentage terms)
+    clueElements.forEach(({ element, x, y }) => {
+      // Convert to pixel distances for accurate radius checking
+      const cluePixelX = (x / 100) * rect.width;
+      const cluePixelY = (y / 100) * rect.height;
+      const distance = Math.sqrt(
+        Math.pow(centerX - cluePixelX, 2) +
+        Math.pow(centerY - cluePixelY, 2)
+      );
+
+      if (distance < MAGNIFY_RADIUS + 20) { // Slightly larger reveal area
+        element.style.color = '#000';
+      } else {
+        element.style.color = '#fafafa';
+      }
+    });
+  });
+
+  // ===== DRAGGING MAGNIFYING GLASS =====
+  console.log('[HISTORY] Setting up magnifying glass drag...');
+  magnifyingGlass.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    const rect = magnifyingGlass.getBoundingClientRect();
+    dragOffsetX = e.clientX - rect.left;
+    dragOffsetY = e.clientY - rect.top;
+    magnifyingGlass.style.cursor = 'grabbing';
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const rect = detectiveCanvas.getBoundingClientRect();
+    const posX = e.clientX - rect.left - dragOffsetX;
+    const posY = e.clientY - rect.top - dragOffsetY;
+
+    // Convert to percentages
+    const glassX = Math.max(0, Math.min((posX / rect.width) * 100, 100));
+    const glassY = Math.max(0, Math.min((posY / rect.height) * 100, 100));
+
+    magnifyingGlass.style.left = glassX + '%';
+    magnifyingGlass.style.top = glassY + '%';
+    magnifyingGlass.style.transform = 'translate(-50%, -50%)';
+
+    // Update revealed clues
+    const centerX = posX;
+    const centerY = posY;
+    clueElements.forEach(({ element, x, y }) => {
+      const cluePixelX = (x / 100) * rect.width;
+      const cluePixelY = (y / 100) * rect.height;
+      const distance = Math.sqrt(
+        Math.pow(centerX - cluePixelX, 2) +
+        Math.pow(centerY - cluePixelY, 2)
+      );
+
+      if (distance < MAGNIFY_RADIUS + 20) {
+        element.style.color = '#000';
+      } else {
+        element.style.color = '#fafafa';
+      }
+    });
+  });
+
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+    magnifyingGlass.style.cursor = 'grab';
+  });
+
+  console.log('[HISTORY] About to append layoutContainer to contentEl');
+  console.log('[HISTORY] layoutContainer.children.length:', layoutContainer.children.length);
+  console.log('[HISTORY] contentEl:', contentEl);
+  contentEl.appendChild(layoutContainer);
+  console.log('[HISTORY] ===== DONE renderHistoryGameUI =====');
+}
+
+/**
+ * Page 3: Reflection/Followup
+ */
+function renderPage3Inline(headerEl, contentEl) {
+  console.log('[INTERRUPT] renderPage3Inline called');
+
+  // Add chicken image
+  const chickenDiv = document.createElement('div');
+  chickenDiv.className = 'cooped-interrupt-chicken-image';
+  const img = document.createElement('img');
+  img.src = chrome.runtime.getURL('src/assets/mascot/chicken_svg.svg');
+  img.alt = 'Cooped Chicken';
+  chickenDiv.appendChild(img);
+  headerEl.appendChild(chickenDiv);
+
+  // Add title to header
+  const title = document.createElement('h1');
+  title.className = 'cooped-interrupt-title';
+  title.textContent = 'Nice Job...';
+  headerEl.appendChild(title);
+
+  const subtitle = document.createElement('p');
+  subtitle.className = 'cooped-interrupt-subtitle';
+  subtitle.textContent = 'You SURE you wanna keep scrolling?';
+  headerEl.appendChild(subtitle);
+
+  // Create content layout
+  const contentLayout = document.createElement('div');
+  contentLayout.style.display = 'flex';
+  contentLayout.style.flexDirection = 'column';
+  contentLayout.style.width = '100%';
+  contentLayout.style.height = '100%';
+  contentLayout.style.gap = '20px';
+  contentLayout.style.alignItems = 'center';
+  contentLayout.style.justifyContent = 'space-between';
+
+  // Add spacer for content
+  const spacer = document.createElement('div');
+  spacer.style.flex = '1';
+  contentLayout.appendChild(spacer);
+
+  // Button container at bottom
+  const buttonContainer = document.createElement('div');
+  buttonContainer.style.display = 'flex';
+  buttonContainer.style.gap = '20px';
+  buttonContainer.style.width = '100%';
+  buttonContainer.style.justifyContent = 'center';
+  buttonContainer.style.flexWrap = 'wrap';
+  buttonContainer.style.paddingBottom = '20px';
+
+  // "Return to Safety" button - closes the tab
+  const safetyBtn = document.createElement('button');
+  safetyBtn.textContent = 'Return to Safety';
+  safetyBtn.style.padding = '15px 35px';
+  safetyBtn.style.fontSize = '16px';
+  safetyBtn.style.backgroundColor = '#4CAF50';
+  safetyBtn.style.color = '#fff';
+  safetyBtn.style.border = 'none';
+  safetyBtn.style.borderRadius = '4px';
+  safetyBtn.style.cursor = 'pointer';
+  safetyBtn.style.fontWeight = 'bold';
+  safetyBtn.style.transition = 'all 0.2s ease';
+  safetyBtn.style.minWidth = '150px';
+
+  safetyBtn.addEventListener('mouseenter', () => {
+    safetyBtn.style.backgroundColor = '#45a049';
+  });
+
+  safetyBtn.addEventListener('mouseleave', () => {
+    safetyBtn.style.backgroundColor = '#4CAF50';
+  });
+
+  safetyBtn.addEventListener('click', () => {
+    // Close the current tab
+    chrome.runtime.sendMessage({ action: 'closeTab' });
+  });
+
+  // "Proceed into Danger" button - proceeds to the website
+  const dangerBtn = document.createElement('button');
+  dangerBtn.textContent = 'Proceed into Danger';
+  dangerBtn.style.padding = '15px 35px';
+  dangerBtn.style.fontSize = '16px';
+  dangerBtn.style.backgroundColor = '#f44336';
+  dangerBtn.style.color = '#fff';
+  dangerBtn.style.border = 'none';
+  dangerBtn.style.borderRadius = '4px';
+  dangerBtn.style.cursor = 'pointer';
+  dangerBtn.style.fontWeight = 'bold';
+  dangerBtn.style.transition = 'all 0.2s ease';
+  dangerBtn.style.minWidth = '150px';
+
+  dangerBtn.addEventListener('mouseenter', () => {
+    dangerBtn.style.backgroundColor = '#da190b';
+  });
+
+  dangerBtn.addEventListener('mouseleave', () => {
+    dangerBtn.style.backgroundColor = '#f44336';
+  });
+
+  dangerBtn.addEventListener('click', () => {
+    // Close overlay to allow access to the website
+    closeInterruptSequenceInline();
+  });
+
+  buttonContainer.appendChild(safetyBtn);
+  buttonContainer.appendChild(dangerBtn);
+  contentLayout.appendChild(buttonContainer);
+
+  contentEl.appendChild(contentLayout);
+}
+
+/**
+ * Advance to next page or close if on last page
+ */
+function advanceInterruptPageInline() {
+  if (currentInterruptPage < 3) {
+    currentInterruptPage++;
+    renderInterruptPageInline(currentInterruptPage);
+  } else {
+    closeInterruptSequenceInline();
+  }
+}
+
+/**
+ * Close the interrupt sequence overlay
+ */
+function closeInterruptSequenceInline() {
+  if (interruptOverlayElement && interruptOverlayElement.isConnected) {
+    interruptOverlayElement.remove();
+    interruptOverlayElement = null;
+    currentInterruptPage = 1;
+    console.log('[INTERRUPT] Overlay closed');
+  }
+}
+
+chrome.runtime.onMessage.addListener((message) => {
+  console.log('[CONTENT-SCRIPT] Message received:', message);
+  if (message.action === 'showInterruptSequence') {
+    console.log('[CONTENT-SCRIPT] showInterruptSequence message received');
+    // Call the inline version immediately
+    showInterruptSequenceInline();
+  }
+});
 
 // Load all modules
 Promise.all([
   import('../../challenges/challenge-bank.js'),
   import('../utils/storage.js'),
-  import('../utils/mascot.js')
-]).then(([challengeBank, storageModule, mascotModule]) => {
+  import('../utils/mascot.js'),
+  import('../utils/time-tracking.js'),
+  import('../utils/platform-detection.js'),
+  import('./interrupt-sequence.js')
+]).then(([challengeBank, storageModule, mascotModule, timeTrackingModule, platformDetectionModule, interruptModule]) => {
   getRandomChallenge = challengeBank.getRandomChallenge;
   checkAnswer = challengeBank.checkAnswer;
   CHALLENGE_TYPES = challengeBank.CHALLENGE_TYPES;
@@ -38,6 +1624,26 @@ Promise.all([
   getMascotMessage = mascotModule.getMascotMessage;
   checkLevelUp = mascotModule.checkLevelUp;
   getAdaptiveDifficultyWithVariety = mascotModule.getAdaptiveDifficultyWithVariety;
+
+  updateTabVisibility = timeTrackingModule.updateTabVisibility;
+  updateMediaPauseState = timeTrackingModule.updateMediaPauseState;
+  setActivityState = timeTrackingModule.setActivityState;
+  ACTIVITY_STATE = timeTrackingModule.ACTIVITY_STATE;
+  accumulateTime = timeTrackingModule.accumulateTime;
+  getTimeTrackingRecord = timeTrackingModule.getTimeTrackingRecord;
+
+  detectPlatform = platformDetectionModule.detectPlatform;
+  isOnYouTubeShorts = platformDetectionModule.isOnYouTubeShorts;
+  handleYouTubeShortsDetection = platformDetectionModule.handleYouTubeShortsDetection;
+  handleYouTubeLongFormDetection = platformDetectionModule.handleYouTubeLongFormDetection;
+  recordYouTubeProductivityResponse = platformDetectionModule.recordYouTubeProductivityResponse;
+  handleMediaPauseChange = platformDetectionModule.handleMediaPauseChange;
+  handleTabVisibilityChange = platformDetectionModule.handleTabVisibilityChange;
+
+  showInterruptSequence = interruptModule.showInterruptSequence;
+
+  // Mark modules as ready
+  modulesReady = true;
 
   // Now initialize the content script
   initializeContentScript();
@@ -154,7 +1760,7 @@ async function checkAndShowChallenge() {
  * Initialize the content script (called once modules are loaded)
  */
 function initializeContentScript() {
-  // Set up message listener
+  // Add message listener for challenges (interrupt sequence already has its own)
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'SHOW_CHALLENGE' && !isOverlayActive) {
       showChallengeOverlay(message);
@@ -172,6 +1778,18 @@ function initializeContentScript() {
     lastActivityTime = Date.now();
   });
 
+  // Track tab visibility (active/inactive) for time tracking
+  document.addEventListener('visibilitychange', async () => {
+    const isVisible = !document.hidden;
+    const hostname = new URL(window.location.href).hostname;
+    const platform = detectPlatform(hostname);
+
+    if (platform) {
+      await handleTabVisibilityChange(platform, isVisible);
+      console.log(`[TAB-VISIBILITY] ${platform}: Tab is now ${isVisible ? 'VISIBLE' : 'HIDDEN'}`);
+    }
+  });
+
   // Check on page load if this is a blocked site
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', checkAndShowChallenge);
@@ -186,6 +1804,31 @@ function initializeContentScript() {
   // If on YouTube, set up video tracking
   if (window.location.hostname.includes('youtube.com')) {
     setupYouTubeTracking();
+  }
+
+  // If on TikTok, Facebook, Instagram, or X - set up social media monitoring
+  const hostname = new URL(window.location.href).hostname;
+  const platform = detectPlatform(hostname);
+  if (platform && ['tiktok.com', 'facebook.com', 'instagram.com', 'x.com'].includes(platform)) {
+    setupSocialMediaMonitoring(platform);
+  }
+}
+
+/**
+ * Set up monitoring for social media platforms (immediate interrupt for debugging)
+ */
+function setupSocialMediaMonitoring(platform) {
+  console.log(`[SOCIAL-MEDIA] Immediate interrupt for ${platform}`);
+  const trigger = () => {
+    if (!document.hidden) {
+      showInterruptSequenceInline();
+    }
+  };
+
+  if (document.body) {
+    setTimeout(trigger, 500);
+  } else {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(trigger, 200), { once: true });
   }
 }
 
@@ -243,27 +1886,16 @@ function startIntervalMonitoring() {
 
 /**
  * Show a re-engagement challenge when user is still on blocked site after interval
+ * Now uses the new 3-slide interrupt sequence instead of old overlay
  */
 async function showReEngagementChallenge(messageData) {
+  // Use the new 3-slide interrupt sequence
+  showInterruptSequenceInline();
+
   isOverlayActive = true;
   challengeStartTime = Date.now();
 
-  document.body.style.overflow = 'hidden';
-
-  const enabledTypes = messageData.enabledTypes || ['trivia', 'math', 'word'];
-  const state = await getAppState();
-  const difficulty = getAdaptiveDifficultyWithVariety(state.mascot.currentStage, state.user.stats.experience);
-  const enabledCategories = state.settings.enabledCategories;
-
-  const randomType = enabledTypes[Math.floor(Math.random() * enabledTypes.length)];
-  currentChallenge = await getRandomChallenge(randomType, difficulty, enabledCategories);
-
-  await saveCurrentChallenge(currentChallenge, messageData.url);
-
-  const overlay = createReEngagementOverlay(currentChallenge, messageData.url);
-  document.body.appendChild(overlay);
-
-  // Focus on input
+  // Focus on the modal (interrupt sequence takes care of itself)
   setTimeout(() => {
     const input = document.getElementById('cooped-answer-input');
     if (input) input.focus();
@@ -271,7 +1903,9 @@ async function showReEngagementChallenge(messageData) {
 }
 
 /**
- * Create re-engagement overlay element with special messaging
+ * DEPRECATED: Create re-engagement overlay element
+ * This function is no longer used - replaced by showInterruptSequenceInline()
+ * Kept for reference only - uses the new 3-slide interrupt sequence instead
  */
 function createReEngagementOverlay(challenge, blockedUrl) {
   const overlay = document.createElement('div');
@@ -351,6 +1985,9 @@ function createReEngagementOverlay(challenge, blockedUrl) {
  * Create and show challenge overlay
  */
 async function showChallengeOverlay(messageData) {
+  // Use the new 3-slide interrupt sequence instead of old challenge overlay
+  showInterruptSequenceInline();
+
   isOverlayActive = true;
   challengeStartTime = Date.now();
 
@@ -361,39 +1998,16 @@ async function showChallengeOverlay(messageData) {
   if (window.location.hostname.includes('youtube.com')) {
     pauseYouTubeVideo();
   }
-
-  // Get enabled challenge types from message
-  const enabledTypes = messageData.enabledTypes || ['trivia', 'math', 'word'];
-
-  // Use adaptive difficulty based on user level
-  const state = await getAppState();
-  const difficulty = getAdaptiveDifficultyWithVariety(state.mascot.currentStage, state.user.stats.experience);
-  const enabledCategories = state.settings.enabledCategories;
-
-  // Pick a random challenge type from enabled types
-  const randomType = enabledTypes[Math.floor(Math.random() * enabledTypes.length)];
-
-  // Get a random challenge with category filtering (now async)
-  currentChallenge = await getRandomChallenge(randomType, difficulty, enabledCategories);
-
-  // Save challenge to session storage to prevent bypass via refresh
-  await saveCurrentChallenge(currentChallenge, messageData.url);
-
-  // Create overlay
-  const overlay = createOverlayElement(currentChallenge);
-  document.body.appendChild(overlay);
-
-  // Focus on input after render
-  setTimeout(() => {
-    const input = document.getElementById('cooped-answer-input');
-    if (input) input.focus();
-  }, 100);
 }
 
 /**
  * Show a saved challenge overlay (from previous page load)
+ * Now uses the new 3-slide interrupt sequence instead of old overlay
  */
 function showSavedChallengeOverlay(savedChallengeData) {
+  // Use the new 3-slide interrupt sequence
+  showInterruptSequenceInline();
+
   isOverlayActive = true;
   currentChallenge = savedChallengeData.challenge;
   challengeStartTime = savedChallengeData.startTime;
@@ -404,20 +2018,12 @@ function showSavedChallengeOverlay(savedChallengeData) {
   if (window.location.hostname.includes('youtube.com')) {
     pauseYouTubeVideo();
   }
-
-  // Create overlay
-  const overlay = createOverlayElement(currentChallenge);
-  document.body.appendChild(overlay);
-
-  // Focus on input
-  setTimeout(() => {
-    const input = document.getElementById('cooped-answer-input');
-    if (input) input.focus();
-  }, 100);
 }
 
 /**
- * Create overlay DOM element
+ * DEPRECATED: Create overlay DOM element
+ * This function is no longer used - replaced by showInterruptSequenceInline()
+ * Kept for reference only - uses the new 3-slide interrupt sequence instead
  */
 function createOverlayElement(challenge) {
   const overlay = document.createElement('div');
@@ -976,17 +2582,25 @@ function showMiniReminderOverlay(context = {}) {
   const confessBtn = overlay.querySelector('[data-action="confess"]');
   const messageEl = overlay.querySelector('.cooped-mini-message');
 
-  yesBtn.addEventListener('click', () => {
+  yesBtn.addEventListener('click', async () => {
     yesBtn.disabled = true;
     confessBtn.disabled = true;
     messageEl.textContent = 'Keep it up! 🐥';
+
+    // Record that user reported being productive
+    await recordYouTubeProductivityResponse(true);
+
     setTimeout(removeOverlay, 800);
   });
 
-  confessBtn.addEventListener('click', () => {
+  confessBtn.addEventListener('click', async () => {
     yesBtn.disabled = true;
     confessBtn.disabled = true;
     messageEl.textContent = "I'll be back...";
+
+    // Record that user reported NOT being productive
+    await recordYouTubeProductivityResponse(false);
+
     setTimeout(removeOverlay, 1500);
   });
 
@@ -1141,6 +2755,8 @@ function setupYouTubeTracking() {
         currentTime: event.data.currentTime || getCurrentPlayTime()
       });
       startLongWatchSegment();
+      // Update time tracking: video is playing (not paused)
+      await handleMediaPauseChange('youtube.com', false);
       console.log('Cooped: YouTube video played');
     } else if (event.data.type === 'YT_PAUSE') {
       await recordYouTubeActivity({
@@ -1150,6 +2766,8 @@ function setupYouTubeTracking() {
         currentTime: event.data.currentTime || getCurrentPlayTime()
       });
       pauseLongWatchSegment();
+      // Update time tracking: video is paused (no time accumulation)
+      await handleMediaPauseChange('youtube.com', true);
       console.log('Cooped: YouTube video paused');
     }
   });
@@ -1207,6 +2825,9 @@ function setupYouTubeTracking() {
 
         console.log('[SHORTS CHECK RESULT]', shortsCheck);
 
+        // Update time tracking based on Shorts detection
+        await handleYouTubeShortsDetection(shortsCheck.shortsCount, '7 minutes');
+
         if (shortsCheck.watchingShortsIndicator) {
           triggerInfo = {
             type: 'block_screen',
@@ -1224,6 +2845,9 @@ function setupYouTubeTracking() {
         !longWatchChallengeTriggered &&
         currentWatchVideoId
       ) {
+        // Update time tracking: long watch detected
+        await handleYouTubeLongFormDetection(watchedMinutes);
+
         triggerInfo = {
           type: 'youtube_mini',
           reason: 'long_watch',

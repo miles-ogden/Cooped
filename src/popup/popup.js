@@ -323,6 +323,20 @@ function setupEventListeners() {
     });
   }
 
+  // Test Interrupt Sequence button
+  const testInterruptBtn = document.getElementById('test-interrupt-btn');
+  if (testInterruptBtn) {
+    testInterruptBtn.addEventListener('click', () => {
+      console.log('[POPUP] Test button clicked');
+      // Send message to background script to relay to all tabs
+      chrome.runtime.sendMessage({
+        action: 'showInterruptSequence'
+      }, (response) => {
+        console.log('[POPUP] Background response:', response);
+      });
+    });
+  }
+
   // Extension toggle (on/off with night mode)
   const extensionToggle = document.getElementById('extension-toggle');
   if (extensionToggle) {
