@@ -337,6 +337,17 @@ function setupEventListeners() {
     });
   }
 
+  // Preview Challenges button (for design/branding work)
+  const previewChallengesBtn = document.getElementById('preview-challenges-btn');
+  if (previewChallengesBtn) {
+    previewChallengesBtn.addEventListener('click', () => {
+      // Open the challenge preview page in a new tab
+      chrome.tabs.create({
+        url: chrome.runtime.getURL('src/debug/challenge-preview.html')
+      });
+    });
+  }
+
   // Extension toggle (on/off with night mode)
   const extensionToggle = document.getElementById('extension-toggle');
   if (extensionToggle) {

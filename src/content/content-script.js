@@ -43,6 +43,12 @@ function showInterruptSequenceInline() {
     return;
   }
 
+  // Pause YouTube video if on YouTube
+  const hostname = window.location.hostname;
+  if (hostname.includes('youtube.com')) {
+    pauseYouTubeVideo();
+  }
+
   console.log('[INTERRUPT] Creating new interrupt overlay');
   currentInterruptPage = 1;
   currentGameType = 'random'; // Reset game type to pick a new random one
@@ -50,6 +56,26 @@ function showInterruptSequenceInline() {
   // Create overlay container
   interruptOverlayElement = document.createElement('div');
   interruptOverlayElement.id = 'cooped-interrupt-overlay';
+
+  // Add SVG filter for chicken outline
+  const svgFilter = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svgFilter.style.position = 'absolute';
+  svgFilter.style.width = '0';
+  svgFilter.style.height = '0';
+  svgFilter.innerHTML = `
+    <defs>
+      <filter id="chicken-outline-filter" x="-20%" y="-20%" width="140%" height="140%">
+        <feMorphology in="SourceAlpha" operator="dilate" radius="3" result="expanded" />
+        <feFlood flood-color="#000000" result="outline-color" />
+        <feComposite in="outline-color" in2="expanded" operator="in" result="outline" />
+        <feMerge>
+          <feMergeNode in="outline" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+  `;
+  interruptOverlayElement.appendChild(svgFilter);
 
   // Create modal box (white square in center)
   const modal = document.createElement('div');
@@ -92,8 +118,69 @@ function showInterruptSequenceInline() {
 
   // Append to body
   if (document.body) {
+    // Store original body content
+    const bodyChildren = Array.from(document.body.children).filter(child => child.id !== 'cooped-grayscale-layer');
+
+    // Create grayscale wrapper for background content only
+    const grayscaleLayer = document.createElement('div');
+    grayscaleLayer.id = 'cooped-grayscale-layer';
+    grayscaleLayer.style.position = 'fixed';
+    grayscaleLayer.style.top = '0';
+    grayscaleLayer.style.left = '0';
+    grayscaleLayer.style.width = '100%';
+    grayscaleLayer.style.height = '100%';
+    grayscaleLayer.style.filter = 'grayscale(100%)';
+    grayscaleLayer.style.zIndex = '2147483645';
+    grayscaleLayer.style.pointerEvents = 'none';
+    grayscaleLayer.style.overflow = 'hidden';
+
+    // Move existing body content to grayscale layer
+    for (let child of bodyChildren) {
+      if (child !== interruptOverlayElement) {
+        grayscaleLayer.appendChild(child);
+      }
+    }
+
+    document.body.appendChild(grayscaleLayer);
     document.body.appendChild(interruptOverlayElement);
     console.log('[INTERRUPT] Overlay appended to DOM');
+    console.log('[INTERRUPT] Applied grayscale filter to background only');
+
+    // Remove any unwanted iframes that YouTube might inject
+    const removeUnwantedElements = () => {
+      const modal = document.getElementById('cooped-interrupt-modal');
+      if (modal) {
+        // Remove all iframes
+        modal.querySelectorAll('iframe').forEach(iframe => {
+          iframe.remove();
+          console.log('[INTERRUPT] Removed unwanted iframe');
+        });
+      }
+    };
+
+    // Run immediately and periodically to catch injected elements
+    removeUnwantedElements();
+    const cleanupInterval = setInterval(() => {
+      if (!interruptOverlayElement || !interruptOverlayElement.isConnected) {
+        clearInterval(cleanupInterval);
+        return;
+      }
+      removeUnwantedElements();
+    }, 500);
+
+    // Periodically enforce video pause/mute while overlay is active
+    const videoPauseInterval = setInterval(() => {
+      if (!interruptOverlayElement || !interruptOverlayElement.isConnected) {
+        clearInterval(videoPauseInterval);
+        return;
+      }
+      // Re-pause and mute if video starts playing again
+      const hostname = window.location.hostname;
+      if (hostname.includes('youtube.com')) {
+        pauseYouTubeVideo();
+      }
+    }, 250); // Check every 250ms for aggressive pausing
+
     renderInterruptPageInline(1);
     console.log('[INTERRUPT] Page 1 rendered');
   } else {
@@ -208,15 +295,16 @@ function renderVocabularyGameUI(headerEl, contentEl, question) {
   layoutContainer.style.display = 'flex';
   layoutContainer.style.flexDirection = 'column';
   layoutContainer.style.width = '100%';
-  layoutContainer.style.height = '100%';
   layoutContainer.style.gap = '20px';
 
   // ===== TOP: Sentence with blank =====
   const sentenceContainer = document.createElement('div');
+  sentenceContainer.className = 'dithered-panel';
   sentenceContainer.style.flex = '0 0 auto';
-  sentenceContainer.style.backgroundColor = '#f5f5f5';
   sentenceContainer.style.padding = '20px';
-  sentenceContainer.style.borderRadius = '4px';
+  sentenceContainer.style.borderRadius = '16px';
+  sentenceContainer.style.border = '2px solid #000';
+  sentenceContainer.style.boxShadow = '4px 4px 0 rgba(0, 0, 0, 1)';
   sentenceContainer.style.fontSize = '18px';
   sentenceContainer.style.lineHeight = '1.6';
   sentenceContainer.style.color = '#333';
@@ -238,7 +326,7 @@ function renderVocabularyGameUI(headerEl, contentEl, question) {
   blank.style.minWidth = '150px';
   blank.style.height = '40px';
   blank.style.border = '3px solid #333';
-  blank.style.borderRadius = '4px';
+  blank.style.borderRadius = '8px';
   blank.style.backgroundColor = '#fff';
   blank.style.padding = '4px 12px';
   blank.style.fontWeight = 'bold';
@@ -248,6 +336,7 @@ function renderVocabularyGameUI(headerEl, contentEl, question) {
   blank.style.verticalAlign = 'middle';
   blank.style.cursor = 'pointer';
   blank.style.fontSize = '18px';
+  blank.style.boxShadow = '2px 2px 0 rgba(0, 0, 0, 1)';
   blank.textContent = '_____';
 
   sentenceContainer.appendChild(blank);
@@ -263,15 +352,15 @@ function renderVocabularyGameUI(headerEl, contentEl, question) {
   // ===== BOTTOM: Chicken on left, words on right =====
   const bottomContainer = document.createElement('div');
   bottomContainer.style.display = 'flex';
-  bottomContainer.style.flex = '1';
+  bottomContainer.style.flex = '0 0 auto';
   bottomContainer.style.gap = '30px';
   bottomContainer.style.alignItems = 'flex-start';
 
   // LEFT: Chicken image
   const chickenWrapper = document.createElement('div');
-  chickenWrapper.style.flex = '0 0 350px';
+  chickenWrapper.style.flex = '0 0 250px';
   chickenWrapper.style.position = 'relative';
-  chickenWrapper.style.height = '350px';
+  chickenWrapper.style.height = '250px';
   chickenWrapper.style.display = 'flex';
   chickenWrapper.style.alignItems = 'center';
   chickenWrapper.style.justifyContent = 'center';
@@ -284,6 +373,7 @@ function renderVocabularyGameUI(headerEl, contentEl, question) {
   chickenImg.style.maxHeight = '100%';
   chickenImg.style.objectFit = 'contain';
   chickenImg.style.transition = 'transform 0.3s ease';
+  chickenImg.style.filter = 'url(#chicken-outline-filter)';
 
   chickenWrapper.appendChild(chickenImg);
   bottomContainer.appendChild(chickenWrapper);
@@ -302,19 +392,20 @@ function renderVocabularyGameUI(headerEl, contentEl, question) {
   question.options.forEach((word, index) => {
     const wordBtn = document.createElement('button');
     wordBtn.textContent = word;
-    wordBtn.className = 'vocab-word-option';
+    wordBtn.className = 'vocab-word-option choice-btn';
     wordBtn.id = `vocab-word-${index}`;
     wordBtn.style.padding = '15px 20px';
     wordBtn.style.fontSize = '16px';
-    wordBtn.style.border = '2px solid #333';
-    wordBtn.style.backgroundColor = '#fff';
+    wordBtn.style.border = '2px solid #000';
+    wordBtn.style.backgroundColor = '#ffe5cc';
     wordBtn.style.color = '#333';
     wordBtn.style.cursor = 'pointer';
-    wordBtn.style.borderRadius = '4px';
+    wordBtn.style.borderRadius = '16px';
     wordBtn.style.fontWeight = 'bold';
     wordBtn.style.transition = 'all 0.2s ease';
     wordBtn.style.userSelect = 'none';
     wordBtn.style.width = '100%';
+    wordBtn.style.boxShadow = '4px 4px 0 rgba(0, 0, 0, 1)';
     wordBtn.dataset.word = word;
     wordBtn.dataset.inBlank = 'false';
 
@@ -393,12 +484,14 @@ function renderVocabularyGameUI(headerEl, contentEl, question) {
   // Add submit button at the bottom
   const submitBtn = document.createElement('button');
   submitBtn.textContent = 'Check Answer';
+  submitBtn.className = 'cooped-btn';
   submitBtn.style.padding = '15px 35px';
   submitBtn.style.fontSize = '16px';
-  submitBtn.style.backgroundColor = '#333';
-  submitBtn.style.color = '#fff';
-  submitBtn.style.border = 'none';
-  submitBtn.style.borderRadius = '4px';
+  submitBtn.style.backgroundColor = '#ffe5cc';
+  submitBtn.style.color = '#000';
+  submitBtn.style.border = '2px solid #000';
+  submitBtn.style.borderRadius = '16px';
+  submitBtn.style.boxShadow = '4px 4px 0 rgba(0, 0, 0, 1)';
   submitBtn.style.cursor = 'pointer';
   submitBtn.style.marginTop = 'auto';
   submitBtn.style.fontWeight = 'bold';
@@ -694,10 +787,9 @@ function renderMathGameUI(_, contentEl, question) {
   layoutContainer.style.display = 'flex';
   layoutContainer.style.flexDirection = 'column';
   layoutContainer.style.width = '100%';
-  layoutContainer.style.height = '100%';
   layoutContainer.style.gap = '15px';
   layoutContainer.style.alignItems = 'center';
-  layoutContainer.style.justifyContent = 'space-between';
+  layoutContainer.style.justifyContent = 'flex-start';
   layoutContainer.style.position = 'relative';
 
   // ===== TOP: Math Question =====
@@ -919,6 +1011,7 @@ function renderMathGameUI(_, contentEl, question) {
   chickenImg.style.maxWidth = '100%';
   chickenImg.style.maxHeight = '100%';
   chickenImg.style.objectFit = 'contain';
+  chickenImg.style.filter = 'url(#chicken-outline-filter)';
 
   chickenWrapper.appendChild(chickenImg);
   chickenNestContainer.appendChild(chickenWrapper);
@@ -981,12 +1074,14 @@ function renderMathGameUI(_, contentEl, question) {
   // ===== SUBMIT BUTTON =====
   const submitBtn = document.createElement('button');
   submitBtn.textContent = 'Check Answer';
+  submitBtn.className = 'cooped-btn';
   submitBtn.style.padding = '15px 35px';
   submitBtn.style.fontSize = '16px';
-  submitBtn.style.backgroundColor = '#333';
-  submitBtn.style.color = '#fff';
-  submitBtn.style.border = 'none';
-  submitBtn.style.borderRadius = '4px';
+  submitBtn.style.backgroundColor = '#ffe5cc';
+  submitBtn.style.color = '#000';
+  submitBtn.style.border = '2px solid #000';
+  submitBtn.style.borderRadius = '16px';
+  submitBtn.style.boxShadow = '4px 4px 0 rgba(0, 0, 0, 1)';
   submitBtn.style.cursor = 'pointer';
   submitBtn.style.fontWeight = 'bold';
   submitBtn.style.flex = '0 0 auto';
@@ -1103,7 +1198,6 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
   layoutContainer.style.display = 'flex';
   layoutContainer.style.flexDirection = 'column';
   layoutContainer.style.width = '100%';
-  layoutContainer.style.height = '100%';
   layoutContainer.style.gap = '12px';
   layoutContainer.style.padding = '8px';
   console.log('[HISTORY] layoutContainer created');
@@ -1283,24 +1377,26 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
   console.log('[HISTORY] Creating submitBtn...');
   const submitBtn = document.createElement('button');
   submitBtn.textContent = 'Check Answer';
+  submitBtn.className = 'cooped-btn';
   submitBtn.style.flex = '0 0 auto';
-  submitBtn.style.padding = '9px 24px';
-  submitBtn.style.fontSize = '12px';
-  submitBtn.style.backgroundColor = '#333';
-  submitBtn.style.color = '#fff';
-  submitBtn.style.border = 'none';
-  submitBtn.style.borderRadius = '4px';
+  submitBtn.style.padding = '12px 24px';
+  submitBtn.style.fontSize = '14px';
+  submitBtn.style.backgroundColor = '#ffe5cc';
+  submitBtn.style.color = '#000';
+  submitBtn.style.border = '2px solid #000';
+  submitBtn.style.borderRadius = '16px';
+  submitBtn.style.boxShadow = '4px 4px 0 rgba(0, 0, 0, 1)';
   submitBtn.style.cursor = 'pointer';
   submitBtn.style.fontWeight = 'bold';
   submitBtn.style.transition = 'all 0.2s ease';
   submitBtn.style.alignSelf = 'center';
 
   submitBtn.addEventListener('mouseenter', () => {
-    submitBtn.style.backgroundColor = '#555';
+    submitBtn.style.backgroundColor = '#ffd7b3';
   });
 
   submitBtn.addEventListener('mouseleave', () => {
-    submitBtn.style.backgroundColor = '#333';
+    submitBtn.style.backgroundColor = '#ffe5cc';
   });
 
   submitBtn.addEventListener('click', () => {
@@ -1502,12 +1598,14 @@ function renderPage3Inline(headerEl, contentEl) {
   // "Return to Safety" button - closes the tab
   const safetyBtn = document.createElement('button');
   safetyBtn.textContent = 'Return to Safety';
+  safetyBtn.className = 'cooped-btn';
   safetyBtn.style.padding = '15px 35px';
   safetyBtn.style.fontSize = '16px';
   safetyBtn.style.backgroundColor = '#4CAF50';
-  safetyBtn.style.color = '#fff';
-  safetyBtn.style.border = 'none';
-  safetyBtn.style.borderRadius = '4px';
+  safetyBtn.style.color = '#000';
+  safetyBtn.style.border = '2px solid #000';
+  safetyBtn.style.borderRadius = '16px';
+  safetyBtn.style.boxShadow = '4px 4px 0 rgba(0, 0, 0, 1)';
   safetyBtn.style.cursor = 'pointer';
   safetyBtn.style.fontWeight = 'bold';
   safetyBtn.style.transition = 'all 0.2s ease';
@@ -1529,12 +1627,14 @@ function renderPage3Inline(headerEl, contentEl) {
   // "Proceed into Danger" button - proceeds to the website
   const dangerBtn = document.createElement('button');
   dangerBtn.textContent = 'Proceed into Danger';
+  dangerBtn.className = 'cooped-btn';
   dangerBtn.style.padding = '15px 35px';
   dangerBtn.style.fontSize = '16px';
   dangerBtn.style.backgroundColor = '#f44336';
-  dangerBtn.style.color = '#fff';
-  dangerBtn.style.border = 'none';
-  dangerBtn.style.borderRadius = '4px';
+  dangerBtn.style.color = '#000';
+  dangerBtn.style.border = '2px solid #000';
+  dangerBtn.style.borderRadius = '16px';
+  dangerBtn.style.boxShadow = '4px 4px 0 rgba(0, 0, 0, 1)';
   dangerBtn.style.cursor = 'pointer';
   dangerBtn.style.fontWeight = 'bold';
   dangerBtn.style.transition = 'all 0.2s ease';
@@ -1577,10 +1677,26 @@ function advanceInterruptPageInline() {
  */
 function closeInterruptSequenceInline() {
   if (interruptOverlayElement && interruptOverlayElement.isConnected) {
+    // Move grayscale layer content back to body
+    const grayscaleLayer = document.getElementById('cooped-grayscale-layer');
+    if (grayscaleLayer) {
+      while (grayscaleLayer.firstChild) {
+        document.body.insertBefore(grayscaleLayer.firstChild, interruptOverlayElement);
+      }
+      grayscaleLayer.remove();
+    }
+
+    // Restore video audio if on YouTube
+    const hostname = window.location.hostname;
+    if (hostname.includes('youtube.com')) {
+      restoreYouTubeVideoAudio();
+    }
+
     interruptOverlayElement.remove();
     interruptOverlayElement = null;
     currentInterruptPage = 1;
-    console.log('[INTERRUPT] Overlay closed');
+
+    console.log('[INTERRUPT] Overlay closed and grayscale filter removed');
   }
 }
 
@@ -2471,12 +2587,42 @@ function pauseYouTubeVideo() {
       if (!video.paused) {
         video.pause();
       }
+      // Also mute to ensure no sound
+      if (!video.muted) {
+        video.muted = true;
+      }
+      // Store original volume to restore later
+      if (!video.dataset.coopedOriginalVolume) {
+        video.dataset.coopedOriginalVolume = video.volume;
+      }
+      video.volume = 0;
     });
     if (videos.length > 0) {
-      console.log('Cooped: Paused YouTube video for challenge overlay');
+      console.log('Cooped: Paused and muted YouTube video for challenge overlay');
     }
   } catch (error) {
     console.log('Cooped: Unable to pause YouTube video', error);
+  }
+}
+
+/**
+ * Restore video audio after challenge
+ */
+function restoreYouTubeVideoAudio() {
+  try {
+    const videos = document.querySelectorAll('video');
+    videos.forEach(video => {
+      // Restore mute state
+      video.muted = false;
+      // Restore volume if we stored it
+      if (video.dataset.coopedOriginalVolume) {
+        video.volume = parseFloat(video.dataset.coopedOriginalVolume);
+        delete video.dataset.coopedOriginalVolume;
+      }
+    });
+    console.log('Cooped: Restored YouTube video audio');
+  } catch (error) {
+    console.log('Cooped: Unable to restore YouTube video audio', error);
   }
 }
 
@@ -2722,55 +2868,10 @@ function setupYouTubeTracking() {
   // Periodically sync play/pause state in case events were missed
   setInterval(syncLongWatchTracking, 2000);
 
-  // Inject script to monitor player events
-  const script = document.createElement('script');
-  script.textContent = `
-    (function() {
-      const originalPlay = HTMLMediaElement.prototype.play;
-      const originalPause = HTMLMediaElement.prototype.pause;
-
-      HTMLMediaElement.prototype.play = function() {
-        window.postMessage({ type: 'YT_PLAY', currentTime: this.currentTime }, '*');
-        return originalPlay.call(this);
-      };
-
-      HTMLMediaElement.prototype.pause = function() {
-        window.postMessage({ type: 'YT_PAUSE', currentTime: this.currentTime }, '*');
-        return originalPause.call(this);
-      };
-    })();
-  `;
-  document.documentElement.appendChild(script);
-  script.remove();
-
-  // Listen for messages from injected script
-  window.addEventListener('message', async (event) => {
-    if (event.source !== window) return;
-
-    if (event.data.type === 'YT_PLAY') {
-      await recordYouTubeActivity({
-        type: 'play',
-        videoId: currentVideoId,
-        videoDuration: getVideoDuration(),
-        currentTime: event.data.currentTime || getCurrentPlayTime()
-      });
-      startLongWatchSegment();
-      // Update time tracking: video is playing (not paused)
-      await handleMediaPauseChange('youtube.com', false);
-      console.log('Cooped: YouTube video played');
-    } else if (event.data.type === 'YT_PAUSE') {
-      await recordYouTubeActivity({
-        type: 'pause',
-        videoId: currentVideoId,
-        videoDuration: getVideoDuration(),
-        currentTime: event.data.currentTime || getCurrentPlayTime()
-      });
-      pauseLongWatchSegment();
-      // Update time tracking: video is paused (no time accumulation)
-      await handleMediaPauseChange('youtube.com', true);
-      console.log('Cooped: YouTube video paused');
-    }
-  });
+  // Monitor play/pause using periodic sync instead of intercepting prototype methods
+  // This avoids CSP violations while still tracking video state
+  // The syncLongWatchTracking function will detect play/pause state changes
+  console.log('Cooped: YouTube tracking initialized (using periodic state sync instead of prototype interception)');
 
   // Check every 5 seconds for productivity triggers (long watch or short-form binge)
   longWatchCheckTimer = setInterval(async () => {
@@ -2919,6 +3020,9 @@ function getCurrentPlayTime() {
 }
 
 async function showFullBlockScreen() {
+  // Pause the video immediately
+  pauseYouTubeVideo();
+
   const response = await chrome.runtime.sendMessage({
     type: 'CHECK_BLOCKED_SITE'
   }).catch((error) => {
