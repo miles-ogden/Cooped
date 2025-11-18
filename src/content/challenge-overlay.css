@@ -1,18 +1,75 @@
 /* Challenge Overlay Styles */
 
+/* Apply SVG filter to chicken image for outline */
+.cooped-chicken-image img,
+.cooped-mini-mascot {
+  filter: url('#chicken-outline-filter');
+}
+
+/* Dithered panel class for question containers and other panels */
+.dithered-panel {
+  background:
+    radial-gradient(circle at 70% 40%,
+      rgba(255, 229, 204, 0) 0%,
+      rgba(255, 210, 170, 0.4) 50%,
+      rgba(255, 190, 140, 0.6) 100%);
+  background-color: #ffe5cc;
+  mask-image:
+    url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAAsTAAALEwEAmpwYAAADlklEQVR4nO2bS27bMBCGR0VzgRxBvUEv0Ev0EgF6iV4iR8gNcgQfwUdw771AL9FLBOgl0kv0Aj2Ce+9FkKItyZZsybIlW7JMzwcMCBiWxfkxHJKiaQAAAAAAAAAAAAAAAAAAAP4xGo1Go9FoNBqNRqPR/xW6ruu6ruu6ruu6rv9v0HVd13Vd13Vd1/8r6Lqu67qu67qu/0fQdV3XdV3XdV3//6Druq7ruq7r+n8CXdd1Xdd1Xdf/A+i6ruu6ruu6/u9B13Vd13Vd1/V/C7qu67qu67qu/zvQdV3XdV3XdV3Xdf3fga7ruq7ruq7r/wZ0Xdd1Xdd1Xf83oOu6ruu6ruv6vwFd13Vd13Vd1/8N6Lqu67qu67r+b0DXdV3XdV3X/w3ouq7ruq7ruu7r/wZ0Xdd1Xdd1Xf83oOu6ruu6ruv6vwFd13Vd13Vd1/8N6Lqu67qu67r+b0DXdV3XdV3X/w3ouq7ruq7ruq7/G9B1Xdd1Xdd1/d+Aruu6ruu6ruv/BnRd13Vd13Vd/zeg67qu67qu6/q/AV3XdV3XdV3X/w3ouq7ruq7r+r8BXdd1Xdd1Xdf/Dei6ruu6ruu6/m9A13Vd13Vd1/V/A7qu67qu67qu/xvQdV3XdV3XdV3/N6Druq7ruq7r+r8BXdd1Xdd1Xdf/Dei6ruu6ruu6/m9A13Vd13Vd13X934Cu67qu67qu6/8GdF3XdV3XdV3/N6Druq7ruq7r/wZ0Xdd1Xdd1Xf83oOu6ruu6ruv6vwFd13Vd13Vd1/8N6Lqu67qu67r+b0DXdV3XdV3X/w3ouq7ruq7ruv5vQNd1Xdd1Xdf1fwO6ruu6ruu6rv8b0HVd13Vd13X934Cu67qu67qu6/8GdF3XdV3XdV3/N6Druq7ruq7r+r8BXdd1Xdd1Xdf/Dei6ruu6ruu6/m9A13Vd13Vd1/V/A7qu67qu67qu/xvQdV3XdV3XdV3/N6Druq7ruq7r+r8BXdd1Xdd1Xdf/Dei6ruu6ruu6/m9A13Vd13Vd13X934Cu67qu67qu6/8GdF3XdV3XdV3/N6Druq7ruq7r/wZ0Xdd1Xdd1Xf83oOu6ruu6ruv6vwFd13Vd13Vd1/8N6Lqu67qu67r+b0DXdV3XdV3X/w3ouq7ruq7ruv5vQNd1Xdd1Xdf1fwO6ruu6ruu6rv8b0HVd13Vd13X934Cu67qu67qu6/8GdF3XdV3XdV3/N6Druq7ruq7r+r8BXdd1Xdd1Xdf/Dei6ruu6ruu6/m9A13Vd13Vd1/V/A7qu67qu67qu6/8GAAAAAAAAAAAAAAAAAAD4X/ADeY5xkxvmZjQAAAAASUVORK5CYII='),
+    radial-gradient(circle at 70% 40%,
+      transparent 0%,
+      #000 65%);
+  mask-size: 64px 64px, 100% 100%;
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
+}
+
 #cooped-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.95);
-  z-index: 2147483647; /* Maximum z-index */
+  z-index: 2147483647; /* Maximum z-index - overall container */
   display: flex;
   align-items: center;
   justify-content: center;
   animation: coopedFadeIn 0.3s ease;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: transparent;
+}
+
+/* Dark overlay behind the modal (z: 1) */
+#cooped-overlay::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Diagonal hatch pattern overlay (z: 2) - Larger scale for better visibility */
+#cooped-overlay::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 20px,
+      rgba(255, 255, 255, 0.2) 20px,
+      rgba(255, 255, 255, 0.2) 32px
+    );
+  pointer-events: none;
+  z-index: 2;
 }
 
 @keyframes coopedFadeIn {
@@ -24,14 +81,29 @@
   }
 }
 
+/* Modal needs to be positioned relative to ensure it layers above pseudo-elements */
 .cooped-modal {
-  background: white;
-  border-radius: 0;
+  position: relative;
+  z-index: 3; /* Above hatching and desaturation */
+  background: #ffe5cc;
+  border-radius: 24px;
   padding: 40px;
   max-width: 600px;
   width: 90%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border: 3px solid #000;
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 1);
   animation: coopedSlideUp 0.4s ease;
+  overflow: hidden;
+}
+
+/* Hide scrollbars */
+.cooped-modal::-webkit-scrollbar {
+  display: none;
+}
+
+.cooped-modal {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 @keyframes coopedSlideUp {
@@ -143,11 +215,10 @@
 }
 
 .cooped-question {
-  background: white;
   color: black;
   padding: 30px;
   border: 3px solid black;
-  border-radius: 10px;
+  border-radius: 16px;
   font-size: 20px;
   font-weight: 500;
   text-align: center;
@@ -157,6 +228,21 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  /* Use dithered gradient background */
+  background:
+    radial-gradient(circle at 70% 40%,
+      rgba(255, 229, 204, 0) 0%,
+      rgba(255, 210, 170, 0.4) 50%,
+      rgba(255, 190, 140, 0.6) 100%);
+  background-color: #ffe5cc;
+  mask-image:
+    url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAAsTAAALEwEAmpwYAAADlklEQVR4nO2bS27bMBCGR0VzgRxBvUEv0Ev0EgF6iV4iR8gNcgQfwUdw771AL9FLBOgl0kv0Aj2Ce+9FkKItyZZsybIlW7JMzwcMCBiWxfkxHJKiaQAAAAAAAAAAAAAAAAAAAP4xGo1Go9FoNBqNRqPR/xW6ruu6ruu6ruu6rv9v0HVd13Vd13Vd1/8r6Lqu67qu67qu/0fQdV3XdV3XdV3//6Druq7ruq7r+n8CXdd1Xdd1Xdf/A+i6ruu6ruu6/u9B13Vd13Vd1/V/C7qu67qu67qu/zvQdV3XdV3XdV3Xdf3fga7ruq7ruq7r/wZ0Xdd1Xdd1Xf83oOu6ruu6ruv6vwFd13Vd13Vd1/8N6Lqu67qu67r+b0DXdV3XdV3X/w3ouq7ruq7ruu7r/wZ0Xdd1Xdd1Xf83oOu6ruu6ruv6vwFd13Vd13Vd1/8N6Lqu67qu67r+b0DXdV3XdV3X/w3ouq7ruq7ruq7/G9B1Xdd1Xdd1/d+Aruu6ruu6ruv/BnRd13Vd13Vd/zeg67qu67qu6/q/AV3XdV3XdV3X/w3ouq7ruq7r+r8BXdd1Xdd1Xdf/Dei6ruu6ruu6/m9A13Vd13Vd1/V/A7qu67qu67qu/xvQdV3XdV3XdV3/N6Druq7ruq7r+r8BXdd1Xdd1Xdf/Dei6ruu6ruu6/m9A13Vd13Vd13X934Cu67qu67qu6/8GdF3XdV3XdV3/N6Druq7ruq7r/wZ0Xdd1Xdd1Xf83oOu6ruu6ruv6vwFd13Vd13Vd1/8N6Lqu67qu67r+b0DXdV3XdV3X/w3ouq7ruq7ruv5vQNd1Xdd1Xdf1fwO6ruu6ruu6rv8b0HVd13Vd13X934Cu67qu67qu6/8GdF3XdV3XdV3/N6Druq7ruq7r+r8BXdd1Xdd1Xdf/Dei6ruu6ruu6/m9A13Vd13Vd1/V/A7qu67qu67qu/xvQdV3XdV3XdV3/N6Druq7ruq7r+r8BXdd1Xdd1Xdf/Dei6ruu6ruu6/m9A13Vd13Vd13X934Cu67qu67qu6/8GdF3XdV3XdV3/N6Druq7ruq7r/wZ0Xdd1Xdd1Xf83oOu6ruu6ruv6vwFd13Vd13Vd1/8N6Lqu67qu67r+b0DXdV3XdV3X/w3ouq7ruq7ruv5vQNd1Xdd1Xdf1fwO6ruu6ruu6rv8b0HVd13Vd13X934Cu67qu67qu6/8GdF3XdV3XdV3/N6Druq7ruq7r+r8BXdd1Xdd1Xdf/Dei6ruu6ruu6/m9A13Vd13Vd1/V/A7qu67qu67qu6/8GAAAAAAAAAAAAAAAAAAD4X/ADeY5xkxvmZjQAAAAASUVORK5CYII='),
+    radial-gradient(circle at 70% 40%,
+      transparent 0%,
+      #000 65%);
+  mask-size: 64px 64px, 100% 100%;
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
 }
 
 .cooped-input-group {
@@ -188,23 +274,23 @@
 .cooped-btn {
   padding: 12px 25px;
   border: 2px solid #333;
-  border-radius: 8px;
+  border-radius: 16px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  background: white;
+  background: #ffe5cc;
   color: black;
 }
 
 .cooped-input-group .cooped-btn-primary {
   border: 2px solid #333;
-  background: white;
+  background: #ffe5cc;
   color: black;
 }
 
 .cooped-btn-primary {
-  background: white;
+  background: #ffe5cc;
   color: black;
   border: 2px solid black !important;
   font-weight: 600;
@@ -240,8 +326,8 @@
   width: 100%;
   padding: 15px 20px;
   border: 2px solid #e0e0e0;
-  border-radius: 10px;
-  background: white;
+  border-radius: 16px;
+  background: #ffe5cc;
   color: #666;
   font-size: 16px;
   font-weight: 600;
@@ -373,10 +459,10 @@
 }
 
 .cooped-mini-card {
-  background: rgba(255, 255, 255, 0.97);
-  border-radius: 10px;
+  background: #ffe5cc;
+  border-radius: 16px;
   padding: 20px 26px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 1);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -402,7 +488,7 @@
 
 .cooped-mini-btn {
   width: 100%;
-  border-radius: 8px;
+  border-radius: 16px;
   padding: 10px 12px;
   font-size: 15px;
   font-weight: 600;
@@ -410,6 +496,12 @@
   margin-bottom: 10px;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   border: 2px solid #000;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 1);
+}
+
+.cooped-mini-btn:active {
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 1);
+  transform: translate(2px, 2px);
 }
 
 .cooped-mini-btn:disabled {
@@ -424,7 +516,7 @@
 }
 
 .cooped-mini-btn-secondary {
-  background: #fff;
+  background: #ffe5cc;
   color: #222;
 }
 
@@ -468,12 +560,13 @@
 }
 
 .cooped-interval-modal {
-  background: white;
-  border-radius: 20px;
+  background: #ffe5cc;
+  border-radius: 24px;
   padding: 40px;
   max-width: 600px;
   width: 90%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border: 3px solid #000;
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 1);
   animation: coopedSlideUp 0.4s ease;
 }
 
@@ -490,13 +583,14 @@
   align-items: center;
   justify-content: center;
   padding: 25px 15px;
-  border: 2px solid #e0e0e0;
-  border-radius: 15px;
-  background: white;
+  border: 2px solid #000;
+  border-radius: 16px;
+  background: #ffe5cc;
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 14px;
   color: #666;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 1);
 }
 
 .cooped-interval-btn:hover {
@@ -507,7 +601,8 @@
 }
 
 .cooped-interval-btn:active {
-  transform: translateY(-1px);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 1);
+  transform: translate(2px, 2px);
 }
 
 .cooped-interval-time {
@@ -588,4 +683,63 @@
   -moz-user-select: text;
   -ms-user-select: text;
   user-select: text;
+}
+
+/* Card styles with rounded corners, border, and drop shadow */
+.cooped-question,
+.cooped-badge,
+.detective-area,
+.multiple-choice-options .choice-btn {
+  border-radius: 16px;
+  border: 2px solid #000;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 1);
+}
+
+/* Button/interactive element styles */
+button,
+input[type="button"],
+input[type="submit"],
+.cooped-btn,
+.choice-btn {
+  border-radius: 16px;
+  border: 2px solid #000;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 1);
+}
+
+button:active,
+input[type="button"]:active,
+input[type="submit"]:active,
+.cooped-btn:active,
+.choice-btn:active {
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 1);
+  transform: translate(2px, 2px);
+}
+
+/* Override body styling when overlay is active */
+body:has(#cooped-overlay) {
+  overflow: auto !important;
+  scrollbar-width: none !important;
+}
+
+body:has(#cooped-overlay)::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* Change all white backgrounds in modal to cream */
+#cooped-overlay input,
+#cooped-overlay textarea,
+#cooped-overlay button:not(.cooped-btn),
+#cooped-overlay select,
+#cooped-overlay .white-bg,
+#cooped-overlay [style*="background: white"],
+#cooped-overlay [style*="background-color: white"],
+#cooped-overlay [style*="background:#fff"],
+#cooped-overlay [style*="background-color:#fff"] {
+  background-color: #ffe5cc !important;
+}
+
+/* Hide iframes and unwanted elements in the modal */
+#cooped-overlay iframe,
+#cooped-overlay > div:not(.cooped-header):not(.cooped-challenge-content) {
+  display: none !important;
 }

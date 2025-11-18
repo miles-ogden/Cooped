@@ -5,6 +5,14 @@ Cooped is a productivity tool that transforms website blocking into an engaging,
 
 ---
 
+## 🎨 Brand & Design
+
+**See [src/debug/style.md](src/debug/style.md) for the complete "Wake the Flock" brand style guide.**
+
+All new UI components, overlays, and interface elements should follow the guidelines defined in style.md. This includes color palette, typography, texture/visual effects, and the overall rebellious anti-algorithm aesthetic.
+
+---
+
 ## Current Implementation (MVP - Phase 1)
 
 ### Core Features

@@ -872,3 +872,15 @@ export function getRandomVocabularyQuestion() {
 export function getVocabularyQuestionsByDifficulty(difficulty) {
   return vocabularyQuestions.filter(q => q.difficulty === difficulty);
 }
+
+/**
+ * Get a random vocabulary question by difficulty level
+ * @param {number} difficulty - Difficulty level (1-5)
+ * @returns {Object} A random vocabulary question of the specified difficulty
+ */
+export function getRandomVocabQuestionByDifficulty(difficulty) {
+  const filtered = getVocabularyQuestionsByDifficulty(difficulty);
+  if (filtered.length === 0) return getRandomVocabularyQuestion();
+  const randomIndex = Math.floor(Math.random() * filtered.length);
+  return filtered[randomIndex];
+}
