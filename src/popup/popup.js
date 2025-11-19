@@ -292,22 +292,22 @@ function initializeAuthHandlers() {
     }
   });
 
-  // Discord OAuth - Login
-  document.getElementById('discord-login-btn')?.addEventListener('click', async () => {
+  // Apple OAuth - Login
+  document.getElementById('apple-login-btn')?.addEventListener('click', async () => {
     showAuthLoading(true);
     try {
       const { signInWithOAuth } = await import('../logic/supabaseClient.js');
-      const result = await signInWithOAuth('discord');
+      const result = await signInWithOAuth('apple');
 
       if (result.success) {
-        console.log('[POPUP] Discord login successful');
+        console.log('[POPUP] Apple login successful');
         showAuthLoading(false);
         showMainContent();
         initializeScreens();
         showScreen('home');
       } else {
         showAuthLoading(false);
-        showAuthError(result.error || 'Discord sign in failed');
+        showAuthError(result.error || 'Apple sign in failed');
       }
     } catch (err) {
       showAuthLoading(false);
@@ -315,22 +315,22 @@ function initializeAuthHandlers() {
     }
   });
 
-  // Discord OAuth - Signup
-  document.getElementById('discord-signup-btn')?.addEventListener('click', async () => {
+  // Apple OAuth - Signup
+  document.getElementById('apple-signup-btn')?.addEventListener('click', async () => {
     showAuthLoading(true);
     try {
       const { signInWithOAuth } = await import('../logic/supabaseClient.js');
-      const result = await signInWithOAuth('discord');
+      const result = await signInWithOAuth('apple');
 
       if (result.success) {
-        console.log('[POPUP] Discord signup successful');
+        console.log('[POPUP] Apple signup successful');
         showAuthLoading(false);
         showMainContent();
         initializeScreens();
         showScreen('home');
       } else {
         showAuthLoading(false);
-        showAuthError(result.error || 'Discord sign up failed');
+        showAuthError(result.error || 'Apple sign up failed');
       }
     } catch (err) {
       showAuthLoading(false);

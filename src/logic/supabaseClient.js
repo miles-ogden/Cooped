@@ -346,11 +346,16 @@ export async function signInWithOAuth(provider) {
     })
 
     // Build authorization URL
+    let scope = 'openid profile email'
+    if (provider === 'apple') {
+      scope = 'email name'
+    }
+
     const params = new URLSearchParams({
       client_id: SUPABASE_ANON_KEY,
       redirect_uri: `https://${chrome.runtime.id}.chromiumapp.org/`,
       response_type: 'code',
-      scope: provider === 'google' ? 'openid profile email' : 'identify email',
+      scope: scope,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256'
     })
