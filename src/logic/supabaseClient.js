@@ -28,11 +28,18 @@ export async function initializeAuth() {
 
 /**
  * Get current authenticated user
+ * @param {boolean} skipValidation - If true, return session without verifying with server
  */
-export async function getCurrentUser() {
+export async function getCurrentUser(skipValidation = false) {
   try {
     if (!currentSession) {
       return null
+    }
+
+    // If skipValidation is true, return user object with just the session data
+    if (skipValidation) {
+      console.log('[SUPABASE] Returning current session (validation skipped)')
+      return { id: currentSession.user_id || 'unknown' }
     }
 
     // Verify session is still valid by making an auth request
@@ -93,19 +100,25 @@ export async function signUpWithEmail(email, password) {
     // Handle both session structure (with session object) and direct tokens
     const accessToken = data.session?.access_token || data.access_token
     const refreshToken = data.session?.refresh_token || data.refresh_token
+    const userId = data.user?.id || data.session?.user?.id
 
     if (!accessToken) {
       throw new Error('No access token in signup response')
     }
 
-    // Store session
+    if (!userId) {
+      throw new Error('No user ID in signup response')
+    }
+
+    // Store session with user ID for later reference
     currentSession = {
       access_token: accessToken,
-      refresh_token: refreshToken
+      refresh_token: refreshToken,
+      user_id: userId
     }
     await chrome.storage.local.set({ supabase_session: currentSession })
 
-    console.log('[SUPABASE] Sign up successful:', data.user.id)
+    console.log('[SUPABASE] Sign up successful:', userId)
     return { success: true, user: data.user, session: currentSession }
   } catch (err) {
     console.error('[SUPABASE] Sign up error:', err)
@@ -139,10 +152,11 @@ export async function signInWithEmail(email, password) {
       throw new Error(data.message || 'Sign in failed')
     }
 
-    // Store session
+    // Store session with user ID
     currentSession = {
       access_token: data.access_token,
-      refresh_token: data.refresh_token
+      refresh_token: data.refresh_token,
+      user_id: data.user?.id
     }
     await chrome.storage.local.set({ supabase_session: currentSession })
 

@@ -193,9 +193,12 @@ function initializeAuthHandlers() {
       const result = await signInWithEmail(email, password);
 
       if (result.success) {
-        showAuthLoading(false);
         console.log('[POPUP] Login successful');
-        await initializePopup(); // Re-initialize with new session
+        showAuthLoading(false);
+        // Show main content and initialize screens
+        showMainContent();
+        initializeScreens();
+        showScreen('home');
       } else {
         showAuthLoading(false);
         showAuthError(result.error || 'Login failed');
@@ -233,9 +236,12 @@ function initializeAuthHandlers() {
       const result = await signUpWithEmail(email, password);
 
       if (result.success) {
-        showAuthLoading(false);
         console.log('[POPUP] Signup successful');
-        await initializePopup(); // Re-initialize with new session
+        showAuthLoading(false);
+        // Show main content and initialize screens
+        showMainContent();
+        initializeScreens();
+        showScreen('home');
       } else {
         showAuthLoading(false);
         showAuthError(result.error || 'Signup failed');
@@ -254,9 +260,12 @@ function initializeAuthHandlers() {
       const result = await createGuestUser();
 
       if (result.success) {
-        showAuthLoading(false);
         console.log('[POPUP] Guest user created');
-        await initializePopup(); // Re-initialize with new session
+        showAuthLoading(false);
+        // Show main content and initialize screens
+        showMainContent();
+        initializeScreens();
+        showScreen('home');
       } else {
         showAuthLoading(false);
         showAuthError(result.error || 'Guest mode failed');
