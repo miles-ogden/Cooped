@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cooped - Stay Focused</title>
   <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="auth-screen.css">
 </head>
 <body>
   <div class="container">
@@ -26,154 +27,114 @@
     </header>
 
     <!-- Main Content -->
-    <div class="main-content">
-      <!-- Chicken Image -->
-      <div class="chicken-section">
-        <img id="chicken-image" src="../assets/mascot/chicken_basic.png" alt="Cooped Chicken" class="chicken-image">
-      </div>
+    <div class="main-content" style="display: none;">
+      <!-- Screen Container (dynamically swapped content) -->
+      <div id="screen-container"></div>
 
-      <!-- Chicken Name Display -->
-      <div class="chicken-name-display">
-        <span class="chicken-name-text" id="chicken-name-main">Clucky</span>
-      </div>
-
-      <!-- Rank Display (Compact) -->
-      <div class="rank-display">
-        <span class="rank-value" id="current-rank">Egg 🥚</span>
-      </div>
-
-      <!-- XP Section -->
-      <div class="xp-section">
-        <div class="xp-header">
-          <span class="xp-label">Experience Points</span>
-          <span class="xp-value"><span id="current-xp">0</span> / <span id="next-level-xp">100</span></span>
-        </div>
-        <div class="xp-bar">
-          <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
-        </div>
-        <div class="next-stage-info" id="next-stage-info">
-          Next: <strong id="next-stage-name">Chick</strong>
-        </div>
-      </div>
-
-      <!-- Earn More Eggs Button -->
-      <button id="earn-eggs-btn" class="btn-earn-eggs">
-        Earn More Eggs
-      </button>
-
-      <!-- Test Interrupt Sequence Button -->
-      <button id="test-interrupt-btn" class="btn-earn-eggs" style="background-color: #9966cc; margin-top: 10px;">
-        Test
-      </button>
-
-      <!-- Challenge Preview Button (Debug/Design) -->
-      <button id="preview-challenges-btn" class="btn-earn-eggs" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); margin-top: 10px;">
-        🎨 Preview Challenges
-      </button>
+      <!-- Bottom Navigation -->
+      <div id="bottom-nav-container"></div>
     </div>
 
-    <!-- Settings Panel (Hidden by default) -->
-    <div class="settings-panel" id="settings-panel">
-      <button id="close-settings-btn" class="close-settings-btn">✕</button>
-      <h2>Settings</h2>
+  </div>
 
-      <div class="settings-section">
-        <h3>Chicken</h3>
-        <div class="setting-item">
-          <label for="chicken-name-input-settings">Chicken Name</label>
-          <div class="chicken-name-editor">
-            <span id="chicken-name-display-settings" class="chicken-name-display-settings">Clucky</span>
-            <input type="text" id="chicken-name-input-settings" class="chicken-name-input-settings" style="display: none;" maxlength="20">
-          </div>
+  <!-- Auth Screen (shown if not logged in) -->
+  <div id="auth-screen" class="auth-screen" style="display: none;">
+    <div class="auth-container">
+      <!-- Logo/Header -->
+      <div class="auth-header">
+        <h1 class="auth-title">🐔 Cooped</h1>
+        <p class="auth-subtitle">Stay focused, one challenge at a time</p>
+      </div>
+
+      <!-- Login Form -->
+      <div id="login-form" class="auth-form active">
+        <h2>Log In</h2>
+
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" placeholder="your@email.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" required>
+        </div>
+
+        <button id="login-submit-btn" class="btn-primary btn-full">Sign In</button>
+
+        <div class="form-divider">
+          <span>or</span>
+        </div>
+
+        <button id="google-login-btn" class="btn-google">
+          <svg class="google-icon" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+            <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          Sign in with Google
+        </button>
+
+        <div class="auth-footer">
+          <p>Don't have an account? <a href="#" id="switch-to-signup">Create one</a></p>
         </div>
       </div>
 
-      <div class="settings-section">
-        <h3>Blocked Sites</h3>
-        <p class="help-text">Add websites that distract you. Use wildcards like *://www.example.com/*</p>
-        <div class="blocked-sites-list" id="blocked-sites-list"></div>
-        <div class="add-site-form">
-          <input type="text" id="new-site-input" placeholder="*://www.example.com/*">
-          <button id="add-site-btn" class="btn-primary">Add Site</button>
+      <!-- Signup Form -->
+      <div id="signup-form" class="auth-form">
+        <h2>Create Account</h2>
+
+        <div class="form-group">
+          <label for="signup-email">Email</label>
+          <input type="email" id="signup-email" placeholder="your@email.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="signup-password">Password</label>
+          <input type="password" id="signup-password" placeholder="••••••••" minlength="6" required>
+        </div>
+
+        <div class="form-group">
+          <label for="signup-password-confirm">Confirm Password</label>
+          <input type="password" id="signup-password-confirm" placeholder="••••••••" minlength="6" required>
+        </div>
+
+        <button id="signup-submit-btn" class="btn-primary btn-full">Create Account</button>
+
+        <div class="form-divider">
+          <span>or</span>
+        </div>
+
+        <button id="google-signup-btn" class="btn-google">
+          <svg class="google-icon" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+            <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          Sign up with Google
+        </button>
+
+        <div class="auth-footer">
+          <p>Already have an account? <a href="#" id="switch-to-login">Sign in</a></p>
         </div>
       </div>
 
-      <div class="settings-section">
-        <h3>Challenge Settings</h3>
-
-        <div class="setting-item">
-          <label for="difficulty-select">Difficulty</label>
-          <select id="difficulty-select" class="setting-select">
-            <option value="easy">Easy</option>
-            <option value="medium" selected>Medium</option>
-            <option value="hard">Hard</option>
-          </select>
-        </div>
-
-        <div class="setting-item">
-          <label>Challenge Types</label>
-          <div class="checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" class="challenge-type-checkbox" value="math" checked>
-              Math
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" class="challenge-type-checkbox" value="vocabulary" checked>
-              Vocabulary
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" class="challenge-type-checkbox" value="history" checked>
-              History
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" class="challenge-type-checkbox" value="general-knowledge" checked>
-              General Knowledge
-            </label>
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <label class="toggle-label">
-            <input type="checkbox" id="sound-toggle" checked>
-            <span>Enable Sound Effects</span>
-          </label>
-        </div>
-
-        <div class="setting-item">
-          <label class="toggle-label">
-            <input type="checkbox" id="animations-toggle" checked>
-            <span>Enable Animations</span>
-          </label>
-        </div>
+      <!-- Guest Mode -->
+      <div class="guest-section">
+        <p class="guest-text">Want to try it first?</p>
+        <button id="guest-mode-btn" class="btn-guest">Continue as Guest</button>
       </div>
 
-      <div class="settings-section">
-        <h3>Do Not Bother Me</h3>
-        <p class="help-text">Pause challenges across all sites for a set time</p>
-        <div id="do-not-bother-status" style="margin-bottom: 12px; padding: 10px; background: #f5f5f5; border-radius: 6px; display: none;">
-          <p id="do-not-bother-message" style="margin: 0; font-size: 13px; color: #666;"></p>
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-          <button id="do-not-bother-15" class="btn-secondary" style="width: 100%;">15 min</button>
-          <button id="do-not-bother-30" class="btn-secondary" style="width: 100%;">30 min</button>
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-          <button id="do-not-bother-60" class="btn-secondary" style="width: 100%;">1 hour</button>
-          <button id="do-not-bother-120" class="btn-secondary" style="width: 100%;">2 hours</button>
-        </div>
-        <button id="do-not-bother-disable" class="btn-danger" style="width: 100%; display: none;">Disable Timer</button>
+      <!-- Loading State -->
+      <div id="auth-loading" class="auth-loading" style="display: none;">
+        <div class="spinner"></div>
+        <p>Loading...</p>
       </div>
 
-      <div class="settings-section">
-        <h3>Data Management</h3>
-        <button id="export-data-btn" class="btn-secondary">Export Data</button>
-        <button id="reset-data-btn" class="btn-danger">Reset All Data</button>
-        <button id="hard-reset-btn" class="btn-danger" style="margin-top: 10px;" title="Emergency fix - clears all storage and resets to defaults">Hard Reset (Fix Issues)</button>
-      </div>
-
-      <div class="settings-footer">
-        <p>Cooped v1.0.0</p>
-      </div>
+      <!-- Error Message -->
+      <div id="auth-error" class="auth-error" style="display: none;"></div>
     </div>
   </div>
 
