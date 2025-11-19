@@ -14,14 +14,24 @@ export class CoopCreationModal {
     this.coopData = {
       name: '',
       description: '',
-      maxMembers: 8,
+      maxMembers: 10,
       isPublic: true,
       hardcoreModeEnabled: false,
-      sideQuestsEnabled: true,
-      sideQuestTopics: [],
+      blockerQuestionType: 'general', // general, math, history, vocab
+      sideQuestsEnabled: false,
+      sideQuestCategory: 'learning', // learning, fun, random
+      sideQuestTopics: [], // selected topics
       sideQuestFrequency: 'daily',
       sideQuestFrequencyValue: 1
     };
+
+    // Topic definitions
+    this.questTopics = {
+      learning: ['General Knowledge', 'Math', 'History', 'Vocabulary'],
+      fun: ['Trivia', 'Sports', 'Movies & Media', 'Pop Culture'],
+      random: ['Real Life Events']
+    };
+
     console.log('[COOP_CREATION] Initialized');
   }
 
@@ -108,8 +118,6 @@ export class CoopCreationModal {
    * STEP 2: Settings & Side Quests
    */
   renderStep2() {
-    const topicsHTML = this.renderSideQuestTopics();
-
     return `
       <div class="coop-creation-modal">
         <div class="modal-header">
@@ -118,9 +126,11 @@ export class CoopCreationModal {
         </div>
 
         <div class="modal-content">
+          <!-- Coop Settings Section -->
           <div class="settings-section">
             <h3>Coop Settings</h3>
 
+            <!-- Max Members -->
             <div class="form-group">
               <label for="max-members">Max Members</label>
               <div class="radio-group">
@@ -129,20 +139,21 @@ export class CoopCreationModal {
                   4
                 </label>
                 <label class="radio-label">
+                  <input type="radio" name="max-members" value="6" ${this.coopData.maxMembers === 6 ? 'checked' : ''}>
+                  6
+                </label>
+                <label class="radio-label">
                   <input type="radio" name="max-members" value="8" ${this.coopData.maxMembers === 8 ? 'checked' : ''}>
                   8
                 </label>
                 <label class="radio-label">
-                  <input type="radio" name="max-members" value="12" ${this.coopData.maxMembers === 12 ? 'checked' : ''}>
-                  12
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="max-members" value="16" ${this.coopData.maxMembers === 16 ? 'checked' : ''}>
-                  16
+                  <input type="radio" name="max-members" value="10" ${this.coopData.maxMembers === 10 ? 'checked' : ''}>
+                  10
                 </label>
               </div>
             </div>
 
+            <!-- Public/Private -->
             <div class="form-group">
               <label>Public/Private</label>
               <div class="radio-group">
@@ -157,6 +168,7 @@ export class CoopCreationModal {
               </div>
             </div>
 
+            <!-- Hardcore Mode -->
             <div class="form-group">
               <label class="toggle-label">
                 <input type="checkbox" id="hardcore-mode-toggle" ${this.coopData.hardcoreModeEnabled ? 'checked' : ''}>
@@ -166,6 +178,21 @@ export class CoopCreationModal {
             </div>
           </div>
 
+          <!-- Blocker Questions Section -->
+          <div class="settings-section">
+            <h3>Blocker Questions</h3>
+            <div class="form-group">
+              <label for="blocker-type">Question Type</label>
+              <select id="blocker-type" class="form-select">
+                <option value="general" ${this.coopData.blockerQuestionType === 'general' ? 'selected' : ''}>General Knowledge (Default)</option>
+                <option value="math" ${this.coopData.blockerQuestionType === 'math' ? 'selected' : ''}>Math</option>
+                <option value="history" ${this.coopData.blockerQuestionType === 'history' ? 'selected' : ''}>History</option>
+                <option value="vocab" ${this.coopData.blockerQuestionType === 'vocab' ? 'selected' : ''}>Vocabulary</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Side Quests Section -->
           <div class="settings-section">
             <h3>Side Quests</h3>
 
@@ -178,51 +205,30 @@ export class CoopCreationModal {
 
             <div id="side-quests-options" style="${!this.coopData.sideQuestsEnabled ? 'display: none;' : ''}">
               <div class="form-group">
-                <label>Topics (select multiple)</label>
-                ${topicsHTML}
+                <label for="side-quest-category">Quest Category</label>
+                <select id="side-quest-category" class="form-select">
+                  <option value="learning" ${this.coopData.sideQuestCategory === 'learning' ? 'selected' : ''}>Learning</option>
+                  <option value="fun" ${this.coopData.sideQuestCategory === 'fun' ? 'selected' : ''}>Fun</option>
+                  <option value="random" ${this.coopData.sideQuestCategory === 'random' ? 'selected' : ''}>Random</option>
+                </select>
+              </div>
+
+              <!-- Topic Selection Menu -->
+              <div id="topic-selection" class="form-group topic-selection-menu">
+                <label>Topics</label>
+                ${this.renderTopicCheckboxes()}
               </div>
 
               <div class="form-group">
-                <label>Frequency</label>
-                <div class="frequency-options">
-                  <div class="frequency-group">
-                    <input type="radio" name="frequency" value="daily" id="freq-daily" ${this.coopData.sideQuestFrequency === 'daily' ? 'checked' : ''}>
-                    <label for="freq-daily">Daily</label>
-                    <div class="frequency-sub" id="daily-options" style="${this.coopData.sideQuestFrequency === 'daily' ? '' : 'display: none;'}">
-                      <label class="radio-label">
-                        <input type="radio" name="daily-frequency" value="1" ${this.coopData.sideQuestFrequencyValue === 1 ? 'checked' : ''}>
-                        Once per day
-                      </label>
-                      <label class="radio-label">
-                        <input type="radio" name="daily-frequency" value="2" ${this.coopData.sideQuestFrequencyValue === 2 ? 'checked' : ''}>
-                        Twice per day
-                      </label>
-                      <label class="radio-label">
-                        <input type="radio" name="daily-frequency" value="3" ${this.coopData.sideQuestFrequencyValue === 3 ? 'checked' : ''}>
-                        3 times per day
-                      </label>
-                    </div>
-                  </div>
-
-                  <div class="frequency-group">
-                    <input type="radio" name="frequency" value="weekly" id="freq-weekly" ${this.coopData.sideQuestFrequency === 'weekly' ? 'checked' : ''}>
-                    <label for="freq-weekly">Weekly</label>
-                    <div class="frequency-sub" id="weekly-options" style="${this.coopData.sideQuestFrequency === 'weekly' ? '' : 'display: none;'}">
-                      <label class="radio-label">
-                        <input type="radio" name="weekly-frequency" value="1" ${this.coopData.sideQuestFrequencyValue === 1 ? 'checked' : ''}>
-                        Once per week
-                      </label>
-                      <label class="radio-label">
-                        <input type="radio" name="weekly-frequency" value="2" ${this.coopData.sideQuestFrequencyValue === 2 ? 'checked' : ''}>
-                        Bi-weekly
-                      </label>
-                      <label class="radio-label">
-                        <input type="radio" name="weekly-frequency" value="3" ${this.coopData.sideQuestFrequencyValue === 3 ? 'checked' : ''}>
-                        3 times per week
-                      </label>
-                    </div>
-                  </div>
-                </div>
+                <label for="side-quest-frequency">Frequency</label>
+                <select id="side-quest-frequency" class="form-select">
+                  <option value="daily-1" ${this.coopData.sideQuestFrequency === 'daily' && this.coopData.sideQuestFrequencyValue === 1 ? 'selected' : ''}>Once per day</option>
+                  <option value="daily-2" ${this.coopData.sideQuestFrequency === 'daily' && this.coopData.sideQuestFrequencyValue === 2 ? 'selected' : ''}>Twice per day</option>
+                  <option value="daily-3" ${this.coopData.sideQuestFrequency === 'daily' && this.coopData.sideQuestFrequencyValue === 3 ? 'selected' : ''}>3 times per day</option>
+                  <option value="weekly-1" ${this.coopData.sideQuestFrequency === 'weekly' && this.coopData.sideQuestFrequencyValue === 1 ? 'selected' : ''}>Once per week</option>
+                  <option value="weekly-2" ${this.coopData.sideQuestFrequency === 'weekly' && this.coopData.sideQuestFrequencyValue === 2 ? 'selected' : ''}>Bi-weekly</option>
+                  <option value="weekly-3" ${this.coopData.sideQuestFrequency === 'weekly' && this.coopData.sideQuestFrequencyValue === 3 ? 'selected' : ''}>3 times per week</option>
+                </select>
               </div>
             </div>
           </div>
@@ -236,42 +242,25 @@ export class CoopCreationModal {
     `;
   }
 
+
   /**
-   * Render side quest topic tree
+   * Render topic checkboxes based on selected category
    */
-  renderSideQuestTopics() {
-    const categories = {
-      'Learning': ['Math', 'Science', 'History', 'Vocabulary'],
-      'Fun': ['Trivia', 'Sports', 'Movies & Media', 'Pop Culture'],
-      'Random': ['Real Life Events']
-    };
+  renderTopicCheckboxes() {
+    const category = this.coopData.sideQuestCategory;
+    const topics = this.questTopics[category] || [];
 
-    let html = '<div class="topic-tree">';
-
-    for (const [category, topics] of Object.entries(categories)) {
+    let html = '<div class="topic-checkboxes">';
+    topics.forEach(topic => {
+      const isChecked = this.coopData.sideQuestTopics.includes(topic);
       html += `
-        <div class="topic-category">
-          <input type="checkbox" class="category-checkbox" value="${category}" id="cat-${category}">
-          <label for="cat-${category}" class="category-label">${category}</label>
-          <div class="topic-items">
+        <label class="topic-checkbox">
+          <input type="checkbox" class="topic-item" value="${topic}" ${isChecked ? 'checked' : ''}>
+          <span class="checkbox-mark">✓</span>
+          <span class="topic-label">${topic}</span>
+        </label>
       `;
-
-      topics.forEach(topic => {
-        const isChecked = this.coopData.sideQuestTopics.includes(topic);
-        html += `
-          <label class="topic-checkbox">
-            <input type="checkbox" value="${topic}" class="topic-item" ${isChecked ? 'checked' : ''}>
-            ${topic}
-          </label>
-        `;
-      });
-
-      html += `
-          </div>
-        </div>
-      `;
-    }
-
+    });
     html += '</div>';
     return html;
   }
@@ -394,46 +383,43 @@ export class CoopCreationModal {
       this.coopData.hardcoreModeEnabled = e.target.checked;
     });
 
+    // Blocker question type dropdown
+    document.getElementById('blocker-type')?.addEventListener('change', (e) => {
+      this.coopData.blockerQuestionType = e.target.value;
+    });
+
     // Side quests toggle
     document.getElementById('side-quests-toggle')?.addEventListener('change', (e) => {
       this.coopData.sideQuestsEnabled = e.target.checked;
       document.getElementById('side-quests-options').style.display = e.target.checked ? 'block' : 'none';
     });
 
-    // Topic checkboxes
-    document.querySelectorAll('.topic-item').forEach(checkbox => {
-      checkbox.addEventListener('change', () => {
-        this.coopData.sideQuestTopics = Array.from(
-          document.querySelectorAll('.topic-item:checked')
-        ).map(el => el.value);
-      });
+    // Side quest category dropdown - rerenders the topic checkboxes
+    document.getElementById('side-quest-category')?.addEventListener('change', (e) => {
+      this.coopData.sideQuestCategory = e.target.value;
+      this.coopData.sideQuestTopics = []; // reset topics when category changes
+
+      // Re-render the topic checkboxes for the new category
+      const topicSelectionDiv = document.getElementById('topic-selection');
+      if (topicSelectionDiv) {
+        topicSelectionDiv.innerHTML = `
+          <label>Topics</label>
+          ${this.renderTopicCheckboxes()}
+        `;
+
+        // Re-attach event listeners to the new checkboxes
+        this.attachTopicListeners();
+      }
     });
 
-    // Frequency radio buttons
-    document.querySelectorAll('input[name="frequency"]').forEach(radio => {
-      radio.addEventListener('change', (e) => {
-        this.coopData.sideQuestFrequency = e.target.value;
-        document.getElementById('daily-options').style.display = e.target.value === 'daily' ? 'block' : 'none';
-        document.getElementById('weekly-options').style.display = e.target.value === 'weekly' ? 'block' : 'none';
-      });
-    });
+    // Attach initial topic listeners
+    this.attachTopicListeners();
 
-    // Daily frequency
-    document.querySelectorAll('input[name="daily-frequency"]').forEach(radio => {
-      radio.addEventListener('change', (e) => {
-        if (this.coopData.sideQuestFrequency === 'daily') {
-          this.coopData.sideQuestFrequencyValue = parseInt(e.target.value);
-        }
-      });
-    });
-
-    // Weekly frequency
-    document.querySelectorAll('input[name="weekly-frequency"]').forEach(radio => {
-      radio.addEventListener('change', (e) => {
-        if (this.coopData.sideQuestFrequency === 'weekly') {
-          this.coopData.sideQuestFrequencyValue = parseInt(e.target.value);
-        }
-      });
+    // Side quest frequency dropdown
+    document.getElementById('side-quest-frequency')?.addEventListener('change', (e) => {
+      const [frequency, value] = e.target.value.split('-');
+      this.coopData.sideQuestFrequency = frequency;
+      this.coopData.sideQuestFrequencyValue = parseInt(value);
     });
 
     // Navigation
@@ -445,6 +431,22 @@ export class CoopCreationModal {
     document.getElementById('next-btn')?.addEventListener('click', () => {
       this.currentStep = 3;
       this.renderStep();
+    });
+  }
+
+  /**
+   * Attach listeners to topic checkboxes
+   */
+  attachTopicListeners() {
+    document.querySelectorAll('.topic-item').forEach(checkbox => {
+      checkbox.addEventListener('change', () => {
+        // Get all checked topics
+        this.coopData.sideQuestTopics = Array.from(
+          document.querySelectorAll('.topic-item:checked')
+        ).map(el => el.value);
+
+        console.log('[COOP_CREATION] Selected topics:', this.coopData.sideQuestTopics);
+      });
     });
   }
 
@@ -487,7 +489,7 @@ export class CoopCreationModal {
     try {
       console.log('[COOP_CREATION] Creating coop:', this.coopData);
 
-      const user = await getCurrentUser();
+      const user = await getCurrentUser(true);
       if (!user) {
         alert('Not authenticated');
         return;
@@ -507,8 +509,9 @@ export class CoopCreationModal {
         coop_level: 1,
         total_xp: 0,
         hardcore_mode_enabled: this.coopData.hardcoreModeEnabled,
+        blocker_question_type: this.coopData.blockerQuestionType,
         side_quests_enabled: this.coopData.sideQuestsEnabled,
-        side_quest_topics: this.coopData.sideQuestTopics,
+        side_quest_category: this.coopData.sideQuestCategory,
         side_quest_frequency: this.coopData.sideQuestFrequency,
         side_quest_frequency_value: this.coopData.sideQuestFrequencyValue,
         coop_wars_won: 0,

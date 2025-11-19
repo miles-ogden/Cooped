@@ -114,11 +114,6 @@ function initializeScreens() {
  * Show a specific screen
  */
 async function showScreen(screenName) {
-  if (screenName === currentScreen) {
-    console.log('[POPUP] Already on screen:', screenName);
-    return;
-  }
-
   console.log('[POPUP] Switching to screen:', screenName);
   currentScreen = screenName;
 
@@ -137,6 +132,7 @@ async function showScreen(screenName) {
         await settingsScreen.show();
         break;
       case 'skins':
+      case 'cosmetics':
         await cosmeticsScreen.show();
         break;
       case 'coop-creation':
@@ -238,10 +234,8 @@ function initializeAuthHandlers() {
       if (result.success) {
         console.log('[POPUP] Signup successful');
         showAuthLoading(false);
-        // Show main content and initialize screens
-        showMainContent();
-        initializeScreens();
-        showScreen('home');
+        // Show email confirmation screen
+        showEmailConfirmation(email);
       } else {
         showAuthLoading(false);
         showAuthError(result.error || 'Signup failed');
@@ -252,29 +246,98 @@ function initializeAuthHandlers() {
     }
   });
 
-  // Guest mode
-  document.getElementById('guest-mode-btn')?.addEventListener('click', async () => {
+  // Google OAuth - Login
+  document.getElementById('google-login-btn')?.addEventListener('click', async () => {
     showAuthLoading(true);
     try {
-      const { createGuestUser } = await import('../logic/authManager.js');
-      const result = await createGuestUser();
+      const { signInWithOAuth } = await import('../logic/supabaseClient.js');
+      const result = await signInWithOAuth('google');
 
       if (result.success) {
-        console.log('[POPUP] Guest user created');
+        console.log('[POPUP] Google login successful');
         showAuthLoading(false);
-        // Show main content and initialize screens
         showMainContent();
         initializeScreens();
         showScreen('home');
       } else {
         showAuthLoading(false);
-        showAuthError(result.error || 'Guest mode failed');
+        showAuthError(result.error || 'Google sign in failed');
       }
     } catch (err) {
       showAuthLoading(false);
       showAuthError(err.message);
     }
   });
+
+  // Google OAuth - Signup
+  document.getElementById('google-signup-btn')?.addEventListener('click', async () => {
+    showAuthLoading(true);
+    try {
+      const { signInWithOAuth } = await import('../logic/supabaseClient.js');
+      const result = await signInWithOAuth('google');
+
+      if (result.success) {
+        console.log('[POPUP] Google signup successful');
+        showAuthLoading(false);
+        showMainContent();
+        initializeScreens();
+        showScreen('home');
+      } else {
+        showAuthLoading(false);
+        showAuthError(result.error || 'Google sign up failed');
+      }
+    } catch (err) {
+      showAuthLoading(false);
+      showAuthError(err.message);
+    }
+  });
+
+  // Discord OAuth - Login
+  document.getElementById('discord-login-btn')?.addEventListener('click', async () => {
+    showAuthLoading(true);
+    try {
+      const { signInWithOAuth } = await import('../logic/supabaseClient.js');
+      const result = await signInWithOAuth('discord');
+
+      if (result.success) {
+        console.log('[POPUP] Discord login successful');
+        showAuthLoading(false);
+        showMainContent();
+        initializeScreens();
+        showScreen('home');
+      } else {
+        showAuthLoading(false);
+        showAuthError(result.error || 'Discord sign in failed');
+      }
+    } catch (err) {
+      showAuthLoading(false);
+      showAuthError(err.message);
+    }
+  });
+
+  // Discord OAuth - Signup
+  document.getElementById('discord-signup-btn')?.addEventListener('click', async () => {
+    showAuthLoading(true);
+    try {
+      const { signInWithOAuth } = await import('../logic/supabaseClient.js');
+      const result = await signInWithOAuth('discord');
+
+      if (result.success) {
+        console.log('[POPUP] Discord signup successful');
+        showAuthLoading(false);
+        showMainContent();
+        initializeScreens();
+        showScreen('home');
+      } else {
+        showAuthLoading(false);
+        showAuthError(result.error || 'Discord sign up failed');
+      }
+    } catch (err) {
+      showAuthLoading(false);
+      showAuthError(err.message);
+    }
+  });
+
 }
 
 /**
@@ -308,6 +371,69 @@ function showAuthError(message) {
 }
 
 /**
+ * Show email confirmation screen
+ */
+function showEmailConfirmation(email) {
+  const loginForm = document.getElementById('login-form');
+  const signupForm = document.getElementById('signup-form');
+  const confirmForm = document.getElementById('email-confirmation-form');
+
+  loginForm.classList.remove('active');
+  signupForm.classList.remove('active');
+  confirmForm.classList.add('active');
+
+  // Display the email address
+  document.getElementById('confirmation-email').textContent = email;
+
+  // Handle "I've Confirmed My Email" button
+  document.getElementById('confirm-email-btn')?.addEventListener('click', async () => {
+    showAuthLoading(true);
+    try {
+      // Try to sign in - if email is confirmed, it will succeed
+      const { signInWithEmail } = await import('../logic/supabaseClient.js');
+      const password = document.getElementById('signup-password').value;
+      const result = await signInWithEmail(email, password);
+
+      if (result.success) {
+        console.log('[POPUP] Email confirmed and logged in');
+        showAuthLoading(false);
+        confirmForm.classList.remove('active');
+        showMainContent();
+        initializeScreens();
+        showScreen('home');
+      } else {
+        showAuthLoading(false);
+        showAuthError('Email not confirmed yet. Please check your inbox and click the confirmation link.');
+      }
+    } catch (err) {
+      showAuthLoading(false);
+      showAuthError(err.message);
+    }
+  });
+
+  // Handle resend email
+  document.getElementById('resend-email-btn')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    console.log('[POPUP] Resend email clicked');
+    showAuthError('Check your email for a new confirmation link');
+  });
+
+  // Add a link to go back to login
+  const footer = confirmForm.querySelector('.confirmation-footer');
+  if (footer && !footer.querySelector('#back-to-login-btn')) {
+    const backLink = document.createElement('p');
+    backLink.innerHTML = '<a href="#" id="back-to-login-btn">Back to login</a>';
+    footer.appendChild(backLink);
+
+    document.getElementById('back-to-login-btn')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      confirmForm.classList.remove('active');
+      loginForm.classList.add('active');
+    });
+  }
+}
+
+/**
  * Handle extension toggle (pause/resume challenges)
  */
 document.getElementById('extension-toggle')?.addEventListener('change', (e) => {
@@ -330,7 +456,7 @@ document.getElementById('settings-btn')?.addEventListener('click', () => {
  */
 async function updateEggDisplay() {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(true);
     if (user) {
       const { querySelect } = await import('../logic/supabaseClient.js');
       const userProfile = await querySelect('users', {

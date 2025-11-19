@@ -169,7 +169,24 @@
   border-color: #667eea;
 }
 
-.google-icon {
+.btn-discord {
+  background: #5865F2;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 2px solid #5865F2;
+  margin-bottom: 16px;
+}
+
+.btn-discord:hover {
+  background: #4752C4;
+  border-color: #4752C4;
+}
+
+.google-icon,
+.discord-icon {
   width: 18px;
   height: 18px;
 }
@@ -304,6 +321,51 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Email Confirmation Styles */
+.confirmation-message {
+  font-size: 14px;
+  color: #333;
+  margin: 0 0 12px 0;
+  text-align: center;
+}
+
+.confirmation-message strong {
+  color: #667eea;
+  word-break: break-all;
+}
+
+.confirmation-text {
+  font-size: 13px;
+  color: #999;
+  margin: 0 0 20px 0;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.confirmation-icon {
+  font-size: 48px;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.confirmation-footer {
+  font-size: 12px;
+  color: #999;
+  margin-top: 16px;
+  text-align: center;
+}
+
+.confirmation-footer a {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirmation-footer a:hover {
+  text-decoration: underline;
 }
 
 /* Responsive */

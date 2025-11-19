@@ -3,9 +3,7 @@
  * Displays chicken, XP, level, eggs, and coop/cosmetics access
  */
 
-import { getUserXPStatus } from '../../logic/xpManager.js';
-import { getCurrentUser } from '../../logic/supabaseClient.js';
-import { querySelect } from '../../logic/supabaseClient.js';
+import { getCurrentUser, querySelect } from '../../logic/supabaseClient.js';
 
 export class HomeScreen {
   constructor() {
@@ -21,8 +19,8 @@ export class HomeScreen {
     try {
       console.log('[HOME_SCREEN] Loading user data...');
 
-      // Get authenticated user
-      const user = await getCurrentUser();
+      // Get authenticated user (skip token validation since we already have session)
+      const user = await getCurrentUser(true);
       if (!user) {
         console.error('[HOME_SCREEN] No authenticated user');
         return;
@@ -62,32 +60,55 @@ export class HomeScreen {
    * Render home screen with user data
    */
   render() {
-    // Update chicken name
-    const nameDisplay = document.getElementById('chicken-name-main');
-    if (nameDisplay) {
-      nameDisplay.textContent = this.userProfile.name || 'Clucky';
+    const screenContainer = document.getElementById('screen-container');
+    if (!screenContainer) {
+      console.warn('[HOME_SCREEN] Screen container not found');
+      return;
     }
 
-    // Update level (can be shown next to name or elsewhere)
-    const levelDisplay = document.querySelector('[data-level]');
-    if (levelDisplay) {
-      levelDisplay.textContent = `Level ${this.userProfile.level || 1}`;
-    }
+    const xpPercent = this.getXPProgressPercent(this.userProfile.xp_total || 0);
+    const level = this.userProfile.level || 1;
+    const name = this.userProfile.name || 'Clucky';
 
-    // Update XP bar
-    const xpBar = document.querySelector('[data-xp-bar]');
-    if (xpBar) {
-      const percent = this.getXPProgressPercent(
-        this.userProfile.xp_total || 0
-      );
-      xpBar.style.width = `${percent}%`;
-    }
+    const html = `
+      <div class="home-screen">
+        <!-- Chicken Display Section (Large Center) -->
+        <div class="chicken-display-section">
+          <div class="chicken-container">
+            <img src="../assets/mascot/chicken_basic.png" alt="Chicken" class="chicken-image">
+            <div class="chicken-name">${name}</div>
+            <div class="chicken-accessories">
+              ${this.getEquippedAccessoriesDisplay()}
+            </div>
+          </div>
+        </div>
 
-    // Update eggs display
-    const eggsDisplay = document.querySelector('[data-eggs-count]');
-    if (eggsDisplay) {
-      eggsDisplay.textContent = this.userProfile.eggs || 0;
-    }
+        <!-- Level and XP Bar Section -->
+        <div class="stats-section">
+          <div class="level-display">
+            <span class="level-label">Level</span>
+            <span class="level-value">${level}</span>
+          </div>
+
+          <!-- XP Progress Bar -->
+          <div class="xp-bar-container">
+            <div class="xp-bar-label">Experience</div>
+            <div class="xp-bar-background">
+              <div class="xp-bar-fill" style="width: ${xpPercent}%"></div>
+            </div>
+            <div class="xp-bar-text">${Math.floor(xpPercent)}% to next level</div>
+          </div>
+        </div>
+
+        <!-- Coop Actions Section -->
+        <div class="coop-actions-section">
+          <div id="coop-action-buttons" class="coop-action-buttons"></div>
+        </div>
+      </div>
+    `;
+
+    screenContainer.innerHTML = html;
+    this.attachEventListeners();
 
     // Update background based on coop
     this.updateBackground();
@@ -96,7 +117,41 @@ export class HomeScreen {
     this.updateCoopButtons();
 
     // Log render complete
-    console.log('[HOME_SCREEN] Rendered home screen for:', this.userProfile.name);
+    console.log('[HOME_SCREEN] Rendered home screen for:', name);
+  }
+
+  /**
+   * Get equipped accessories display
+   */
+  getEquippedAccessoriesDisplay() {
+    const hat = this.userProfile.equipped_accessories?.[0] || 'none';
+    const scarf = this.userProfile.equipped_accessories?.[1] || 'none';
+
+    const accessories = [];
+    if (hat !== 'none') {
+      const hatEmojis = {
+        'top_hat': '🎩',
+        'wizard_hat': '🧙',
+        'crown': '👑'
+      };
+      accessories.push(hatEmojis[hat] || '⭕');
+    }
+    if (scarf !== 'none') {
+      const scarfEmojis = {
+        'red_scarf': '🔴',
+        'gold_scarf': '✨'
+      };
+      accessories.push(scarfEmojis[scarf] || '⭕');
+    }
+
+    return accessories.length > 0 ? `<span class="accessories">${accessories.join(' ')}</span>` : '';
+  }
+
+  /**
+   * Attach event listeners to home screen
+   */
+  attachEventListeners() {
+    // Event listeners are attached to bottom nav buttons, not needed here
   }
 
   /**

@@ -44,7 +44,7 @@ export class CosmeticsScreen {
     try {
       console.log('[COSMETICS_SCREEN] Loading cosmetics...');
 
-      const user = await getCurrentUser();
+      const user = await getCurrentUser(true);
       if (!user) {
         console.error('[COSMETICS_SCREEN] No authenticated user');
         return;
@@ -77,12 +77,11 @@ export class CosmeticsScreen {
     }
 
     const skinsHtml = this.renderSkins();
-    const accessoriesHtml = this.renderAccessories();
 
     const html = `
       <div class="cosmetics-screen">
         <div class="cosmetics-header">
-          <h2>Cosmetics</h2>
+          <h2>Skins & Cosmetics</h2>
           <button class="btn-icon" id="back-btn" title="Back to home">✕</button>
         </div>
 

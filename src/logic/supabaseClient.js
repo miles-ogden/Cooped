@@ -328,3 +328,153 @@ export async function queryUpdate(table, updates, filters) {
     throw err
   }
 }
+
+/**
+ * Sign in with OAuth provider (Google, Discord, etc.)
+ * For Chrome extension: opens provider login in new tab/window and handles callback
+ */
+export async function signInWithOAuth(provider) {
+  try {
+    // Generate PKCE challenge for security
+    const codeVerifier = generateRandomString(64)
+    const codeChallenge = await generateCodeChallenge(codeVerifier)
+
+    // Store PKCE values for later validation
+    await chrome.storage.local.set({
+      oauth_code_verifier: codeVerifier,
+      oauth_provider: provider
+    })
+
+    // Build authorization URL
+    const params = new URLSearchParams({
+      client_id: SUPABASE_ANON_KEY,
+      redirect_uri: `https://${chrome.runtime.id}.chromiumapp.org/`,
+      response_type: 'code',
+      scope: provider === 'google' ? 'openid profile email' : 'identify email',
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256'
+    })
+
+    const authUrl = `${SUPABASE_URL}/auth/v1/authorize?${params.toString()}`
+
+    // Open auth in new window
+    return new Promise((resolve) => {
+      chrome.windows.create({ url: authUrl, type: 'popup', width: 500, height: 600 }, (window) => {
+        if (!window) {
+          resolve({ success: false, error: 'Failed to open auth window' })
+          return
+        }
+
+        // Listen for OAuth callback
+        const handleMessage = (message, sender) => {
+          if (message.type === 'OAUTH_CALLBACK' && message.code) {
+            chrome.runtime.onMessage.removeListener(handleMessage)
+            exchangeCodeForSession(message.code, codeVerifier, provider).then(result => {
+              resolve(result)
+            })
+          }
+        }
+
+        chrome.runtime.onMessage.addListener(handleMessage)
+
+        // Timeout after 5 minutes
+        setTimeout(() => {
+          chrome.runtime.onMessage.removeListener(handleMessage)
+          resolve({ success: false, error: 'OAuth timeout' })
+        }, 300000)
+      })
+    })
+  } catch (err) {
+    console.error('[SUPABASE] OAuth error:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * Exchange OAuth code for session
+ */
+async function exchangeCodeForSession(code, codeVerifier, provider) {
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/auth/v1/token?grant_type=pkce`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          code,
+          code_verifier: codeVerifier
+        })
+      }
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Token exchange failed')
+    }
+
+    // Store session with user ID
+    currentSession = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      user_id: data.user?.id
+    }
+    await chrome.storage.local.set({ supabase_session: currentSession })
+
+    // Create user profile if new user
+    const { queryInsert } = await import('./authManager.js')
+    try {
+      await queryInsert('users', [{
+        id: data.user.id,
+        auth_provider: provider,
+        xp_total: 0,
+        level: 1,
+        eggs: 0,
+        streak_days: 0,
+        last_stim_date: null,
+        hearts_remaining_today: 3,
+        skip_until: null,
+        coop_id: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }])
+    } catch (err) {
+      // User profile might already exist, that's okay
+      console.log('[SUPABASE] User profile already exists or creation skipped')
+    }
+
+    console.log('[SUPABASE] OAuth sign in successful:', data.user.id)
+    return { success: true, user: data.user }
+  } catch (err) {
+    console.error('[SUPABASE] Token exchange error:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * Generate random string for PKCE
+ */
+function generateRandomString(length) {
+  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'
+  let result = ''
+  for (let i = 0; i < length; i++) {
+    result += charset.charAt(Math.floor(Math.random() * charset.length))
+  }
+  return result
+}
+
+/**
+ * Generate SHA256 code challenge from verifier
+ */
+async function generateCodeChallenge(codeVerifier) {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(codeVerifier)
+  const hash = await crypto.subtle.digest('SHA-256', data)
+  return btoa(String.fromCharCode.apply(null, new Uint8Array(hash)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '')
+}

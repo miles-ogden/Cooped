@@ -724,3 +724,391 @@ body.night-mode .xp-value {
 body.night-mode .btn-earn-eggs {
   display: none;
 }
+
+/* Home Screen Styles */
+.home-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 20px;
+}
+
+.chicken-display-section {
+  width: 100%;
+  padding: 20px;
+  text-align: center;
+}
+
+.chicken-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.chicken-image {
+  width: 140px;
+  height: 140px;
+  object-fit: contain;
+  display: block;
+}
+
+.chicken-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #333;
+  margin-top: 10px;
+}
+
+.chicken-accessories {
+  font-size: 24px;
+  margin-top: 8px;
+}
+
+.accessories {
+  display: inline-block;
+  word-spacing: 8px;
+}
+
+/* Stats Section */
+.stats-section {
+  width: 100%;
+  max-width: 340px;
+  padding: 0 20px;
+}
+
+.level-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.level-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.level-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #667eea;
+}
+
+/* XP Bar Container */
+.xp-bar-container {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.xp-bar-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.xp-bar-background {
+  width: 100%;
+  height: 12px;
+  background: #e0e0e0;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 6px;
+  transition: width 0.4s ease;
+}
+
+.xp-bar-text {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+}
+
+/* Coop Actions Section */
+.coop-actions-section {
+  width: 100%;
+  padding: 0 20px;
+}
+
+.coop-action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.coop-action-buttons button {
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2px solid #e0e0e0;
+  transition: all 0.2s ease;
+}
+
+.coop-action-buttons .btn-primary {
+  background: white;
+  color: black;
+  border: 2px solid black;
+}
+
+.coop-action-buttons .btn-primary:hover {
+  background: #f0f0f0;
+}
+
+.coop-action-buttons .btn-secondary {
+  background: #f5f5f5;
+  color: #666;
+  border: 2px solid #e0e0e0;
+}
+
+.coop-action-buttons .btn-secondary:hover {
+  background: #e8e8e8;
+  border-color: #bdbdbd;
+}
+
+/* Shortcuts Section */
+.shortcuts-section {
+  width: 100%;
+  padding: 0 20px;
+  margin-top: 10px;
+}
+
+.shortcut-btn {
+  width: 100%;
+  padding: 12px;
+  background: #f9f9f9;
+  color: #333;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.shortcut-btn:hover {
+  background: #f0f0f0;
+  border-color: #bdbdbd;
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+  display: flex;
+  justify-content: space-around;
+  gap: 10px;
+  padding: 12px 20px;
+  border-top: 1px solid #e0e0e0;
+  background: white;
+}
+
+.nav-tab {
+  flex: 1;
+  padding: 10px 12px;
+  background: #f5f5f5;
+  color: #666;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-tab:hover {
+  background: #e8e8e8;
+}
+
+.nav-tab.active {
+  background: #667eea;
+  color: white;
+}
+
+/* Night Mode adjustments for home screen */
+body.night-mode .chicken-name {
+  color: white;
+}
+
+body.night-mode .level-display {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+body.night-mode .xp-bar-label,
+body.night-mode .xp-bar-text {
+  color: #ccc;
+}
+
+body.night-mode .shortcut-btn {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e0e0e0;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.night-mode .shortcut-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Form Select/Dropdown Styles */
+.form-select {
+  width: 100%;
+  padding: 10px 12px;
+  background: white;
+  color: #333;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.form-select:hover {
+  border-color: #bdbdbd;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-select option {
+  background: white;
+  color: #333;
+  padding: 8px;
+}
+
+/* Night mode adjustments for select */
+body.night-mode .form-select {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e0e0e0;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.night-mode .form-select:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+body.night-mode .form-select option {
+  background: #1a1a3e;
+  color: #e0e0e0;
+}
+
+/* Topic Selection Menu Styles */
+.topic-selection-menu {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.topic-selection-menu label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.topic-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.topic-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 8px 10px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+  user-select: none;
+}
+
+.topic-checkbox:hover {
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.topic-checkbox input.topic-item {
+  display: none;
+}
+
+.checkbox-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #e0e0e0;
+  border-radius: 4px;
+  background: white;
+  transition: all 0.2s ease;
+  color: #667eea;
+  font-size: 12px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.topic-checkbox input.topic-item:checked + .checkbox-mark {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+}
+
+.topic-label {
+  font-size: 13px;
+  color: #333;
+  font-weight: 500;
+  flex: 1;
+}
+
+/* Night mode adjustments for topic selection */
+body.night-mode .topic-selection-menu {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.night-mode .topic-selection-menu label {
+  color: #ccc;
+}
+
+body.night-mode .topic-checkbox:hover {
+  background: rgba(102, 126, 234, 0.15);
+}
+
+body.night-mode .checkbox-mark {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+body.night-mode .topic-checkbox input.topic-item:checked + .checkbox-mark {
+  background: #667eea;
+  border-color: #667eea;
+}
+
+body.night-mode .topic-label {
+  color: #e0e0e0;
+}

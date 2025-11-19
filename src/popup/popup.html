@@ -21,7 +21,7 @@
             <input type="checkbox" id="extension-toggle" checked>
             <span class="slider"></span>
           </label>
-          <button id="settings-btn" class="settings-btn" title="Settings">⚙️</button>
+          <button id="settings-btn" class="settings-btn" title="Settings" data-action="navigate-settings">⚙️</button>
         </div>
       </div>
     </header>
@@ -76,6 +76,13 @@
           Sign in with Google
         </button>
 
+        <button id="discord-login-btn" class="btn-discord">
+          <svg class="discord-icon" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.211.375-.444.865-.607 1.252a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.252.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.612.873-1.256 1.226-1.933.021-.04.001-.088-.041-.104a13.107 13.107 0 0 1-1.872-.892.083.083 0 0 1-.008-.138c.126-.094.252-.192.373-.291a.077.077 0 0 1 .079-.01c3.928 1.793 8.18 1.793 12.062 0a.077.077 0 0 1 .079.009c.121.099.246.198.373.292a.083.083 0 0 1-.006.137 12.265 12.265 0 0 1-1.873.892.083.083 0 0 0-.041.105c.357.675.768 1.32 1.226 1.933a.078.078 0 0 0 .084.028 19.963 19.963 0 0 0 6.002-3.03.077.077 0 0 0 .032-.057c.5-4.761-.838-8.898-3.549-12.55a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-.965-2.157-2.156 0-1.193.964-2.157 2.157-2.157 1.193 0 2.156.964 2.157 2.157 0 1.19-.964 2.156-2.157 2.156zm7.975 0c-1.183 0-2.157-.965-2.157-2.156 0-1.193.964-2.157 2.157-2.157 1.193 0 2.157.964 2.157 2.157 0 1.19-.964 2.156-2.157 2.156z"/>
+          </svg>
+          Sign in with Discord
+        </button>
+
         <div class="auth-footer">
           <p>Don't have an account? <a href="#" id="switch-to-signup">Create one</a></p>
         </div>
@@ -116,16 +123,28 @@
           Sign up with Google
         </button>
 
+        <button id="discord-signup-btn" class="btn-discord">
+          <svg class="discord-icon" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.211.375-.444.865-.607 1.252a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.252.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.612.873-1.256 1.226-1.933.021-.04.001-.088-.041-.104a13.107 13.107 0 0 1-1.872-.892.083.083 0 0 1-.008-.138c.126-.094.252-.192.373-.291a.077.077 0 0 1 .079-.01c3.928 1.793 8.18 1.793 12.062 0a.077.077 0 0 1 .079.009c.121.099.246.198.373.292a.083.083 0 0 1-.006.137 12.265 12.265 0 0 1-1.873.892.083.083 0 0 0-.041.105c.357.675.768 1.32 1.226 1.933a.078.078 0 0 0 .084.028 19.963 19.963 0 0 0 6.002-3.03.077.077 0 0 0 .032-.057c.5-4.761-.838-8.898-3.549-12.55a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-.965-2.157-2.156 0-1.193.964-2.157 2.157-2.157 1.193 0 2.156.964 2.157 2.157 0 1.19-.964 2.156-2.157 2.156zm7.975 0c-1.183 0-2.157-.965-2.157-2.156 0-1.193.964-2.157 2.157-2.157 1.193 0 2.157.964 2.157 2.157 0 1.19-.964 2.156-2.157 2.156z"/>
+          </svg>
+          Sign up with Discord
+        </button>
+
         <div class="auth-footer">
           <p>Already have an account? <a href="#" id="switch-to-login">Sign in</a></p>
         </div>
       </div>
 
-      <!-- Guest Mode -->
-      <div class="guest-section">
-        <p class="guest-text">Want to try it first?</p>
-        <button id="guest-mode-btn" class="btn-guest">Continue as Guest</button>
+      <!-- Email Confirmation Form -->
+      <div id="email-confirmation-form" class="auth-form">
+        <h2>Check Your Email</h2>
+        <p class="confirmation-message">We've sent a confirmation link to <strong id="confirmation-email"></strong></p>
+        <p class="confirmation-text">Click the link in your email to verify your account and start your journey!</p>
+        <div class="confirmation-icon">📬</div>
+        <button id="confirm-email-btn" class="btn-primary btn-full">I've Confirmed My Email</button>
+        <p class="confirmation-footer">Didn't receive an email? Check your spam folder or <a href="#" id="resend-email-btn">resend</a></p>
       </div>
+
 
       <!-- Loading State -->
       <div id="auth-loading" class="auth-loading" style="display: none;">

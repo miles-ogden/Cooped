@@ -19,7 +19,7 @@ export class SettingsScreen {
     try {
       console.log('[SETTINGS_SCREEN] Loading settings...');
 
-      const user = await getCurrentUser();
+      const user = await getCurrentUser(true);
       if (!user) {
         console.error('[SETTINGS_SCREEN] No authenticated user');
         return;

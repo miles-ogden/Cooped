@@ -20,7 +20,7 @@ export class CoopView {
     try {
       console.log('[COOP_VIEW] Loading coop view...');
 
-      this.currentUser = await getCurrentUser();
+      this.currentUser = await getCurrentUser(true);
       if (!this.currentUser) {
         console.error('[COOP_VIEW] No authenticated user');
         return;
