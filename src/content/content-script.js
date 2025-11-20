@@ -528,7 +528,26 @@ function renderVocabularyGameUI(headerEl, contentEl, question) {
 
   submitBtn.addEventListener('click', () => {
     if (selectedWord === question.correctAnswer) {
-      // Correct! Move to next page
+      // Correct! Apply XP and move to next page
+      console.log('[INTERRUPT] Vocabulary challenge answered correctly!');
+      console.log('[INTERRUPT] interruptSequenceUserId:', interruptSequenceUserId);
+      challengeAnsweredCorrectly = true;
+
+      // Apply +20 XP for correct answer (via service worker)
+      if (interruptSequenceUserId) {
+        console.log('[INTERRUPT] Sending +20 XP for vocabulary challenge to service worker');
+        chrome.runtime.sendMessage({ action: 'applyXpEvent', eventType: 'manual_adjustment', metadata: { delta: 20 } }, (response) => {
+          console.log('[INTERRUPT] Vocabulary challenge XP response:', response);
+          if (!response?.success) {
+            console.error('[INTERRUPT] Error applying vocabulary challenge XP:', response?.error);
+          } else {
+            console.log('[INTERRUPT] ✅ Vocabulary challenge XP applied successfully');
+          }
+        });
+      } else {
+        console.warn('[INTERRUPT] ⚠️ Cannot apply vocabulary challenge XP - interruptSequenceUserId not set yet');
+      }
+
       advanceInterruptPageInline();
     } else {
       // Wrong answer
@@ -1118,7 +1137,26 @@ function renderMathGameUI(_, contentEl, question) {
 
   submitBtn.addEventListener('click', () => {
     if (accumulatedEggs === correctAnswer) {
-      // Correct! Move to next page
+      // Correct! Apply XP and move to next page
+      console.log('[INTERRUPT] Math challenge answered correctly!');
+      console.log('[INTERRUPT] interruptSequenceUserId:', interruptSequenceUserId);
+      challengeAnsweredCorrectly = true;
+
+      // Apply +20 XP for correct answer (via service worker)
+      if (interruptSequenceUserId) {
+        console.log('[INTERRUPT] Sending +20 XP for math challenge to service worker');
+        chrome.runtime.sendMessage({ action: 'applyXpEvent', eventType: 'manual_adjustment', metadata: { delta: 20 } }, (response) => {
+          console.log('[INTERRUPT] Math challenge XP response:', response);
+          if (!response?.success) {
+            console.error('[INTERRUPT] Error applying math challenge XP:', response?.error);
+          } else {
+            console.log('[INTERRUPT] ✅ Math challenge XP applied successfully');
+          }
+        });
+      } else {
+        console.warn('[INTERRUPT] ⚠️ Cannot apply math challenge XP - interruptSequenceUserId not set yet');
+      }
+
       advanceInterruptPageInline();
     } else {
       // Wrong answer - flash feedback
