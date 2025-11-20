@@ -1,14 +1,16 @@
 /**
  * Settings Screen Manager
- * Handles personal settings, hardcore mode, coop management, and logout
+ * Handles personal settings, hardcore mode, coop management, blocklist, and logout
  */
 
 import { querySelect, queryUpdate, getCurrentUser } from '../../logic/supabaseClient.js';
+import { getSettings, addBlockedSite, removeBlockedSite } from '../../utils/storage.js';
 
 export class SettingsScreen {
   constructor() {
     this.userProfile = null;
     this.userCoops = [];
+    this.blockedSites = [];
     console.log('[SETTINGS_SCREEN] Initialized');
   }
 
@@ -42,6 +44,10 @@ export class SettingsScreen {
         }
       }
 
+      // Load blocked sites from local storage
+      const settings = await getSettings();
+      this.blockedSites = settings.blockedSites || [];
+
       this.render();
     } catch (err) {
       console.error('[SETTINGS_SCREEN] Error loading settings:', err);
@@ -71,6 +77,16 @@ export class SettingsScreen {
         </div>
       `
       : '<p class="text-muted">Not in a coop</p>';
+
+    // Build blocklist HTML
+    const blockedSitesHtml = this.blockedSites.length > 0
+      ? this.blockedSites.map((site, idx) => `
+        <div class="blocked-site-item">
+          <span class="site-name">${site}</span>
+          <button class="btn-danger btn-sm" data-action="remove-site" data-index="${idx}" title="Unblock site">✕</button>
+        </div>
+      `).join('')
+      : '<p class="text-muted">No blocked sites yet</p>';
 
     const html = `
       <div class="settings-screen">
@@ -116,6 +132,29 @@ export class SettingsScreen {
                 <option value="dark">Dark</option>
                 <option value="auto">Auto (System)</option>
               </select>
+            </div>
+          </section>
+
+          <!-- Blocklist Section -->
+          <section class="settings-section">
+            <h3>Blocked Websites</h3>
+
+            <div class="blocked-sites-list">
+              <h4>Currently Blocked</h4>
+              ${blockedSitesHtml}
+            </div>
+
+            <div class="add-blocked-site-form">
+              <h4>Block a Website</h4>
+              <div class="form-group">
+                <input
+                  type="text"
+                  id="new-site-input"
+                  placeholder="e.g., youtube.com or reddit.com"
+                  maxlength="100"
+                >
+                <button class="btn-primary" id="add-site-submit">Block Site</button>
+              </div>
             </div>
           </section>
 
@@ -175,6 +214,19 @@ export class SettingsScreen {
     // Hardcore mode toggle
     document.getElementById('hardcore-mode')?.addEventListener('change', (e) => {
       this.onHardcoreModeChange(e.target.checked);
+    });
+
+    // Add blocked site
+    document.getElementById('add-site-submit')?.addEventListener('click', () => {
+      this.onAddSiteClick();
+    });
+
+    // Remove blocked sites
+    document.querySelectorAll('[data-action="remove-site"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const index = e.target.getAttribute('data-index');
+        this.onRemoveSiteClick(index);
+      });
     });
 
     // Leave coop buttons
@@ -323,6 +375,63 @@ export class SettingsScreen {
     } catch (err) {
       console.error('[SETTINGS_SCREEN] Error joining coop:', err);
       alert('Error joining coop');
+    }
+  }
+
+  /**
+   * Handle add blocked site
+   */
+  async onAddSiteClick() {
+    try {
+      const input = document.getElementById('new-site-input');
+      const newSite = input?.value?.trim();
+
+      if (!newSite) {
+        alert('Please enter a website URL');
+        return;
+      }
+
+      // Check if site is already blocked
+      if (this.blockedSites.includes(newSite)) {
+        alert('This site is already blocked');
+        return;
+      }
+
+      console.log('[SETTINGS_SCREEN] Adding blocked site:', newSite);
+
+      await addBlockedSite(newSite);
+      this.blockedSites.push(newSite);
+
+      console.log('[SETTINGS_SCREEN] Site blocked successfully');
+      input.value = '';
+      this.render(); // Re-render to update list
+    } catch (err) {
+      console.error('[SETTINGS_SCREEN] Error adding blocked site:', err);
+      alert('Error blocking site');
+    }
+  }
+
+  /**
+   * Handle remove blocked site
+   */
+  async onRemoveSiteClick(index) {
+    try {
+      const site = this.blockedSites[index];
+
+      if (!confirm(`Remove ${site} from blocked sites?`)) {
+        return;
+      }
+
+      console.log('[SETTINGS_SCREEN] Removing blocked site:', site);
+
+      await removeBlockedSite(site);
+      this.blockedSites.splice(index, 1);
+
+      console.log('[SETTINGS_SCREEN] Site unblocked successfully');
+      this.render(); // Re-render to update list
+    } catch (err) {
+      console.error('[SETTINGS_SCREEN] Error removing blocked site:', err);
+      alert('Error unblocking site');
     }
   }
 
