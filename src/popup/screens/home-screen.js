@@ -156,18 +156,14 @@ export class HomeScreen {
 
   /**
    * Calculate XP progress percentage for current level
+   * XP Bar shows progress within current level (0-1000 XP per level)
    */
   getXPProgressPercent(xpTotal) {
-    const currentLevel = Math.floor(Math.sqrt(xpTotal / 50)) + 1;
-    const nextLevel = currentLevel + 1;
-
-    const xpForCurrentLevel = 50 * Math.pow(currentLevel - 1, 2);
-    const xpForNextLevel = 50 * Math.pow(nextLevel - 1, 2);
-
-    const xpInLevel = xpTotal - xpForCurrentLevel;
-    const xpPerLevel = xpForNextLevel - xpForCurrentLevel;
-
-    return Math.min(100, (xpInLevel / xpPerLevel) * 100);
+    const XP_PER_LEVEL = 1000;
+    // Get XP within current level (0-999)
+    const xpInCurrentLevel = xpTotal % XP_PER_LEVEL;
+    // Return percentage (0-100)
+    return (xpInCurrentLevel / XP_PER_LEVEL) * 100;
   }
 
   /**
