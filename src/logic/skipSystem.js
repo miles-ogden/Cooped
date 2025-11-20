@@ -16,11 +16,14 @@ const MILLISECONDS_PER_HEART = MINUTES_PER_HEART * 60 * 1000
  */
 export async function getAvailableHearts(userId) {
   try {
+    console.log(`[SKIP] getAvailableHearts called for user ${userId}`);
     const user = await querySelect('users', {
       eq: { id: userId },
       select: 'hearts_remaining_today,skip_until',
       single: true
     })
+
+    console.log(`[SKIP] getAvailableHearts DB response: ${JSON.stringify(user)}`);
 
     if (!user) throw new Error('User not found')
 
@@ -41,12 +44,14 @@ export async function getAvailableHearts(userId) {
         }
       } else {
         // Skip period expired, reset to normal
+        console.log(`[SKIP] Skip period expired, resetting`);
         await resetSkipPeriod(userId)
         user.hearts_remaining_today = HEARTS_PER_DAY
         user.skip_until = null
       }
     }
 
+    console.log(`[SKIP] Returning hearts: ${user.hearts_remaining_today || HEARTS_PER_DAY}`);
     return {
       success: true,
       hearts: user.hearts_remaining_today || HEARTS_PER_DAY,
@@ -101,6 +106,7 @@ export async function useHeart(userId) {
     console.log(`[SKIP] Setting skip_until to ${skipUntil.toISOString()} (now: ${now.toISOString()})`);
 
     // 3. Update user
+    console.log(`[SKIP] About to update DB with hearts=${heartsData.hearts - 1}, skip_until=${skipUntil.toISOString()}`);
     await queryUpdate('users', {
       hearts_remaining_today: heartsData.hearts - 1,
       skip_until: skipUntil.toISOString(),
@@ -109,11 +115,14 @@ export async function useHeart(userId) {
 
     console.log(`[SKIP] Database updated with skip_until timestamp`);
 
-    // 4. Fetch updated user
+    // 4. Fetch updated user - query ALL fields to see what's in the DB
+    console.log(`[SKIP] Fetching updated user from database...`);
     const updatedUser = await querySelect('users', {
       eq: { id: userId },
       single: true
-    })
+    });
+    console.log(`[SKIP] Updated user from DB (ALL fields): ${JSON.stringify(updatedUser)}`);
+
 
     console.log(`[SKIP] ✅ Heart used! Hearts remaining: ${heartsData.hearts - 1}, Skip until: ${skipUntil.toISOString()}`);
     console.log(`[SKIP] Updated user from DB: ${JSON.stringify(updatedUser)}`);
