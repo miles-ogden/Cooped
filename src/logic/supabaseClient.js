@@ -27,6 +27,58 @@ export async function initializeAuth() {
 }
 
 /**
+ * Refresh the access token using the refresh token
+ */
+async function refreshAccessToken() {
+  try {
+    if (!currentSession?.refresh_token) {
+      console.error('[SUPABASE] No refresh token available')
+      return false
+    }
+
+    console.log('[SUPABASE] Refreshing access token...')
+    const response = await fetch(
+      `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          refresh_token: currentSession.refresh_token
+        })
+      }
+    )
+
+    if (!response.ok) {
+      console.error('[SUPABASE] Token refresh failed:', response.statusText)
+      return false
+    }
+
+    const data = await response.json()
+
+    // Update session with new access token
+    if (data.access_token) {
+      currentSession.access_token = data.access_token
+      if (data.refresh_token) {
+        currentSession.refresh_token = data.refresh_token
+      }
+
+      // Persist updated session
+      await chrome.storage.local.set({ supabase_session: currentSession })
+      console.log('[SUPABASE] Access token refreshed successfully')
+      return true
+    }
+
+    return false
+  } catch (err) {
+    console.error('[SUPABASE] Error refreshing token:', err)
+    return false
+  }
+}
+
+/**
  * Get current authenticated user
  * @param {boolean} skipValidation - If true, return session without verifying with server
  */
@@ -249,6 +301,33 @@ export async function querySelect(table, options = {}) {
       }
     })
 
+    // If 401 Unauthorized, try to refresh token and retry
+    if (response.status === 401) {
+      console.log('[SUPABASE] Got 401, attempting to refresh token and retry...')
+      const refreshed = await refreshAccessToken()
+
+      if (refreshed) {
+        // Retry the request with the new token
+        const retryResponse = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${currentSession.access_token}`,
+            'apikey': SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (!retryResponse.ok) {
+          throw new Error(`Query failed: ${retryResponse.statusText}`)
+        }
+
+        const data = await retryResponse.json()
+        return options.single ? (data[0] || null) : data
+      } else {
+        throw new Error('Token refresh failed, and query returned 401 Unauthorized')
+      }
+    }
+
     if (!response.ok) {
       throw new Error(`Query failed: ${response.statusText}`)
     }
@@ -283,6 +362,38 @@ export async function queryInsert(table, records) {
         body: JSON.stringify(records)
       }
     )
+
+    // If 401 Unauthorized, try to refresh token and retry
+    if (response.status === 401) {
+      console.log('[SUPABASE] Got 401 on insert, attempting to refresh token and retry...')
+      const refreshed = await refreshAccessToken()
+
+      if (refreshed) {
+        const retryResponse = await fetch(
+          `${SUPABASE_URL}/rest/v1/${table}`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${currentSession.access_token}`,
+              'apikey': SUPABASE_ANON_KEY,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(records)
+          }
+        )
+
+        if (!retryResponse.ok) {
+          const errorData = await retryResponse.json()
+          throw new Error(errorData.message || `Insert failed: ${retryResponse.statusText}`)
+        }
+
+        const data = await retryResponse.json()
+        return data
+      } else {
+        throw new Error('Token refresh failed, and insert returned 401 Unauthorized')
+      }
+    }
 
     if (!response.ok) {
       const errorData = await response.json()
@@ -322,6 +433,33 @@ export async function queryUpdate(table, updates, filters) {
       },
       body: JSON.stringify(updates)
     })
+
+    // If 401 Unauthorized, try to refresh token and retry
+    if (response.status === 401) {
+      console.log('[SUPABASE] Got 401 on update, attempting to refresh token and retry...')
+      const refreshed = await refreshAccessToken()
+
+      if (refreshed) {
+        const retryResponse = await fetch(url, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${currentSession.access_token}`,
+            'apikey': SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(updates)
+        })
+
+        if (!retryResponse.ok) {
+          const errorData = await retryResponse.json()
+          throw new Error(errorData.message || `Update failed: ${retryResponse.statusText}`)
+        }
+
+        return { success: true }
+      } else {
+        throw new Error('Token refresh failed, and update returned 401 Unauthorized')
+      }
+    }
 
     if (!response.ok) {
       const errorData = await response.json()
