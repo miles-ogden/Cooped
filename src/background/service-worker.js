@@ -4,6 +4,8 @@
  */
 
 import { initializeStorage, getSettings } from '../utils/storage.js';
+import { applyXpEvent } from '../logic/xpEngine.js';
+import { getCurrentUser } from '../logic/supabaseClient.js';
 
 // Initialize storage on extension install
 chrome.runtime.onInstalled.addListener(async () => {
@@ -175,6 +177,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: true });
     });
     return true; // Keep message channel open for async response
+  } else if (message.action === 'applyXpEvent') {
+    // Content script is requesting XP application
+    handleApplyXpEvent(message.eventType, message.metadata, sendResponse);
+    return true; // Keep message channel open for async response
   }
 });
 
@@ -213,6 +219,37 @@ async function handleChallengeFailed(data, tab) {
 async function handleChallengeRevealed(data, tab) {
   console.log('Cooped: Challenge revealed', data);
   // Session already recorded by content script
+}
+
+/**
+ * Handle XP event application requested by content script
+ */
+async function handleApplyXpEvent(eventType, metadata = {}, sendResponse) {
+  try {
+    console.log('[SERVICE-WORKER] Applying XP event:', eventType, metadata);
+
+    // Get current user
+    const user = await getCurrentUser(true);
+    if (!user) {
+      console.error('[SERVICE-WORKER] No authenticated user for XP event');
+      sendResponse({ success: false, error: 'User not authenticated' });
+      return;
+    }
+
+    // Apply the XP event
+    const result = await applyXpEvent(user.id, eventType, metadata);
+
+    if (result && result.success !== false) {
+      console.log('[SERVICE-WORKER] XP event applied successfully:', result);
+      sendResponse({ success: true, userId: user.id, result });
+    } else {
+      console.error('[SERVICE-WORKER] Failed to apply XP event:', result);
+      sendResponse({ success: false, error: result?.error || 'Failed to apply XP event' });
+    }
+  } catch (err) {
+    console.error('[SERVICE-WORKER] Error applying XP event:', err);
+    sendResponse({ success: false, error: err.message });
+  }
 }
 
 /**

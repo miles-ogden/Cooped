@@ -13,7 +13,6 @@ let updateTabVisibility, updateMediaPauseState, setActivityState, ACTIVITY_STATE
 let detectPlatform, isOnYouTubeShorts, handleYouTubeShortsDetection, handleYouTubeLongFormDetection;
 let recordYouTubeProductivityResponse, handleMediaPauseChange, handleTabVisibilityChange;
 let showInterruptSequence;
-let applyXpEvent, getCurrentUser;
 
 // Set up message listener BEFORE modules load, store message for when ready
 let pendingMessages = [];
@@ -38,19 +37,21 @@ async function showInterruptSequenceInline() {
     return;
   }
 
-  // Apply -50 XP stim penalty when blocked site is visited
-  if (!stimPenaltyApplied && getCurrentUser && applyXpEvent) {
+  // Apply -50 XP stim penalty when blocked site is visited (via service worker)
+  if (!stimPenaltyApplied) {
     try {
-      const user = await getCurrentUser(true);
-      if (user) {
-        interruptSequenceUserId = user.id;
-        stimPenaltyApplied = true;
-        console.log('[INTERRUPT] Applying -50 XP stim penalty for user:', user.id);
-        await applyXpEvent(user.id, 'stim_penalty', {});
-        console.log('[INTERRUPT] Stim penalty applied successfully');
-      }
+      console.log('[INTERRUPT] Requesting service worker to apply -50 XP stim penalty');
+      chrome.runtime.sendMessage({ action: 'applyXpEvent', eventType: 'stim_penalty' }, (response) => {
+        if (response && response.success) {
+          interruptSequenceUserId = response.userId;
+          stimPenaltyApplied = true;
+          console.log('[INTERRUPT] Stim penalty applied successfully');
+        } else {
+          console.error('[INTERRUPT] Error applying stim penalty:', response?.error);
+        }
+      });
     } catch (err) {
-      console.error('[INTERRUPT] Error applying stim penalty:', err);
+      console.error('[INTERRUPT] Error sending XP message:', err);
     }
   }
 
@@ -1435,10 +1436,13 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
       // Mark that user answered correctly
       challengeAnsweredCorrectly = true;
 
-      // Apply +20 XP for correct answer
-      if (interruptSequenceUserId && applyXpEvent) {
-        applyXpEvent(interruptSequenceUserId, 'manual_adjustment', { delta: 20 })
-          .catch(err => console.error('[INTERRUPT] Error applying challenge win XP:', err));
+      // Apply +20 XP for correct answer (via service worker)
+      if (interruptSequenceUserId) {
+        chrome.runtime.sendMessage({ action: 'applyXpEvent', eventType: 'manual_adjustment', metadata: { delta: 20 } }, (response) => {
+          if (!response?.success) {
+            console.error('[INTERRUPT] Error applying challenge win XP:', response?.error);
+          }
+        });
       }
 
       submitBtn.style.backgroundColor = '#4CAF50';
@@ -1648,16 +1652,17 @@ function renderPage3Inline(headerEl, contentEl) {
     safetyBtn.style.backgroundColor = '#4CAF50';
   });
 
-  safetyBtn.addEventListener('click', async () => {
-    // Apply +20 XP safety bonus only if user answered challenge correctly
-    if (interruptSequenceUserId && applyXpEvent && challengeAnsweredCorrectly) {
-      try {
-        console.log('[INTERRUPT] Applying +20 XP safety bonus for user:', interruptSequenceUserId);
-        await applyXpEvent(interruptSequenceUserId, 'manual_adjustment', { delta: 20 });
-        console.log('[INTERRUPT] Safety bonus applied successfully');
-      } catch (err) {
-        console.error('[INTERRUPT] Error applying safety bonus XP:', err);
-      }
+  safetyBtn.addEventListener('click', () => {
+    // Apply +20 XP safety bonus only if user answered challenge correctly (via service worker)
+    if (interruptSequenceUserId && challengeAnsweredCorrectly) {
+      console.log('[INTERRUPT] Applying +20 XP safety bonus for user:', interruptSequenceUserId);
+      chrome.runtime.sendMessage({ action: 'applyXpEvent', eventType: 'manual_adjustment', metadata: { delta: 20 } }, (response) => {
+        if (response?.success) {
+          console.log('[INTERRUPT] Safety bonus applied successfully');
+        } else {
+          console.error('[INTERRUPT] Error applying safety bonus XP:', response?.error);
+        }
+      });
     }
     // Close the current tab
     chrome.runtime.sendMessage({ action: 'closeTab' });
@@ -1760,10 +1765,8 @@ Promise.all([
   import('../utils/mascot.js'),
   import('../utils/time-tracking.js'),
   import('../utils/platform-detection.js'),
-  import('./interrupt-sequence.js'),
-  import('../logic/xpEngine.js'),
-  import('../logic/supabaseClient.js')
-]).then(([challengeBank, storageModule, mascotModule, timeTrackingModule, platformDetectionModule, interruptModule, xpEngineModule, supabaseModule]) => {
+  import('./interrupt-sequence.js')
+]).then(([challengeBank, storageModule, mascotModule, timeTrackingModule, platformDetectionModule, interruptModule]) => {
   getRandomChallenge = challengeBank.getRandomChallenge;
   checkAnswer = challengeBank.checkAnswer;
   CHALLENGE_TYPES = challengeBank.CHALLENGE_TYPES;
@@ -1803,9 +1806,6 @@ Promise.all([
   handleTabVisibilityChange = platformDetectionModule.handleTabVisibilityChange;
 
   showInterruptSequence = interruptModule.showInterruptSequence;
-
-  applyXpEvent = xpEngineModule.applyXpEvent;
-  getCurrentUser = supabaseModule.getCurrentUser;
 
   // Mark modules as ready
   modulesReady = true;
