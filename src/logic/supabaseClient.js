@@ -490,9 +490,9 @@ async function ensureUserProfile(userId, authProvider = 'email') {
     await queryInsert('users', [{
       id: userId,
       auth_provider: authProvider,
-      xp_total: 0,
-      level: 1,
-      eggs: 0,
+      xp_total: 500,
+      level: 0,
+      eggs: 5,
       streak_days: 0,
       last_stim_date: null,
       hearts_remaining_today: 3,
