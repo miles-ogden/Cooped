@@ -540,6 +540,22 @@ window.addEventListener('message', (event) => {
   }
 }, false);
 
+// Listen for XP updates from service worker
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'xpUpdated') {
+    console.log('[POPUP] Received XP update:', message);
+    // Refresh home screen if currently showing
+    if (currentScreen === 'home' && homeScreen) {
+      console.log('[POPUP] Refreshing home screen with new XP data');
+      homeScreen.show().catch(err => console.error('[POPUP] Error refreshing home screen:', err));
+    }
+    // Always update egg count
+    if (message.newEggs !== undefined) {
+      document.getElementById('egg-count').textContent = message.newEggs;
+    }
+  }
+});
+
 // Also initialize immediately in case DOM is already ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initializePopup);

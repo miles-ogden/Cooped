@@ -242,6 +242,9 @@ async function handleApplyXpEvent(eventType, metadata = {}, sendResponse) {
     if (result && result.success !== false) {
       console.log('[SERVICE-WORKER] XP event applied successfully:', result);
       sendResponse({ success: true, userId: user.id, result });
+
+      // Notify popup of XP change so it can refresh the display
+      notifyPopupOfXpChange(user.id, result);
     } else {
       console.error('[SERVICE-WORKER] Failed to apply XP event:', result);
       sendResponse({ success: false, error: result?.error || 'Failed to apply XP event' });
@@ -249,6 +252,38 @@ async function handleApplyXpEvent(eventType, metadata = {}, sendResponse) {
   } catch (err) {
     console.error('[SERVICE-WORKER] Error applying XP event:', err);
     sendResponse({ success: false, error: err.message });
+  }
+}
+
+/**
+ * Notify popup that XP has changed so it can refresh display
+ */
+function notifyPopupOfXpChange(userId, xpResult) {
+  try {
+    console.log('[SERVICE-WORKER] Notifying popup of XP change:', xpResult);
+
+    // Extract data from xpEngine result
+    const user = xpResult.user || {};
+    const newXpTotal = user.xp_total || 0;
+    const newLevel = user.level || 0;
+    const newEggs = user.eggs || 0;
+    const leveledUp = xpResult.leveledUp || false;
+    const eggsGained = xpResult.eggsGained || 0;
+
+    chrome.runtime.sendMessage({
+      action: 'xpUpdated',
+      userId: userId,
+      newXpTotal,
+      newLevel,
+      newEggs,
+      leveledUp,
+      eggsGained
+    }).catch(() => {
+      // Popup might not be open, that's fine
+      console.log('[SERVICE-WORKER] Popup not open to receive XP update notification');
+    });
+  } catch (err) {
+    console.log('[SERVICE-WORKER] Could not notify popup:', err.message);
   }
 }
 
