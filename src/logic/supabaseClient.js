@@ -52,11 +52,13 @@ async function refreshAccessToken() {
     )
 
     if (!response.ok) {
-      console.error('[SUPABASE] Token refresh failed:', response.statusText)
+      const errorBody = await response.text()
+      console.error('[SUPABASE] Token refresh failed:', response.statusText, 'Body:', errorBody)
       return false
     }
 
     const data = await response.json()
+    console.log('[SUPABASE] Token refresh response:', data)
 
     // Update session with new access token
     if (data.access_token) {
@@ -304,9 +306,12 @@ export async function querySelect(table, options = {}) {
     // If 401 Unauthorized, try to refresh token and retry
     if (response.status === 401) {
       console.log('[SUPABASE] Got 401, attempting to refresh token and retry...')
+      console.log('[SUPABASE] Current session before refresh:', { user_id: currentSession?.user_id, has_access_token: !!currentSession?.access_token, has_refresh_token: !!currentSession?.refresh_token })
       const refreshed = await refreshAccessToken()
+      console.log('[SUPABASE] Token refresh result:', refreshed)
 
       if (refreshed) {
+        console.log('[SUPABASE] Token refreshed successfully, retrying query...')
         // Retry the request with the new token
         const retryResponse = await fetch(url, {
           method: 'GET',
@@ -317,11 +322,14 @@ export async function querySelect(table, options = {}) {
           }
         })
 
+        console.log('[SUPABASE] Retry response status:', retryResponse.status)
         if (!retryResponse.ok) {
-          throw new Error(`Query failed: ${retryResponse.statusText}`)
+          const errorBody = await retryResponse.text()
+          throw new Error(`Query failed after retry: ${retryResponse.statusText} - ${errorBody}`)
         }
 
         const data = await retryResponse.json()
+        console.log('[SUPABASE] Query succeeded after token refresh')
         return options.single ? (data[0] || null) : data
       } else {
         throw new Error('Token refresh failed, and query returned 401 Unauthorized')
