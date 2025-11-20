@@ -56,9 +56,9 @@ async function showInterruptSequenceInline() {
 
   if (!document.body) {
     console.log('[INTERRUPT] document.body not ready, waiting for DOMContentLoaded');
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       console.log('[INTERRUPT] DOM ready, retrying interrupt overlay');
-      showInterruptSequenceInline();
+      await showInterruptSequenceInline();
     }, { once: true });
     return;
   }
@@ -1744,12 +1744,12 @@ function closeInterruptSequenceInline() {
   }
 }
 
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener(async (message) => {
   console.log('[CONTENT-SCRIPT] Message received:', message);
   if (message.action === 'showInterruptSequence') {
     console.log('[CONTENT-SCRIPT] showInterruptSequence message received');
     // Call the inline version immediately
-    showInterruptSequenceInline();
+    await showInterruptSequenceInline();
   }
 });
 
@@ -1984,9 +1984,9 @@ function initializeContentScript() {
  */
 function setupSocialMediaMonitoring(platform) {
   console.log(`[SOCIAL-MEDIA] Immediate interrupt for ${platform}`);
-  const trigger = () => {
+  const trigger = async () => {
     if (!document.hidden) {
-      showInterruptSequenceInline();
+      await showInterruptSequenceInline();
     }
   };
 
@@ -2055,7 +2055,7 @@ function startIntervalMonitoring() {
  */
 async function showReEngagementChallenge(messageData) {
   // Use the new 3-slide interrupt sequence
-  showInterruptSequenceInline();
+  await showInterruptSequenceInline();
 
   isOverlayActive = true;
   challengeStartTime = Date.now();
@@ -2151,7 +2151,7 @@ function createReEngagementOverlay(challenge, blockedUrl) {
  */
 async function showChallengeOverlay(messageData) {
   // Use the new 3-slide interrupt sequence instead of old challenge overlay
-  showInterruptSequenceInline();
+  await showInterruptSequenceInline();
 
   isOverlayActive = true;
   challengeStartTime = Date.now();
@@ -2169,9 +2169,9 @@ async function showChallengeOverlay(messageData) {
  * Show a saved challenge overlay (from previous page load)
  * Now uses the new 3-slide interrupt sequence instead of old overlay
  */
-function showSavedChallengeOverlay(savedChallengeData) {
+async function showSavedChallengeOverlay(savedChallengeData) {
   // Use the new 3-slide interrupt sequence
-  showInterruptSequenceInline();
+  await showInterruptSequenceInline();
 
   isOverlayActive = true;
   currentChallenge = savedChallengeData.challenge;
