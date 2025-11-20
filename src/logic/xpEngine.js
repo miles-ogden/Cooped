@@ -54,11 +54,15 @@ export async function applyXpEvent(userId, eventType, metadata = {}) {
     // 3. Calculate new XP total (don't go below 0)
     const newXpTotal = Math.max(0, (user.xp_total || 0) + delta)
 
-    // 4. Calculate new level and eggs (every 1000 XP = +1 level + +1 egg)
+    // 4. Calculate new level (every 1000 XP = +1 level)
     const newLevel = Math.floor(newXpTotal / XP_PER_LEVEL)
-    const newEggs = newLevel
     const leveledUp = newLevel > previousLevel
-    const eggsGained = newEggs - previousEggs
+
+    // 5. Calculate eggs: only gain eggs when leveling up
+    // Each level gained = +1 egg. Never lose eggs, only gain them.
+    const levelsGained = newLevel - previousLevel
+    const eggsGained = Math.max(0, levelsGained) // Never negative
+    const newEggs = previousEggs + eggsGained
 
     if (leveledUp) {
       console.log(`[XP_ENGINE] LEVEL UP! Old: ${previousLevel}, New: ${newLevel}, Eggs gained: ${eggsGained}`)
@@ -283,6 +287,17 @@ export async function getUserProgression(userId) {
       throw new Error(`User not found: ${userId}`)
     }
 
+    let eggs = user.eggs
+    // If eggs are null/undefined, initialize them to 0 (no eggs until first level up)
+    if (eggs === null || eggs === undefined) {
+      console.log('[XP_ENGINE] Eggs not initialized, setting to 0')
+      await queryUpdate('users', {
+        eggs: 0,
+        updated_at: new Date().toISOString()
+      }, { id: userId })
+      eggs = 0
+    }
+
     const xpTotal = user.xp_total || 0
     const xpInCurrentLevel = xpTotal % XP_PER_LEVEL
     const xpToNextLevel = XP_PER_LEVEL - xpInCurrentLevel
@@ -292,7 +307,7 @@ export async function getUserProgression(userId) {
       progression: {
         xp_total: xpTotal,
         level: user.level || 0,
-        eggs: user.eggs || 0,
+        eggs: eggs,
         streak_days: user.streak_days || 0,
         hearts_remaining_today: user.hearts_remaining_today || 3,
         xp_to_next_level: xpToNextLevel,
