@@ -147,23 +147,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const tabId = sender.tab.id;
         const blockedInfo = blockedTabs.get(tabId);
 
+        console.log(`[SERVICE-WORKER] CHECK_BLOCKED_SITE - Tab ${tabId}, has blockedInfo: ${!!blockedInfo}`);
+
         if (!blockedInfo) {
+          console.log(`[SERVICE-WORKER] Tab ${tabId} is not in blockedTabs map - not blocked`);
           sendResponse({ isBlocked: false });
           return;
         }
 
         // Check if user has an active skip period
         const user = await getCurrentUser(true);
+        console.log(`[SERVICE-WORKER] Got current user: ${user?.id || 'NO USER'}`);
+
         if (user) {
           const skipCheck = await isUserInSkipPeriod(user.id);
+          console.log(`[SERVICE-WORKER] Skip check result: ${JSON.stringify(skipCheck)}`);
+
           if (skipCheck.success && skipCheck.inSkip) {
-            console.log(`[SKIP] User in skip period - blocking interrupt for 20 min (${skipCheck.minutesRemaining} min remaining)`);
+            console.log(`[SKIP] ✅ User in skip period - ALLOWING access for ${skipCheck.minutesRemaining} min remaining`);
             sendResponse({ isBlocked: false, skipActive: true, minutesRemaining: skipCheck.minutesRemaining });
             return;
+          } else {
+            console.log(`[SKIP] ❌ User NOT in skip period or skip check failed`);
           }
+        } else {
+          console.log(`[SERVICE-WORKER] No user found - cannot check skip period`);
         }
 
-        console.log('Cooped: Returning blocked site info for tab', tabId);
+        console.log(`[SERVICE-WORKER] Site IS blocked - showing interrupt for tab ${tabId}`);
         sendResponse({ isBlocked: true, ...blockedInfo });
       } catch (err) {
         console.error('[SERVICE-WORKER] Error checking blocked site:', err);

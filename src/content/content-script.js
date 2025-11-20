@@ -2042,12 +2042,23 @@ async function checkAndShowChallenge() {
     }
 
     // If no saved challenge, check if site is blocked
+    console.log('[CONTENT-SCRIPT] Sending CHECK_BLOCKED_SITE message to service worker');
     const response = await chrome.runtime.sendMessage({
       type: 'CHECK_BLOCKED_SITE'
     });
 
+    console.log('[CONTENT-SCRIPT] CHECK_BLOCKED_SITE response:', response);
+
+    // If site is in skip period, don't show any challenge
+    if (response && response.skipActive) {
+      console.log(`[CONTENT-SCRIPT] ✅ SKIP ACTIVE - User has ${response.minutesRemaining} minutes remaining. Not showing challenge.`);
+      return;
+    }
+
     if (response && response.isBlocked && !isOverlayActive) {
       const hostname = new URL(window.location.href).hostname;
+
+      console.log(`[CONTENT-SCRIPT] Site is blocked - showing challenge`);
 
       // YouTube should only show challenges after watching behaviour triggers
       if (hostname.includes('youtube.com')) {

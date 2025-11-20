@@ -65,14 +65,19 @@ export async function getAvailableHearts(userId) {
  */
 export async function useHeart(userId) {
   try {
+    console.log(`[SKIP] useHeart called for user ${userId}`);
+
     // 1. Check available hearts
     const heartsData = await getAvailableHearts(userId)
+
+    console.log(`[SKIP] Hearts data: ${JSON.stringify(heartsData)}`);
 
     if (!heartsData.success) {
       throw new Error(heartsData.error)
     }
 
     if (heartsData.skipActive) {
+      console.log(`[SKIP] Skip already active!`);
       return {
         success: false,
         error: 'Skip already active',
@@ -81,6 +86,7 @@ export async function useHeart(userId) {
     }
 
     if (heartsData.hearts <= 0) {
+      console.log(`[SKIP] No hearts remaining!`);
       return {
         success: false,
         error: 'No hearts remaining today',
@@ -92,6 +98,8 @@ export async function useHeart(userId) {
     const now = new Date()
     const skipUntil = new Date(now.getTime() + MILLISECONDS_PER_HEART)
 
+    console.log(`[SKIP] Setting skip_until to ${skipUntil.toISOString()} (now: ${now.toISOString()})`);
+
     // 3. Update user
     await queryUpdate('users', {
       hearts_remaining_today: heartsData.hearts - 1,
@@ -99,13 +107,16 @@ export async function useHeart(userId) {
       updated_at: now.toISOString()
     }, { id: userId })
 
+    console.log(`[SKIP] Database updated with skip_until timestamp`);
+
     // 4. Fetch updated user
     const updatedUser = await querySelect('users', {
       eq: { id: userId },
       single: true
     })
 
-    console.log(`[SKIP] Heart used! Hearts remaining: ${heartsData.hearts - 1}, Skip until: ${skipUntil}`)
+    console.log(`[SKIP] ✅ Heart used! Hearts remaining: ${heartsData.hearts - 1}, Skip until: ${skipUntil.toISOString()}`);
+    console.log(`[SKIP] Updated user from DB: ${JSON.stringify(updatedUser)}`);
 
     // Trigger animation
     triggerAnimation('HEART_USED', { heartsRemaining: heartsData.hearts - 1, minutesActive: MINUTES_PER_HEART })
@@ -128,15 +139,19 @@ export async function useHeart(userId) {
  */
 export async function isUserInSkipPeriod(userId) {
   try {
+    console.log(`[SKIP] Checking skip period for user ${userId}`);
     const user = await querySelect('users', {
       eq: { id: userId },
       select: 'skip_until',
       single: true
     })
 
+    console.log(`[SKIP] User data retrieved: ${JSON.stringify(user)}`);
+
     if (!user) throw new Error('User not found')
 
     if (!user.skip_until) {
+      console.log(`[SKIP] No skip_until timestamp set - user not in skip period`);
       return { success: true, inSkip: false }
     }
 
@@ -144,9 +159,13 @@ export async function isUserInSkipPeriod(userId) {
     const skipUntil = new Date(user.skip_until)
     const inSkip = now < skipUntil
 
+    console.log(`[SKIP] Comparing times: now=${now.toISOString()}, skipUntil=${skipUntil.toISOString()}, inSkip=${inSkip}`);
+
     if (inSkip) {
       const minutesRemaining = Math.ceil((skipUntil - now) / 60000)
-      console.log(`[SKIP] User in skip period: ${minutesRemaining} minutes remaining`)
+      console.log(`[SKIP] ✅ USER IS IN SKIP PERIOD: ${minutesRemaining} minutes remaining`)
+    } else {
+      console.log(`[SKIP] ❌ Skip period has expired`);
     }
 
     return {
