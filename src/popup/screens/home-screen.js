@@ -96,7 +96,7 @@ export class HomeScreen {
             <div class="xp-bar-background">
               <div class="xp-bar-fill" style="width: ${xpPercent}%"></div>
             </div>
-            <div class="xp-bar-text">${Math.floor(xpPercent)}% to next level</div>
+            <div class="xp-bar-text">${this.userProfile.xp_total || 0} XP</div>
           </div>
         </div>
 
