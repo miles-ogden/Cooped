@@ -135,7 +135,9 @@ async function showInterruptSequenceInline() {
   // Add click event listeners
   interruptOverlayElement.addEventListener('click', (e) => {
     // Don't advance if on page 2 (quiz page) - user must answer correctly
-    if (currentInterruptPage === 2) {
+    // Also block on page 3 (safety/danger buttons) - user must click a button to proceed
+    if (currentInterruptPage === 2 || currentInterruptPage === 3) {
+      console.log('[INTERRUPT] Click blocked on page', currentInterruptPage, '- user must use the buttons');
       return;
     }
 
