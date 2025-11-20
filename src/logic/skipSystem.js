@@ -8,7 +8,7 @@ import { querySelect, queryUpdate } from './supabaseClient.js'
 import { triggerAnimation } from './animationEvents.js'
 
 const HEARTS_PER_DAY = 3
-const MINUTES_PER_HEART = 20
+const MINUTES_PER_HEART = 1 // Testing: reduced from 20 to 1 minute for easy testing
 const MILLISECONDS_PER_HEART = MINUTES_PER_HEART * 60 * 1000
 
 /**
