@@ -1818,9 +1818,19 @@ function createSkipButton(container) {
   // Load skip status via message passing
   (async () => {
     try {
-      chrome.runtime.sendMessage({ action: 'getSkipStatus', userId: interruptSequenceUserId }, (skipStatus) => {
+      // First, ensure we have a userId - use global interruptSequenceUserId if available,
+      // otherwise the service worker will use getCurrentUser internally
+      const userIdToUse = interruptSequenceUserId;
+      console.log('[INTERRUPT] createSkipButton - Using userId:', userIdToUse);
+
+      chrome.runtime.sendMessage({ action: 'getSkipStatus', userId: userIdToUse }, (skipStatus) => {
         if (!skipStatus || !skipStatus.success) {
           console.error('[INTERRUPT] Failed to get skip status:', skipStatus?.error);
+          console.log('[INTERRUPT] Skip button will not be functional - no userId available');
+          skipBtn.textContent = '❌ Skip Unavailable';
+          skipBtn.disabled = true;
+          skipBtnContainer.appendChild(skipBtn);
+          container.appendChild(skipBtnContainer);
           return;
         }
 
@@ -1847,7 +1857,9 @@ function createSkipButton(container) {
             return;
           }
 
-          chrome.runtime.sendMessage({ action: 'useHeart', userId: interruptSequenceUserId }, (result) => {
+          console.log('[INTERRUPT] Skip button clicked - sending useHeart with userId:', userIdToUse);
+          chrome.runtime.sendMessage({ action: 'useHeart', userId: userIdToUse }, (result) => {
+            console.log('[INTERRUPT] useHeart response:', result);
             if (result && result.success) {
               console.log('[INTERRUPT] Heart used! Skip activated for 20 minutes');
               console.log('[INTERRUPT] XP refund result:', result.xpRefund);
@@ -1855,6 +1867,7 @@ function createSkipButton(container) {
               // Close the overlay (not the tab!) - this keeps the site open
               closeInterruptSequenceInline();
             } else {
+              console.error('[INTERRUPT] useHeart failed:', result?.error);
               alert(`❌ ${result?.error || 'Error using heart'}`);
             }
           });
@@ -2159,9 +2172,23 @@ function initializeContentScript() {
  * Set up monitoring for social media platforms (immediate interrupt for debugging)
  */
 function setupSocialMediaMonitoring(platform) {
-  console.log(`[SOCIAL-MEDIA] Immediate interrupt for ${platform}`);
+  console.log(`[SOCIAL-MEDIA] Setting up monitoring for ${platform}`);
   const trigger = async () => {
     if (!document.hidden) {
+      // CRITICAL: Check if user is in skip period BEFORE showing interrupt
+      console.log('[SOCIAL-MEDIA] Checking skip period before showing interrupt...');
+      const skipCheckResponse = await new Promise((resolve) => {
+        chrome.runtime.sendMessage({ type: 'CHECK_BLOCKED_SITE' }, (response) => {
+          resolve(response);
+        });
+      });
+
+      if (skipCheckResponse && skipCheckResponse.skipActive) {
+        console.log(`[SOCIAL-MEDIA] ✅ User in SKIP PERIOD - NOT showing interrupt. ${skipCheckResponse.minutesRemaining} minutes remaining`);
+        return; // Don't show the interrupt!
+      }
+
+      console.log('[SOCIAL-MEDIA] No active skip - showing interrupt');
       await showInterruptSequenceInline();
     }
   };

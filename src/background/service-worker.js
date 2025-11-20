@@ -386,13 +386,22 @@ async function handleGetSkipStatus(userId, sendResponse) {
     console.log('[SERVICE-WORKER] ===== GET SKIP STATUS START =====');
     console.log('[SERVICE-WORKER] Requested userId:', userId);
 
-    if (!userId) {
-      console.error('[SERVICE-WORKER] ❌ No userId provided');
-      sendResponse({ success: false, error: 'No userId provided' });
-      return;
+    let userIdToUse = userId;
+
+    // If userId not provided, try to get current user
+    if (!userIdToUse) {
+      console.log('[SERVICE-WORKER] ⚠️ No userId provided, attempting to get current user...');
+      const currentUser = await getCurrentUser(true);
+      if (!currentUser) {
+        console.error('[SERVICE-WORKER] ❌ No userId provided and no authenticated user found');
+        sendResponse({ success: false, error: 'No userId provided and no authenticated user' });
+        return;
+      }
+      userIdToUse = currentUser.id;
+      console.log('[SERVICE-WORKER] ✅ Got userId from currentUser:', userIdToUse);
     }
 
-    const skipStatus = await getSkipStatus(userId);
+    const skipStatus = await getSkipStatus(userIdToUse);
     console.log('[SERVICE-WORKER] ✅ Skip status retrieved:', skipStatus);
     sendResponse(skipStatus);
   } catch (err) {
@@ -412,19 +421,28 @@ async function handleUseHeart(userId, sendResponse) {
     console.log('[SERVICE-WORKER] ===== USE HEART START =====');
     console.log('[SERVICE-WORKER] Requested userId:', userId);
 
-    if (!userId) {
-      console.error('[SERVICE-WORKER] ❌ No userId provided');
-      sendResponse({ success: false, error: 'No userId provided' });
-      return;
+    let userIdToUse = userId;
+
+    // If userId not provided, try to get current user
+    if (!userIdToUse) {
+      console.log('[SERVICE-WORKER] ⚠️ No userId provided, attempting to get current user...');
+      const currentUser = await getCurrentUser(true);
+      if (!currentUser) {
+        console.error('[SERVICE-WORKER] ❌ No userId provided and no authenticated user found');
+        sendResponse({ success: false, error: 'No userId provided and no authenticated user' });
+        return;
+      }
+      userIdToUse = currentUser.id;
+      console.log('[SERVICE-WORKER] ✅ Got userId from currentUser:', userIdToUse);
     }
 
-    const result = await useHeart(userId);
+    const result = await useHeart(userIdToUse);
     console.log('[SERVICE-WORKER] useHeart returned:', result);
 
     if (result.success) {
       console.log('[SERVICE-WORKER] ✅ Heart used successfully, applying XP refund...');
       // Apply +50 XP refund for using skip (cancels out the -50 stim penalty)
-      const xpRefundResult = await applyXpEvent(userId, 'skip_used');
+      const xpRefundResult = await applyXpEvent(userIdToUse, 'skip_used');
       console.log('[SERVICE-WORKER] XP refund result:', xpRefundResult);
 
       // Include refund info in response

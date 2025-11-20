@@ -335,6 +335,8 @@ export async function querySelect(table, options = {}) {
       url += 'limit=1&'
     }
 
+    console.log('[SUPABASE] querySelect - URL:', url)
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -343,6 +345,8 @@ export async function querySelect(table, options = {}) {
         'Content-Type': 'application/json'
       }
     })
+
+    console.log('[SUPABASE] querySelect - Response status:', response.status)
 
     // If 401 Unauthorized, try to refresh token and retry
     if (response.status === 401) {
@@ -382,7 +386,10 @@ export async function querySelect(table, options = {}) {
     }
 
     const data = await response.json()
-    return options.single ? (data[0] || null) : data
+    console.log('[SUPABASE] querySelect - Response data:', JSON.stringify(data))
+    const result = options.single ? (data[0] || null) : data
+    console.log('[SUPABASE] querySelect - Returning:', JSON.stringify(result))
+    return result
   } catch (err) {
     console.error('[SUPABASE] Query error:', err)
     throw err
@@ -473,6 +480,9 @@ export async function queryUpdate(table, updates, filters) {
       url += `${key}=eq.${encodeURIComponent(value)}&`
     }
 
+    console.log('[SUPABASE] queryUpdate - URL:', url)
+    console.log('[SUPABASE] queryUpdate - Updates:', JSON.stringify(updates))
+
     const response = await fetch(url, {
       method: 'PATCH',
       headers: {
@@ -482,6 +492,8 @@ export async function queryUpdate(table, updates, filters) {
       },
       body: JSON.stringify(updates)
     })
+
+    console.log('[SUPABASE] queryUpdate - Response status:', response.status)
 
     // If 401 Unauthorized, try to refresh token and retry
     if (response.status === 401) {
@@ -499,6 +511,8 @@ export async function queryUpdate(table, updates, filters) {
           body: JSON.stringify(updates)
         })
 
+        console.log('[SUPABASE] queryUpdate - Retry response status:', retryResponse.status)
+
         if (!retryResponse.ok) {
           const errorData = await retryResponse.json()
           throw new Error(errorData.message || `Update failed: ${retryResponse.statusText}`)
@@ -512,9 +526,11 @@ export async function queryUpdate(table, updates, filters) {
 
     if (!response.ok) {
       const errorData = await response.json()
+      console.error('[SUPABASE] queryUpdate error response:', errorData)
       throw new Error(errorData.message || `Update failed: ${response.statusText}`)
     }
 
+    console.log('[SUPABASE] queryUpdate - Success')
     return { success: true }
   } catch (err) {
     console.error('[SUPABASE] Update error:', err)

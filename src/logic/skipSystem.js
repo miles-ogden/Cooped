@@ -40,10 +40,10 @@ export async function getAvailableHearts(userId) {
       const secondsRemaining = Math.floor((skipUntil.getTime() - now.getTime()) / 1000);
       minutesRemaining = Math.ceil(secondsRemaining / 60);
 
-      // Safety check: If skip period is way too long (> 8 hours), it's probably stale data
-      // and should be cleared
-      if (minutesRemaining > 480) {
-        console.log(`[SKIP] ⚠️ WARNING: Skip period is ${minutesRemaining} minutes (> 480 max) - likely stale. Clearing.`);
+      // Safety check: If skip period is way too long (> 60 minutes), it's probably stale data
+      // and should be cleared (our max legitimate skip is 20 minutes, plus buffer for clock skew)
+      if (minutesRemaining > 60) {
+        console.log(`[SKIP] ⚠️ WARNING: Skip period is ${minutesRemaining} minutes (> 60 max) - likely stale. Clearing.`);
         await resetSkipPeriod(userId);
         skipActive = false;
         minutesRemaining = 0;
@@ -120,21 +120,34 @@ export async function useHeart(userId) {
 
     // 3. Update user
     console.log(`[SKIP] About to update DB with hearts=${heartsData.hearts - 1}, skip_until=${skipUntil.toISOString()}`);
-    await queryUpdate('users', {
+    const updateResult = await queryUpdate('users', {
       hearts_remaining_today: heartsData.hearts - 1,
       skip_until: skipUntil.toISOString(),
       updated_at: now.toISOString()
     }, { id: userId })
 
+    console.log(`[SKIP] Database update result:`, updateResult);
     console.log(`[SKIP] Database updated with skip_until timestamp`);
 
     // 4. Fetch updated user - query ALL fields to see what's in the DB
     console.log(`[SKIP] Fetching updated user from database...`);
+    console.log(`[SKIP] Query params: userId=${userId}`);
     const updatedUser = await querySelect('users', {
       eq: { id: userId },
       single: true
     });
-    console.log(`[SKIP] Updated user from DB (ALL fields): ${JSON.stringify(updatedUser)}`);
+    console.log(`[SKIP] Updated user from DB (ALL fields):`, updatedUser);
+    if (!updatedUser) {
+      console.error(`[SKIP] ❌ CRITICAL: querySelect returned null/undefined!`);
+    }
+
+    // DEBUG: Check if skip_until was actually saved
+    if (updatedUser && updatedUser.skip_until) {
+      console.log(`[SKIP] ✅ CONFIRMED: skip_until is in database: ${updatedUser.skip_until}`);
+    } else {
+      console.error(`[SKIP] ❌ ERROR: skip_until is NULL in database after update! This should not happen!`);
+      console.error(`[SKIP] Updated user object:`, JSON.stringify(updatedUser));
+    }
 
 
     console.log(`[SKIP] ✅ Heart used! Hearts remaining: ${heartsData.hearts - 1}, Skip until: ${skipUntil.toISOString()}`);
@@ -185,9 +198,10 @@ export async function isUserInSkipPeriod(userId) {
     let inSkip = secondsRemaining > 0;
     let minutesRemaining = Math.ceil(secondsRemaining / 60);
 
-    // Safety check: If skip period is way too long (> 8 hours), it's probably stale data
-    if (minutesRemaining > 480) {
-      console.log(`[SKIP] ⚠️ WARNING: Skip period is ${minutesRemaining} minutes (> 480 max) - likely stale. Clearing.`);
+    // Safety check: If skip period is way too long (> 60 minutes), it's probably stale data
+    // (our max legitimate skip is 20 minutes, plus buffer for clock skew)
+    if (minutesRemaining > 60) {
+      console.log(`[SKIP] ⚠️ WARNING: Skip period is ${minutesRemaining} minutes (> 60 max) - likely stale. Clearing.`);
       await resetSkipPeriod(userId);
       inSkip = false;
       minutesRemaining = 0;
