@@ -33,7 +33,9 @@ async function initializePopup() {
     await initializeAuth();
 
     // Check if user is authenticated
-    const user = await getCurrentUser();
+    // Use skipValidation=true to trust the stored session without making an API call
+    // This prevents logouts due to network issues or temporary server problems
+    const user = await getCurrentUser(true);
 
     if (user) {
       // User is authenticated - show main content
@@ -485,6 +487,7 @@ document.getElementById('settings-btn')?.addEventListener('click', () => {
  */
 async function updateEggDisplay() {
   try {
+    // Use skipValidation=true to avoid unnecessary API calls
     const user = await getCurrentUser(true);
     if (user) {
       const { querySelect } = await import('../logic/supabaseClient.js');
