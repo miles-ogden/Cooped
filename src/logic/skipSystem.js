@@ -24,17 +24,6 @@ export async function getAvailableHearts(userId) {
 
     if (!user) throw new Error('User not found')
 
-    // If hearts are null/undefined, initialize them
-    let hearts = user.hearts_remaining_today
-    if (hearts === null || hearts === undefined) {
-      console.log('[SKIP] Hearts not initialized, setting to', HEARTS_PER_DAY)
-      await queryUpdate('users', {
-        hearts_remaining_today: HEARTS_PER_DAY,
-        updated_at: new Date().toISOString()
-      }, { id: userId })
-      hearts = HEARTS_PER_DAY
-    }
-
     // Check if skip period has expired
     if (user.skip_until) {
       const now = new Date()
@@ -53,13 +42,14 @@ export async function getAvailableHearts(userId) {
       } else {
         // Skip period expired, reset to normal
         await resetSkipPeriod(userId)
-        hearts = HEARTS_PER_DAY
+        user.hearts_remaining_today = HEARTS_PER_DAY
+        user.skip_until = null
       }
     }
 
     return {
       success: true,
-      hearts: hearts,
+      hearts: user.hearts_remaining_today || HEARTS_PER_DAY,
       skipActive: false,
       skipUntil: null,
       minutesRemaining: 0
