@@ -6,6 +6,7 @@
 import { initializeStorage, getSettings } from '../utils/storage.js';
 import { applyXpEvent } from '../logic/xpEngine.js';
 import { getCurrentUser, initializeAuth } from '../logic/supabaseClient.js';
+import { getSkipStatus, useHeart } from '../logic/skipSystem.js';
 
 // Initialize storage and auth on extension install
 chrome.runtime.onInstalled.addListener(async () => {
@@ -191,6 +192,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Content script is requesting XP application
     handleApplyXpEvent(message.eventType, message.metadata, sendResponse);
     return true; // Keep message channel open for async response
+  } else if (message.action === 'getSkipStatus') {
+    // Content script requesting skip status
+    handleGetSkipStatus(message.userId, sendResponse);
+    return true; // Keep message channel open for async response
+  } else if (message.action === 'useHeart') {
+    // Content script requesting to use a heart
+    handleUseHeart(message.userId, sendResponse);
+    return true; // Keep message channel open for async response
   }
 });
 
@@ -324,6 +333,36 @@ function notifyPopupOfXpChange(userId, xpResult) {
   } catch (err) {
     console.error('[SERVICE-WORKER] ❌ Error in notifyPopupOfXpChange:', err);
     console.error('[SERVICE-WORKER] Error message:', err.message);
+  }
+}
+
+/**
+ * Handle get skip status request from content script
+ */
+async function handleGetSkipStatus(userId, sendResponse) {
+  try {
+    console.log('[SERVICE-WORKER] Getting skip status for user:', userId);
+    const skipStatus = await getSkipStatus(userId);
+    console.log('[SERVICE-WORKER] Skip status retrieved:', skipStatus);
+    sendResponse(skipStatus);
+  } catch (err) {
+    console.error('[SERVICE-WORKER] Error getting skip status:', err);
+    sendResponse({ success: false, error: err.message });
+  }
+}
+
+/**
+ * Handle use heart request from content script
+ */
+async function handleUseHeart(userId, sendResponse) {
+  try {
+    console.log('[SERVICE-WORKER] Using heart for user:', userId);
+    const result = await useHeart(userId);
+    console.log('[SERVICE-WORKER] Heart used:', result);
+    sendResponse(result);
+  } catch (err) {
+    console.error('[SERVICE-WORKER] Error using heart:', err);
+    sendResponse({ success: false, error: err.message });
   }
 }
 

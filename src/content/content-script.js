@@ -13,7 +13,6 @@ let updateTabVisibility, updateMediaPauseState, setActivityState, ACTIVITY_STATE
 let detectPlatform, isOnYouTubeShorts, handleYouTubeShortsDetection, handleYouTubeLongFormDetection;
 let recordYouTubeProductivityResponse, handleMediaPauseChange, handleTabVisibilityChange;
 let showInterruptSequence;
-let getSkipStatus, useHeart;
 
 // Set up message listener BEFORE modules load, store message for when ready
 let pendingMessages = [];
@@ -1803,11 +1802,15 @@ function createSkipButton(container) {
   skipBtn.style.fontWeight = 'bold';
   skipBtn.style.transition = 'all 0.2s ease';
 
-  // Load skip status
+  // Load skip status via message passing
   (async () => {
     try {
-      const skipStatus = await getSkipStatus(interruptSequenceUserId);
-      if (skipStatus.success) {
+      chrome.runtime.sendMessage({ action: 'getSkipStatus', userId: interruptSequenceUserId }, (skipStatus) => {
+        if (!skipStatus || !skipStatus.success) {
+          console.error('[INTERRUPT] Failed to get skip status:', skipStatus?.error);
+          return;
+        }
+
         skipBtn.textContent = `❤️ ${skipStatus.hearts}/${skipStatus.hearts > 0 ? 3 : 0}`;
         skipBtn.setAttribute('data-hearts-available', skipStatus.hearts);
 
@@ -1825,31 +1828,27 @@ function createSkipButton(container) {
           skipBtn.style.color = '#f44336';
         });
 
-        skipBtn.addEventListener('click', async () => {
+        skipBtn.addEventListener('click', () => {
           if (skipStatus.hearts <= 0) {
             alert('No hearts remaining today! Come back tomorrow.');
             return;
           }
 
-          try {
-            const result = await useHeart(interruptSequenceUserId);
-            if (result.success) {
+          chrome.runtime.sendMessage({ action: 'useHeart', userId: interruptSequenceUserId }, (result) => {
+            if (result && result.success) {
               console.log('[INTERRUPT] Heart used! Skip activated for 20 minutes');
               alert(`✅ Skip activated! You have ${result.heartsRemaining} hearts left.`);
               // Close the overlay
               chrome.runtime.sendMessage({ action: 'closeTab' });
             } else {
-              alert(`❌ ${result.error}`);
+              alert(`❌ ${result?.error || 'Error using heart'}`);
             }
-          } catch (err) {
-            console.error('[INTERRUPT] Error using heart:', err);
-            alert('Error using heart');
-          }
+          });
         });
 
         skipBtnContainer.appendChild(skipBtn);
         container.appendChild(skipBtnContainer);
-      }
+      });
     } catch (err) {
       console.error('[INTERRUPT] Error loading skip status:', err);
     }
@@ -1917,9 +1916,8 @@ Promise.all([
   import('../utils/mascot.js'),
   import('../utils/time-tracking.js'),
   import('../utils/platform-detection.js'),
-  import('./interrupt-sequence.js'),
-  import('../logic/skipSystem.js')
-]).then(([challengeBank, storageModule, mascotModule, timeTrackingModule, platformDetectionModule, interruptModule, skipSystemModule]) => {
+  import('./interrupt-sequence.js')
+]).then(([challengeBank, storageModule, mascotModule, timeTrackingModule, platformDetectionModule, interruptModule]) => {
   getRandomChallenge = challengeBank.getRandomChallenge;
   checkAnswer = challengeBank.checkAnswer;
   CHALLENGE_TYPES = challengeBank.CHALLENGE_TYPES;
@@ -1959,9 +1957,6 @@ Promise.all([
   handleTabVisibilityChange = platformDetectionModule.handleTabVisibilityChange;
 
   showInterruptSequence = interruptModule.showInterruptSequence;
-
-  getSkipStatus = skipSystemModule.getSkipStatus;
-  useHeart = skipSystemModule.useHeart;
 
   // Mark modules as ready
   modulesReady = true;
