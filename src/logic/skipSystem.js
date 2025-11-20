@@ -28,36 +28,37 @@ export async function getAvailableHearts(userId) {
     if (!user) throw new Error('User not found')
 
     // Check if skip period has expired
+    let skipActive = false;
+    let skipUntil = null;
+    let minutesRemaining = 0;
+
     if (user.skip_until) {
       const now = new Date()
-      const skipUntil = new Date(user.skip_until)
+      skipUntil = new Date(user.skip_until)
 
       if (now < skipUntil) {
         // Still in skip period
         console.log(`[SKIP] User in skip period until ${skipUntil}`)
-        return {
-          success: true,
-          hearts: 0,
-          skipActive: true,
-          skipUntil: skipUntil,
-          minutesRemaining: Math.ceil((skipUntil - now) / 60000)
-        }
+        skipActive = true;
+        minutesRemaining = Math.ceil((skipUntil - now) / 60000);
       } else {
         // Skip period expired, reset to normal
         console.log(`[SKIP] Skip period expired, resetting`);
         await resetSkipPeriod(userId)
-        user.hearts_remaining_today = HEARTS_PER_DAY
-        user.skip_until = null
+        skipActive = false;
       }
     }
 
-    console.log(`[SKIP] Returning hearts: ${user.hearts_remaining_today || HEARTS_PER_DAY}`);
+    // Always return hearts_remaining_today, even if in skip period
+    const hearts = user.hearts_remaining_today || HEARTS_PER_DAY;
+    console.log(`[SKIP] Returning: hearts=${hearts}, skipActive=${skipActive}, minutesRemaining=${minutesRemaining}`);
+
     return {
       success: true,
-      hearts: user.hearts_remaining_today || HEARTS_PER_DAY,
-      skipActive: false,
-      skipUntil: null,
-      minutesRemaining: 0
+      hearts: hearts,
+      skipActive: skipActive,
+      skipUntil: skipUntil,
+      minutesRemaining: minutesRemaining
     }
   } catch (err) {
     console.error('[SKIP] Error getting available hearts:', err)
