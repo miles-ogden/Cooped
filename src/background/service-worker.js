@@ -157,21 +157,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         // Check if user has an active skip period
         const user = await getCurrentUser(true);
-        console.log(`[SERVICE-WORKER] Got current user: ${user?.id || 'NO USER'}`);
+        console.log(`[SERVICE-WORKER] CHECK_BLOCKED_SITE - Got current user: ${user?.id || 'NO USER'}`);
 
-        if (user) {
-          const skipCheck = await isUserInSkipPeriod(user.id);
-          console.log(`[SERVICE-WORKER] Skip check result: ${JSON.stringify(skipCheck)}`);
-
-          if (skipCheck.success && skipCheck.inSkip) {
-            console.log(`[SKIP] ✅ User in skip period - ALLOWING access for ${skipCheck.minutesRemaining} min remaining`);
-            sendResponse({ isBlocked: false, skipActive: true, minutesRemaining: skipCheck.minutesRemaining });
-            return;
-          } else {
-            console.log(`[SKIP] ❌ User NOT in skip period or skip check failed`);
-          }
+        if (!user) {
+          console.error(`[SERVICE-WORKER] ❌ CHECK_BLOCKED_SITE - No user found, cannot check skip period`);
         } else {
-          console.log(`[SERVICE-WORKER] No user found - cannot check skip period`);
+          try {
+            const skipCheck = await isUserInSkipPeriod(user.id);
+            console.log(`[SERVICE-WORKER] CHECK_BLOCKED_SITE - Skip check result:`, skipCheck);
+
+            if (!skipCheck.success) {
+              console.error(`[SERVICE-WORKER] ❌ Skip check failed:`, skipCheck.error);
+            } else if (skipCheck.inSkip) {
+              console.log(`[SERVICE-WORKER] ✅ CHECK_BLOCKED_SITE - User in ACTIVE skip period - ALLOWING access for ${skipCheck.minutesRemaining} min remaining`);
+              sendResponse({ isBlocked: false, skipActive: true, minutesRemaining: skipCheck.minutesRemaining });
+              return;
+            } else {
+              console.log(`[SERVICE-WORKER] CHECK_BLOCKED_SITE - User NOT in skip period`);
+            }
+          } catch (skipErr) {
+            console.error(`[SERVICE-WORKER] ❌ Exception during skip check:`, skipErr);
+          }
         }
 
         console.log(`[SERVICE-WORKER] Site IS blocked - showing interrupt for tab ${tabId}`);
