@@ -1,9 +1,11 @@
 /**
  * Skip System - Hearts Logic
+ * MVP Step 3 - Per chicken_popup_mvp_plan.md
  * Users get 3 hearts per day, each heart = 20 minutes of skip time
  */
 
-import { supabase } from './supabaseClient.js'
+import { querySelect, queryUpdate } from './supabaseClient.js'
+import { triggerAnimation } from './animationEvents.js'
 
 const HEARTS_PER_DAY = 3
 const MINUTES_PER_HEART = 20
@@ -14,13 +16,12 @@ const MILLISECONDS_PER_HEART = MINUTES_PER_HEART * 60 * 1000
  */
 export async function getAvailableHearts(userId) {
   try {
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('hearts_remaining_today, skip_until')
-      .eq('id', userId)
-      .single()
+    const user = await querySelect('users', {
+      eq: { id: userId },
+      select: 'hearts_remaining_today,skip_until',
+      single: true
+    })
 
-    if (error) throw error
     if (!user) throw new Error('User not found')
 
     // Check if skip period has expired
@@ -48,7 +49,7 @@ export async function getAvailableHearts(userId) {
 
     return {
       success: true,
-      hearts: user.hearts_remaining_today,
+      hearts: user.hearts_remaining_today || HEARTS_PER_DAY,
       skipActive: false,
       skipUntil: null,
       minutesRemaining: 0
@@ -92,20 +93,22 @@ export async function useHeart(userId) {
     const skipUntil = new Date(now.getTime() + MILLISECONDS_PER_HEART)
 
     // 3. Update user
-    const { data: updatedUser, error } = await supabase
-      .from('users')
-      .update({
-        hearts_remaining_today: heartsData.hearts - 1,
-        skip_until: skipUntil,
-        updated_at: new Date()
-      })
-      .eq('id', userId)
-      .select()
-      .single()
+    await queryUpdate('users', {
+      hearts_remaining_today: heartsData.hearts - 1,
+      skip_until: skipUntil.toISOString(),
+      updated_at: now.toISOString()
+    }, { id: userId })
 
-    if (error) throw error
+    // 4. Fetch updated user
+    const updatedUser = await querySelect('users', {
+      eq: { id: userId },
+      single: true
+    })
 
     console.log(`[SKIP] Heart used! Hearts remaining: ${heartsData.hearts - 1}, Skip until: ${skipUntil}`)
+
+    // Trigger animation
+    triggerAnimation('HEART_USED', { heartsRemaining: heartsData.hearts - 1, minutesActive: MINUTES_PER_HEART })
 
     return {
       success: true,
@@ -125,13 +128,12 @@ export async function useHeart(userId) {
  */
 export async function isUserInSkipPeriod(userId) {
   try {
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('skip_until')
-      .eq('id', userId)
-      .single()
+    const user = await querySelect('users', {
+      eq: { id: userId },
+      select: 'skip_until',
+      single: true
+    })
 
-    if (error) throw error
     if (!user) throw new Error('User not found')
 
     if (!user.skip_until) {
@@ -165,31 +167,18 @@ export async function isUserInSkipPeriod(userId) {
  */
 export async function resetHeartsDaily(userId) {
   try {
-    const { data: user, error: fetchError } = await supabase
-      .from('users')
-      .select('created_at')
-      .eq('id', userId)
-      .single()
-
-    if (fetchError) throw fetchError
-
-    // Calculate days since account creation
-    const createdAt = new Date(user.created_at)
     const now = new Date()
 
-    // Simple check: if last_stim_date is older than today, reset hearts
-    const { data: updatedUser, error: updateError } = await supabase
-      .from('users')
-      .update({
-        hearts_remaining_today: HEARTS_PER_DAY,
-        skip_until: null,
-        updated_at: new Date()
-      })
-      .eq('id', userId)
-      .select()
-      .single()
+    await queryUpdate('users', {
+      hearts_remaining_today: HEARTS_PER_DAY,
+      skip_until: null,
+      updated_at: now.toISOString()
+    }, { id: userId })
 
-    if (updateError) throw updateError
+    const updatedUser = await querySelect('users', {
+      eq: { id: userId },
+      single: true
+    })
 
     console.log(`[SKIP] Hearts reset to ${HEARTS_PER_DAY} for user ${userId}`)
 
@@ -209,15 +198,10 @@ export async function resetHeartsDaily(userId) {
  */
 async function resetSkipPeriod(userId) {
   try {
-    const { error } = await supabase
-      .from('users')
-      .update({
-        skip_until: null,
-        updated_at: new Date()
-      })
-      .eq('id', userId)
-
-    if (error) throw error
+    await queryUpdate('users', {
+      skip_until: null,
+      updated_at: new Date().toISOString()
+    }, { id: userId })
 
     console.log(`[SKIP] Skip period reset for user ${userId}`)
     return { success: true }
@@ -261,13 +245,11 @@ export async function getSkipStatus(userId) {
  */
 export async function shouldResetHeartsToday(userId) {
   try {
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('last_stim_date, created_at')
-      .eq('id', userId)
-      .single()
-
-    if (error) throw error
+    const user = await querySelect('users', {
+      eq: { id: userId },
+      select: 'last_stim_date,created_at',
+      single: true
+    })
 
     const now = new Date()
     now.setHours(0, 0, 0, 0)

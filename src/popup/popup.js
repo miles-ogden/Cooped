@@ -238,7 +238,12 @@ function initializeAuthHandlers() {
         showEmailConfirmation(email);
       } else {
         showAuthLoading(false);
-        showAuthError(result.error || 'Signup failed');
+        let errorMsg = result.error || 'Signup failed';
+        // If error mentions email already exists
+        if (errorMsg.toLowerCase().includes('already registered')) {
+          errorMsg = 'This email is already registered. Try logging in instead.';
+        }
+        showAuthError(errorMsg);
       }
     } catch (err) {
       showAuthLoading(false);
@@ -411,6 +416,30 @@ function showEmailConfirmation(email) {
     }
   });
 
+  // Handle skip button (for development - bypass email verification)
+  document.getElementById('skip-verification-btn')?.addEventListener('click', async () => {
+    console.log('[POPUP] Skipping email verification (dev mode)');
+    // In development, we bypass email verification
+    // In production, users MUST verify email
+    try {
+      const { signInWithEmail } = await import('../logic/supabaseClient.js');
+      const password = document.getElementById('signup-password').value;
+      const result = await signInWithEmail(email, password);
+
+      if (result.success) {
+        console.log('[POPUP] Dev: Logged in without email verification');
+        confirmForm.classList.remove('active');
+        showMainContent();
+        initializeScreens();
+        showScreen('home');
+      } else {
+        showAuthError('Could not log in. Please verify your email first.');
+      }
+    } catch (err) {
+      showAuthError(err.message);
+    }
+  });
+
   // Handle resend email
   document.getElementById('resend-email-btn')?.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -486,6 +515,25 @@ setInterval(() => {
 document.addEventListener('DOMContentLoaded', () => {
   initializePopup();
 });
+
+// Listen for messages from auth-callback.html
+window.addEventListener('message', (event) => {
+  console.log('[POPUP] Received message:', event.data.type);
+
+  if (event.data.type === 'AUTH_VERIFIED') {
+    console.log('[POPUP] Email verified! User can now proceed.');
+    // Email has been verified - user can proceed
+    const confirmForm = document.getElementById('email-confirmation-form');
+    if (confirmForm?.classList.contains('active')) {
+      // Auto-proceed after email verification
+      const skipBtn = document.getElementById('skip-verification-btn');
+      if (skipBtn) skipBtn.click();
+    }
+  } else if (event.data.type === 'AUTH_ERROR') {
+    console.error('[POPUP] Auth error:', event.data.error);
+    showAuthError(event.data.error || 'Authentication failed');
+  }
+}, false);
 
 // Also initialize immediately in case DOM is already ready
 if (document.readyState === 'loading') {

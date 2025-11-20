@@ -1,9 +1,11 @@
 /**
  * Coop Manager - Team/Group System
+ * MVP Step 4 - Per chicken_popup_mvp_plan.md
  * Allows users to create/join coops and see leaderboards
+ * Coop rank = sum of members' levels
  */
 
-import { supabase } from './supabaseClient.js'
+import { querySelect, queryUpdate, queryInsert } from './supabaseClient.js'
 
 /**
  * Create a new coop
@@ -19,28 +21,22 @@ export async function createCoop(coopName, creatorUserId) {
     }
 
     // Create coop with creator as first member
-    const { data: newCoop, error } = await supabase
-      .from('coops')
-      .insert([{
-        name: coopName,
-        creator_user_id: creatorUserId,
-        member_ids: [creatorUserId],
-        coop_level: 1,
-        total_xp: 0,
-        created_at: new Date()
-      }])
-      .select()
-      .single()
+    const now = new Date().toISOString()
+    const newCoops = await queryInsert('coops', [{
+      name: coopName,
+      creator_user_id: creatorUserId,
+      member_ids: [creatorUserId],
+      coop_level: 1,
+      total_xp: 0,
+      created_at: now
+    }])
 
-    if (error) throw error
+    const newCoop = newCoops[0]
 
     console.log(`[COOP] New coop created: ${newCoop.id} by ${creatorUserId}`)
 
     // Add coop_id to creator's user profile
-    await supabase
-      .from('users')
-      .update({ coop_id: newCoop.id })
-      .eq('id', creatorUserId)
+    await queryUpdate('users', { coop_id: newCoop.id }, { id: creatorUserId })
 
     return { success: true, coop: newCoop }
   } catch (err) {

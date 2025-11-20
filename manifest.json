@@ -62,6 +62,8 @@
         "src/popup/earn-eggs.html",
         "src/popup/earn-eggs.css",
         "src/popup/earn-eggs.js",
+        "src/popup/auth-callback.html",
+        "src/popup/auth-callback.js",
         "challenges/challenge-bank.js",
         "src/utils/api.js",
         "src/utils/storage.js",

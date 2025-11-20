@@ -73,6 +73,9 @@ export async function getCurrentUser(skipValidation = false) {
  */
 export async function signUpWithEmail(email, password) {
   try {
+    // Redirect through GitHub Pages which then redirects to the extension
+    // This works on both Chrome and Brave browsers
+    const redirectUrl = `https://jasonhaug.github.io/mindflock-auth-redirect?ext=${chrome.runtime.id}`;
     const response = await fetch(
       `${SUPABASE_URL}/auth/v1/signup`,
       {
@@ -83,7 +86,13 @@ export async function signUpWithEmail(email, password) {
         },
         body: JSON.stringify({
           email,
-          password
+          password,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: {
+              signup_origin: 'extension'
+            }
+          }
         })
       }
     )
@@ -97,29 +106,30 @@ export async function signUpWithEmail(email, password) {
 
     console.log('[SUPABASE] Sign up response:', data)
 
-    // Handle both session structure (with session object) and direct tokens
-    const accessToken = data.session?.access_token || data.access_token
-    const refreshToken = data.session?.refresh_token || data.refresh_token
-    const userId = data.user?.id || data.session?.user?.id
+    const user = data.user || data
+    const session = data.session || (data.access_token ? {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      user: data.user || data.session?.user
+    } : null)
 
-    if (!accessToken) {
-      throw new Error('No access token in signup response')
+    if (session?.access_token) {
+      const userId = session.user?.id || user?.id
+      if (userId) {
+        await persistSession({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+          user_id: userId
+        }, 'email')
+      }
     }
 
-    if (!userId) {
-      throw new Error('No user ID in signup response')
+    console.log('[SUPABASE] Sign up successful:', user?.id || 'unknown')
+    return {
+      success: true,
+      user,
+      requiresConfirmation: !session?.access_token
     }
-
-    // Store session with user ID for later reference
-    currentSession = {
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      user_id: userId
-    }
-    await chrome.storage.local.set({ supabase_session: currentSession })
-
-    console.log('[SUPABASE] Sign up successful:', userId)
-    return { success: true, user: data.user, session: currentSession }
   } catch (err) {
     console.error('[SUPABASE] Sign up error:', err)
     return { success: false, error: err.message }
@@ -152,15 +162,13 @@ export async function signInWithEmail(email, password) {
       throw new Error(data.message || 'Sign in failed')
     }
 
-    // Store session with user ID
-    currentSession = {
+    await persistSession({
       access_token: data.access_token,
       refresh_token: data.refresh_token,
       user_id: data.user?.id
-    }
-    await chrome.storage.local.set({ supabase_session: currentSession })
+    }, 'email')
 
-    console.log('[SUPABASE] Sign in successful:', data.user.id)
+    console.log('[SUPABASE] Sign in successful:', data.user?.id)
     return { success: true, user: data.user, session: data }
   } catch (err) {
     console.error('[SUPABASE] Sign in error:', err)
@@ -331,7 +339,7 @@ export async function queryUpdate(table, updates, filters) {
 
 /**
  * Sign in with OAuth provider (Google, Discord, etc.)
- * For Chrome extension: opens provider login in new tab/window and handles callback
+ * For Chrome extension: uses GitHub Pages as intermediary to handle OAuth redirect
  */
 export async function signInWithOAuth(provider) {
   try {
@@ -345,7 +353,10 @@ export async function signInWithOAuth(provider) {
       oauth_provider: provider
     })
 
-    // Build authorization URL
+    // Build authorization URL using Supabase's standard OAuth flow
+    // Redirect through GitHub Pages (like we do for email verification)
+    const redirectUrl = `https://jasonhaug.github.io/mindflock-auth-redirect?ext=${chrome.runtime.id}`
+
     let scope = 'openid profile email'
     if (provider === 'apple') {
       scope = 'email name'
@@ -353,14 +364,14 @@ export async function signInWithOAuth(provider) {
 
     const params = new URLSearchParams({
       client_id: SUPABASE_ANON_KEY,
-      redirect_uri: `https://${chrome.runtime.id}.chromiumapp.org/`,
+      redirect_uri: redirectUrl,
       response_type: 'code',
       scope: scope,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256'
     })
 
-    const authUrl = `${SUPABASE_URL}/auth/v1/authorize?${params.toString()}`
+    const authUrl = `${SUPABASE_URL}/auth/v1/authorize?provider=${provider}&${params.toString()}`
 
     // Open auth in new window
     return new Promise((resolve) => {
@@ -370,7 +381,7 @@ export async function signInWithOAuth(provider) {
           return
         }
 
-        // Listen for OAuth callback
+        // Listen for OAuth callback from GitHub Pages redirect
         const handleMessage = (message, sender) => {
           if (message.type === 'OAUTH_CALLBACK' && message.code) {
             chrome.runtime.onMessage.removeListener(handleMessage)
@@ -421,40 +432,121 @@ async function exchangeCodeForSession(code, codeVerifier, provider) {
       throw new Error(data.message || 'Token exchange failed')
     }
 
-    // Store session with user ID
-    currentSession = {
+    await persistSession({
       access_token: data.access_token,
       refresh_token: data.refresh_token,
       user_id: data.user?.id
-    }
-    await chrome.storage.local.set({ supabase_session: currentSession })
-
-    // Create user profile if new user
-    const { queryInsert } = await import('./authManager.js')
-    try {
-      await queryInsert('users', [{
-        id: data.user.id,
-        auth_provider: provider,
-        xp_total: 0,
-        level: 1,
-        eggs: 0,
-        streak_days: 0,
-        last_stim_date: null,
-        hearts_remaining_today: 3,
-        skip_until: null,
-        coop_id: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }])
-    } catch (err) {
-      // User profile might already exist, that's okay
-      console.log('[SUPABASE] User profile already exists or creation skipped')
-    }
+    }, provider)
 
     console.log('[SUPABASE] OAuth sign in successful:', data.user.id)
     return { success: true, user: data.user }
   } catch (err) {
     console.error('[SUPABASE] Token exchange error:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * Persist Supabase session locally and ensure the user record exists
+ */
+async function persistSession(session, provider = 'email') {
+  if (!session?.access_token || !session?.user_id) {
+    console.warn('[SUPABASE] Cannot persist session - missing data')
+    return
+  }
+
+  currentSession = session
+  await chrome.storage.local.set({ supabase_session: currentSession })
+
+  try {
+    await ensureUserProfile(session.user_id, provider)
+  } catch (err) {
+    console.error('[SUPABASE] Failed ensuring user profile:', err)
+  }
+}
+
+/**
+ * Create a basic profile in the public.users table if it does not exist yet
+ */
+async function ensureUserProfile(userId, authProvider = 'email') {
+  if (!userId) {
+    return
+  }
+
+  try {
+    const existing = await querySelect('users', {
+      eq: { id: userId },
+      single: true
+    })
+
+    if (existing) {
+      return
+    }
+  } catch (err) {
+    console.warn('[SUPABASE] Error checking existing user profile:', err)
+  }
+
+  try {
+    await queryInsert('users', [{
+      id: userId,
+      auth_provider: authProvider,
+      xp_total: 0,
+      level: 1,
+      eggs: 0,
+      streak_days: 0,
+      last_stim_date: null,
+      hearts_remaining_today: 3,
+      skip_until: null,
+      coop_id: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }])
+    console.log('[SUPABASE] Created user profile:', userId)
+  } catch (err) {
+    if (err.message?.toLowerCase().includes('duplicate')) {
+      console.log('[SUPABASE] User profile already exists')
+      return
+    }
+    throw err
+  }
+}
+
+/**
+ * Store a session that comes from external redirects (email verification, recovery, etc.)
+ */
+export async function setSessionFromRedirect(accessToken, refreshToken, provider = 'email') {
+  try {
+    if (!accessToken) {
+      throw new Error('Missing access token')
+    }
+
+    const response = await fetch(
+      `${SUPABASE_URL}/auth/v1/user`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    )
+
+    const user = await response.json()
+
+    if (!response.ok) {
+      throw new Error(user.message || 'Failed to fetch user information')
+    }
+
+    await persistSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      user_id: user.id
+    }, provider)
+
+    return { success: true, user }
+  } catch (err) {
+    console.error('[SUPABASE] Error setting session from redirect:', err)
     return { success: false, error: err.message }
   }
 }

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Cooped - Redirecting...</title>
+  <style>
+    body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .container { text-align: center; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+    h2 { color: #333; margin: 0; }
+    p { color: #999; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Redirecting to Cooped...</h2>
+    <p>Please wait.</p>
+  </div>
+
+  <script>
+    // Get the auth tokens from the hash (sent by Supabase)
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    const type = params.get('type');
+    const extensionId = new URLSearchParams(window.location.search).get('ext');
+
+    console.log('Redirect params - Token:', !!accessToken, 'Type:', type, 'Ext ID:', extensionId);
+
+    if (accessToken && extensionId) {
+      // Build the extension URL with all the auth tokens
+      const extensionUrl = `chrome-extension://${extensionId}/src/popup/auth-callback.html#access_token=${accessToken}&refresh_token=${refreshToken || ''}&type=${type || ''}`;
+      console.log('Redirecting to extension...');
+      window.location.href = extensionUrl;
+    } else {
+      document.querySelector('p').textContent = 'Error: Missing authentication data. Please try signing up again.';
+      console.error('Missing required parameters:', { accessToken: !!accessToken, extensionId });
+    }
+  </script>
+</body>
+</html>

@@ -105,6 +105,24 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 });
 
 /**
+ * Listen for web navigation events to intercept email verification callbacks
+ */
+chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+  // If user is trying to navigate to the auth callback URL
+  if (details.url.includes('auth-callback.html')) {
+    console.log('[SERVICE-WORKER] Intercepting auth callback navigation:', details.url);
+    // Extract hash/query params from the URL
+    const url = new URL(details.url);
+    const params = url.hash || url.search;
+
+    // Store in session storage for the popup to retrieve
+    chrome.storage.session.set({
+      auth_callback_params: params
+    });
+  }
+});
+
+/**
  * Listen for messages from content scripts
  */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
