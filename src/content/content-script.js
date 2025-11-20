@@ -13,6 +13,7 @@ let updateTabVisibility, updateMediaPauseState, setActivityState, ACTIVITY_STATE
 let detectPlatform, isOnYouTubeShorts, handleYouTubeShortsDetection, handleYouTubeLongFormDetection;
 let recordYouTubeProductivityResponse, handleMediaPauseChange, handleTabVisibilityChange;
 let showInterruptSequence;
+let getSkipStatus, useHeart;
 
 // Set up message listener BEFORE modules load, store message for when ready
 let pendingMessages = [];
@@ -562,6 +563,9 @@ function renderVocabularyGameUI(headerEl, contentEl, question) {
   });
 
   contentEl.appendChild(submitBtn);
+
+  // Add skip button to vocabulary challenge
+  createSkipButton(contentEl);
 
   // Helper function to update blank display
   function updateBlank() {
@@ -1171,6 +1175,10 @@ function renderMathGameUI(_, contentEl, question) {
   });
 
   layoutContainer.appendChild(submitBtn);
+
+  // Add skip button to math challenge
+  createSkipButton(layoutContainer);
+
   contentEl.appendChild(layoutContainer);
 
   // Helper function to add eggs with animation
@@ -1548,6 +1556,9 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
 
   layoutContainer.appendChild(submitBtn);
 
+  // Add skip button to history challenge
+  createSkipButton(layoutContainer);
+
   // ===== MOUSE TRACKING FOR MAGNIFYING GLASS REVEAL =====
   console.log('[HISTORY] Setting up mouse tracking...');
   detectiveCanvas.addEventListener('mousemove', (e) => {
@@ -1771,6 +1782,81 @@ function renderPage3Inline(headerEl, contentEl) {
 }
 
 /**
+ * Create and attach skip button to challenge UI
+ */
+function createSkipButton(container) {
+  const skipBtnContainer = document.createElement('div');
+  skipBtnContainer.style.display = 'flex';
+  skipBtnContainer.style.gap = '10px';
+  skipBtnContainer.style.justifyContent = 'center';
+  skipBtnContainer.style.marginTop = '10px';
+
+  const skipBtn = document.createElement('button');
+  skipBtn.className = 'cooped-skip-btn';
+  skipBtn.style.padding = '10px 20px';
+  skipBtn.style.fontSize = '14px';
+  skipBtn.style.border = '2px solid #f44336';
+  skipBtn.style.backgroundColor = '#fff';
+  skipBtn.style.color = '#f44336';
+  skipBtn.style.cursor = 'pointer';
+  skipBtn.style.borderRadius = '12px';
+  skipBtn.style.fontWeight = 'bold';
+  skipBtn.style.transition = 'all 0.2s ease';
+
+  // Load skip status
+  (async () => {
+    try {
+      const skipStatus = await getSkipStatus(interruptSequenceUserId);
+      if (skipStatus.success) {
+        skipBtn.textContent = `❤️ ${skipStatus.hearts}/${skipStatus.hearts > 0 ? 3 : 0}`;
+        skipBtn.setAttribute('data-hearts-available', skipStatus.hearts);
+
+        skipBtn.addEventListener('mouseenter', () => {
+          if (skipStatus.hearts > 0) {
+            skipBtn.style.backgroundColor = '#f44336';
+            skipBtn.style.color = '#fff';
+            skipBtn.textContent = '- 1 ❤️';
+          }
+        });
+
+        skipBtn.addEventListener('mouseleave', () => {
+          skipBtn.textContent = `❤️ ${skipStatus.hearts}/${3}`;
+          skipBtn.style.backgroundColor = '#fff';
+          skipBtn.style.color = '#f44336';
+        });
+
+        skipBtn.addEventListener('click', async () => {
+          if (skipStatus.hearts <= 0) {
+            alert('No hearts remaining today! Come back tomorrow.');
+            return;
+          }
+
+          try {
+            const result = await useHeart(interruptSequenceUserId);
+            if (result.success) {
+              console.log('[INTERRUPT] Heart used! Skip activated for 20 minutes');
+              alert(`✅ Skip activated! You have ${result.heartsRemaining} hearts left.`);
+              // Close the overlay
+              chrome.runtime.sendMessage({ action: 'closeTab' });
+            } else {
+              alert(`❌ ${result.error}`);
+            }
+          } catch (err) {
+            console.error('[INTERRUPT] Error using heart:', err);
+            alert('Error using heart');
+          }
+        });
+
+        skipBtnContainer.appendChild(skipBtn);
+        container.appendChild(skipBtnContainer);
+      }
+    } catch (err) {
+      console.error('[INTERRUPT] Error loading skip status:', err);
+    }
+  })();
+}
+
+/**
  * Advance to next page or close if on last page
  */
 function advanceInterruptPageInline() {
@@ -1831,8 +1917,9 @@ Promise.all([
   import('../utils/mascot.js'),
   import('../utils/time-tracking.js'),
   import('../utils/platform-detection.js'),
-  import('./interrupt-sequence.js')
-]).then(([challengeBank, storageModule, mascotModule, timeTrackingModule, platformDetectionModule, interruptModule]) => {
+  import('./interrupt-sequence.js'),
+  import('../logic/skipSystem.js')
+]).then(([challengeBank, storageModule, mascotModule, timeTrackingModule, platformDetectionModule, interruptModule, skipSystemModule]) => {
   getRandomChallenge = challengeBank.getRandomChallenge;
   checkAnswer = challengeBank.checkAnswer;
   CHALLENGE_TYPES = challengeBank.CHALLENGE_TYPES;
@@ -1872,6 +1959,9 @@ Promise.all([
   handleTabVisibilityChange = platformDetectionModule.handleTabVisibilityChange;
 
   showInterruptSequence = interruptModule.showInterruptSequence;
+
+  getSkipStatus = skipSystemModule.getSkipStatus;
+  useHeart = skipSystemModule.useHeart;
 
   // Mark modules as ready
   modulesReady = true;
