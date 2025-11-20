@@ -81,19 +81,60 @@ async function refreshAccessToken() {
 }
 
 /**
+ * Extract user ID from JWT access token
+ */
+function extractUserIdFromToken(token) {
+  try {
+    if (!token) return null
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+
+    // Decode the payload (second part)
+    const payload = atob(parts[1])
+    const decoded = JSON.parse(payload)
+    return decoded.sub || null
+  } catch (err) {
+    console.error('[SUPABASE] Error extracting user ID from token:', err)
+    return null
+  }
+}
+
+/**
  * Get current authenticated user
  * @param {boolean} skipValidation - If true, return session without verifying with server
  */
 export async function getCurrentUser(skipValidation = false) {
   try {
     if (!currentSession) {
+      console.log('[SUPABASE] No current session')
       return null
     }
 
     // If skipValidation is true, return user object with just the session data
     if (skipValidation) {
       console.log('[SUPABASE] Returning current session (validation skipped)')
-      return { id: currentSession.user_id || 'unknown' }
+
+      // Try to get user_id from session object
+      let userId = currentSession.user_id
+
+      // If not found, try to extract from access token (JWT)
+      if (!userId && currentSession.access_token) {
+        console.log('[SUPABASE] user_id not in session, extracting from JWT token...')
+        userId = extractUserIdFromToken(currentSession.access_token)
+        if (userId) {
+          console.log('[SUPABASE] Extracted user_id from JWT:', userId)
+          // Update the session to include this for future use
+          currentSession.user_id = userId
+          await chrome.storage.local.set({ supabase_session: currentSession })
+        }
+      }
+
+      if (!userId) {
+        console.error('[SUPABASE] Could not determine user_id - session invalid')
+        return null
+      }
+
+      return { id: userId }
     }
 
     // Verify session is still valid by making an auth request

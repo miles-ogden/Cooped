@@ -373,13 +373,24 @@ function notifyPopupOfXpChange(userId, xpResult) {
  */
 async function handleGetSkipStatus(userId, sendResponse) {
   try {
-    console.log('[SERVICE-WORKER] Getting skip status for user:', userId);
+    console.log('[SERVICE-WORKER] ===== GET SKIP STATUS START =====');
+    console.log('[SERVICE-WORKER] Requested userId:', userId);
+
+    if (!userId) {
+      console.error('[SERVICE-WORKER] ❌ No userId provided');
+      sendResponse({ success: false, error: 'No userId provided' });
+      return;
+    }
+
     const skipStatus = await getSkipStatus(userId);
-    console.log('[SERVICE-WORKER] Skip status retrieved:', skipStatus);
+    console.log('[SERVICE-WORKER] ✅ Skip status retrieved:', skipStatus);
     sendResponse(skipStatus);
   } catch (err) {
-    console.error('[SERVICE-WORKER] Error getting skip status:', err);
+    console.error('[SERVICE-WORKER] ❌ Error getting skip status:', err);
+    console.error('[SERVICE-WORKER] Error message:', err.message);
     sendResponse({ success: false, error: err.message });
+  } finally {
+    console.log('[SERVICE-WORKER] ===== GET SKIP STATUS END =====');
   }
 }
 
@@ -388,24 +399,38 @@ async function handleGetSkipStatus(userId, sendResponse) {
  */
 async function handleUseHeart(userId, sendResponse) {
   try {
-    console.log('[SERVICE-WORKER] Using heart for user:', userId);
+    console.log('[SERVICE-WORKER] ===== USE HEART START =====');
+    console.log('[SERVICE-WORKER] Requested userId:', userId);
+
+    if (!userId) {
+      console.error('[SERVICE-WORKER] ❌ No userId provided');
+      sendResponse({ success: false, error: 'No userId provided' });
+      return;
+    }
+
     const result = await useHeart(userId);
+    console.log('[SERVICE-WORKER] useHeart returned:', result);
 
     if (result.success) {
-      console.log('[SERVICE-WORKER] Heart used successfully, applying XP refund...');
+      console.log('[SERVICE-WORKER] ✅ Heart used successfully, applying XP refund...');
       // Apply +50 XP refund for using skip (cancels out the -50 stim penalty)
       const xpRefundResult = await applyXpEvent(userId, 'skip_used');
       console.log('[SERVICE-WORKER] XP refund result:', xpRefundResult);
 
       // Include refund info in response
       result.xpRefund = xpRefundResult;
+    } else {
+      console.error('[SERVICE-WORKER] ❌ Heart usage failed:', result.error);
     }
 
-    console.log('[SERVICE-WORKER] Heart used:', result);
+    console.log('[SERVICE-WORKER] Final heart response:', result);
     sendResponse(result);
   } catch (err) {
-    console.error('[SERVICE-WORKER] Error using heart:', err);
+    console.error('[SERVICE-WORKER] ❌ Error using heart:', err);
+    console.error('[SERVICE-WORKER] Error message:', err.message);
     sendResponse({ success: false, error: err.message });
+  } finally {
+    console.log('[SERVICE-WORKER] ===== USE HEART END =====');
   }
 }
 
