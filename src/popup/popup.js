@@ -543,16 +543,35 @@ window.addEventListener('message', (event) => {
 // Listen for XP updates from service worker
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'xpUpdated') {
-    console.log('[POPUP] Received XP update:', message);
+    console.log('[POPUP] ===== RECEIVED XP UPDATE FROM SERVICE WORKER =====');
+    console.log('[POPUP] Message:', message);
+    console.log('[POPUP] Current screen:', currentScreen);
+    console.log('[POPUP] homeScreen instance:', homeScreen ? 'exists' : 'null');
+
     // Refresh home screen if currently showing
     if (currentScreen === 'home' && homeScreen) {
-      console.log('[POPUP] Refreshing home screen with new XP data');
-      homeScreen.show().catch(err => console.error('[POPUP] Error refreshing home screen:', err));
+      console.log('[POPUP] ✅ Refreshing home screen with new XP data');
+      homeScreen.show().catch(err => {
+        console.error('[POPUP] ❌ Error refreshing home screen:', err);
+      });
+    } else {
+      console.log('[POPUP] ℹ️ Not refreshing home screen (currentScreen=' + currentScreen + ', homeScreen=' + (homeScreen ? 'exists' : 'null') + ')');
     }
+
     // Always update egg count
     if (message.newEggs !== undefined) {
-      document.getElementById('egg-count').textContent = message.newEggs;
+      console.log('[POPUP] Updating egg count to:', message.newEggs);
+      const eggEl = document.getElementById('egg-count');
+      if (eggEl) {
+        eggEl.textContent = message.newEggs;
+        console.log('[POPUP] ✅ Egg count updated');
+      } else {
+        console.warn('[POPUP] ⚠️ egg-count element not found in DOM');
+      }
+    } else {
+      console.log('[POPUP] ℹ️ No newEggs in message, skipping egg count update');
     }
+    console.log('[POPUP] ===== XP UPDATE PROCESSED =====');
   }
 });
 

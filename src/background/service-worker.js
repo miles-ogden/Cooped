@@ -5,13 +5,21 @@
 
 import { initializeStorage, getSettings } from '../utils/storage.js';
 import { applyXpEvent } from '../logic/xpEngine.js';
-import { getCurrentUser } from '../logic/supabaseClient.js';
+import { getCurrentUser, initializeAuth } from '../logic/supabaseClient.js';
 
-// Initialize storage on extension install
+// Initialize storage and auth on extension install
 chrome.runtime.onInstalled.addListener(async () => {
   console.log('Cooped: Extension installed');
   await initializeStorage();
+  await initializeAuth();
 });
+
+// Initialize auth when service worker starts
+(async () => {
+  console.log('[SERVICE-WORKER] Starting service worker - initializing auth');
+  await initializeAuth();
+  console.log('[SERVICE-WORKER] Auth initialization complete');
+})();
 
 /**
  * Check if URL matches any blocked site patterns
@@ -128,6 +136,8 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
  * Listen for messages from content scripts
  */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('[SERVICE-WORKER] Received message:', message);
+
   if (message.type === 'CHECK_BLOCKED_SITE') {
     // Content script is asking if its tab is blocked
     const tabId = sender.tab.id;
@@ -226,32 +236,49 @@ async function handleChallengeRevealed(data, tab) {
  */
 async function handleApplyXpEvent(eventType, metadata = {}, sendResponse) {
   try {
-    console.log('[SERVICE-WORKER] Applying XP event:', eventType, metadata);
+    console.log('[SERVICE-WORKER] ===== XP EVENT HANDLER START =====');
+    console.log('[SERVICE-WORKER] Event type:', eventType);
+    console.log('[SERVICE-WORKER] Metadata:', metadata);
 
     // Get current user
+    console.log('[SERVICE-WORKER] Calling getCurrentUser(true)...');
     const user = await getCurrentUser(true);
+    console.log('[SERVICE-WORKER] getCurrentUser returned:', user);
+
     if (!user) {
-      console.error('[SERVICE-WORKER] No authenticated user for XP event');
+      console.error('[SERVICE-WORKER] ❌ No authenticated user for XP event');
+      console.error('[SERVICE-WORKER] User object is null/undefined');
       sendResponse({ success: false, error: 'User not authenticated' });
       return;
     }
 
+    console.log('[SERVICE-WORKER] ✅ User authenticated:', user.id);
+
     // Apply the XP event
+    console.log('[SERVICE-WORKER] Calling applyXpEvent with userId:', user.id, 'eventType:', eventType);
     const result = await applyXpEvent(user.id, eventType, metadata);
+    console.log('[SERVICE-WORKER] applyXpEvent returned:', result);
 
     if (result && result.success !== false) {
-      console.log('[SERVICE-WORKER] XP event applied successfully:', result);
+      console.log('[SERVICE-WORKER] ✅ XP event applied successfully');
+      console.log('[SERVICE-WORKER] Result:', result);
       sendResponse({ success: true, userId: user.id, result });
 
       // Notify popup of XP change so it can refresh the display
+      console.log('[SERVICE-WORKER] Notifying popup of XP change...');
       notifyPopupOfXpChange(user.id, result);
     } else {
-      console.error('[SERVICE-WORKER] Failed to apply XP event:', result);
+      console.error('[SERVICE-WORKER] ❌ Failed to apply XP event');
+      console.error('[SERVICE-WORKER] Result:', result);
       sendResponse({ success: false, error: result?.error || 'Failed to apply XP event' });
     }
   } catch (err) {
-    console.error('[SERVICE-WORKER] Error applying XP event:', err);
+    console.error('[SERVICE-WORKER] ❌ ERROR in handleApplyXpEvent:', err);
+    console.error('[SERVICE-WORKER] Error message:', err.message);
+    console.error('[SERVICE-WORKER] Error stack:', err.stack);
     sendResponse({ success: false, error: err.message });
+  } finally {
+    console.log('[SERVICE-WORKER] ===== XP EVENT HANDLER END =====');
   }
 }
 
@@ -260,7 +287,8 @@ async function handleApplyXpEvent(eventType, metadata = {}, sendResponse) {
  */
 function notifyPopupOfXpChange(userId, xpResult) {
   try {
-    console.log('[SERVICE-WORKER] Notifying popup of XP change:', xpResult);
+    console.log('[SERVICE-WORKER] ===== NOTIFYING POPUP OF XP CHANGE =====');
+    console.log('[SERVICE-WORKER] xpResult:', xpResult);
 
     // Extract data from xpEngine result
     const user = xpResult.user || {};
@@ -270,6 +298,15 @@ function notifyPopupOfXpChange(userId, xpResult) {
     const leveledUp = xpResult.leveledUp || false;
     const eggsGained = xpResult.eggsGained || 0;
 
+    console.log('[SERVICE-WORKER] Extracted data:', {
+      newXpTotal,
+      newLevel,
+      newEggs,
+      leveledUp,
+      eggsGained
+    });
+
+    console.log('[SERVICE-WORKER] Sending xpUpdated message to popup...');
     chrome.runtime.sendMessage({
       action: 'xpUpdated',
       userId: userId,
@@ -278,12 +315,15 @@ function notifyPopupOfXpChange(userId, xpResult) {
       newEggs,
       leveledUp,
       eggsGained
-    }).catch(() => {
+    }).then(() => {
+      console.log('[SERVICE-WORKER] ✅ Successfully sent xpUpdated message to popup');
+    }).catch((err) => {
       // Popup might not be open, that's fine
-      console.log('[SERVICE-WORKER] Popup not open to receive XP update notification');
+      console.log('[SERVICE-WORKER] ℹ️ Popup not open to receive XP update (this is normal):', err.message);
     });
   } catch (err) {
-    console.log('[SERVICE-WORKER] Could not notify popup:', err.message);
+    console.error('[SERVICE-WORKER] ❌ Error in notifyPopupOfXpChange:', err);
+    console.error('[SERVICE-WORKER] Error message:', err.message);
   }
 }
 

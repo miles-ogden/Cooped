@@ -40,18 +40,27 @@ async function showInterruptSequenceInline() {
   // Apply -50 XP stim penalty when blocked site is visited (via service worker)
   if (!stimPenaltyApplied) {
     try {
-      console.log('[INTERRUPT] Requesting service worker to apply -50 XP stim penalty');
+      console.log('[INTERRUPT] ===== REQUESTING XP STIM PENALTY =====');
+      console.log('[INTERRUPT] Current time:', new Date().toISOString());
+      console.log('[INTERRUPT] Sending message to service worker...');
       chrome.runtime.sendMessage({ action: 'applyXpEvent', eventType: 'stim_penalty' }, (response) => {
+        console.log('[INTERRUPT] ===== SERVICE WORKER RESPONSE =====');
+        console.log('[INTERRUPT] Response:', response);
+        console.log('[INTERRUPT] Response success:', response?.success);
+        console.log('[INTERRUPT] Response error:', response?.error);
+
         if (response && response.success) {
           interruptSequenceUserId = response.userId;
           stimPenaltyApplied = true;
-          console.log('[INTERRUPT] Stim penalty applied successfully');
+          console.log('[INTERRUPT] ✅ Stim penalty applied successfully');
+          console.log('[INTERRUPT] UserId set to:', interruptSequenceUserId);
         } else {
-          console.error('[INTERRUPT] Error applying stim penalty:', response?.error);
+          console.error('[INTERRUPT] ❌ Error applying stim penalty:', response?.error);
         }
       });
     } catch (err) {
-      console.error('[INTERRUPT] Error sending XP message:', err);
+      console.error('[INTERRUPT] ❌ Exception sending XP message:', err);
+      console.error('[INTERRUPT] Error details:', err.message);
     }
   }
 
@@ -1435,14 +1444,23 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
     if (selectedAnswer === question.correctAnswer) {
       // Mark that user answered correctly
       challengeAnsweredCorrectly = true;
+      console.log('[INTERRUPT] Challenge answered correctly!');
+      console.log('[INTERRUPT] interruptSequenceUserId:', interruptSequenceUserId);
+      console.log('[INTERRUPT] About to apply +20 XP for correct answer');
 
       // Apply +20 XP for correct answer (via service worker)
       if (interruptSequenceUserId) {
+        console.log('[INTERRUPT] Sending +20 XP for correct answer to service worker');
         chrome.runtime.sendMessage({ action: 'applyXpEvent', eventType: 'manual_adjustment', metadata: { delta: 20 } }, (response) => {
+          console.log('[INTERRUPT] Challenge answer XP response:', response);
           if (!response?.success) {
             console.error('[INTERRUPT] Error applying challenge win XP:', response?.error);
+          } else {
+            console.log('[INTERRUPT] ✅ Challenge answer XP applied successfully');
           }
         });
+      } else {
+        console.warn('[INTERRUPT] ⚠️ Cannot apply challenge XP - interruptSequenceUserId not set yet');
       }
 
       submitBtn.style.backgroundColor = '#4CAF50';
@@ -1654,17 +1672,25 @@ function renderPage3Inline(headerEl, contentEl) {
 
   safetyBtn.addEventListener('click', () => {
     // Apply +20 XP safety bonus only if user answered challenge correctly (via service worker)
+    console.log('[INTERRUPT] ===== SAFETY BUTTON CLICKED =====');
+    console.log('[INTERRUPT] interruptSequenceUserId:', interruptSequenceUserId);
+    console.log('[INTERRUPT] challengeAnsweredCorrectly:', challengeAnsweredCorrectly);
+
     if (interruptSequenceUserId && challengeAnsweredCorrectly) {
       console.log('[INTERRUPT] Applying +20 XP safety bonus for user:', interruptSequenceUserId);
       chrome.runtime.sendMessage({ action: 'applyXpEvent', eventType: 'manual_adjustment', metadata: { delta: 20 } }, (response) => {
+        console.log('[INTERRUPT] Safety bonus XP response:', response);
         if (response?.success) {
-          console.log('[INTERRUPT] Safety bonus applied successfully');
+          console.log('[INTERRUPT] ✅ Safety bonus applied successfully');
         } else {
           console.error('[INTERRUPT] Error applying safety bonus XP:', response?.error);
         }
       });
+    } else {
+      console.warn('[INTERRUPT] ⚠️ Cannot apply safety bonus - userId:', interruptSequenceUserId, 'answered correctly:', challengeAnsweredCorrectly);
     }
     // Close the current tab
+    console.log('[INTERRUPT] Sending closeTab message');
     chrome.runtime.sendMessage({ action: 'closeTab' });
   });
 
