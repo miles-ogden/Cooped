@@ -36,16 +36,20 @@ export async function getAvailableHearts(userId) {
       const now = new Date()
       skipUntil = new Date(user.skip_until)
 
-      if (now < skipUntil) {
+      // Calculate seconds remaining using server time perspective
+      const secondsRemaining = Math.floor((skipUntil.getTime() - now.getTime()) / 1000);
+      minutesRemaining = Math.ceil(secondsRemaining / 60);
+
+      if (secondsRemaining > 0) {
         // Still in skip period
-        console.log(`[SKIP] User in skip period until ${skipUntil}`)
+        console.log(`[SKIP] User in skip period until ${skipUntil} (${minutesRemaining} min remaining)`);
         skipActive = true;
-        minutesRemaining = Math.ceil((skipUntil - now) / 60000);
       } else {
         // Skip period expired, reset to normal
         console.log(`[SKIP] Skip period expired, resetting`);
         await resetSkipPeriod(userId)
         skipActive = false;
+        minutesRemaining = 0;
       }
     }
 
@@ -167,12 +171,16 @@ export async function isUserInSkipPeriod(userId) {
 
     const now = new Date()
     const skipUntil = new Date(user.skip_until)
-    const inSkip = now < skipUntil
 
-    console.log(`[SKIP] Comparing times: now=${now.toISOString()}, skipUntil=${skipUntil.toISOString()}, inSkip=${inSkip}`);
+    // Calculate seconds remaining
+    const secondsRemaining = Math.floor((skipUntil.getTime() - now.getTime()) / 1000);
+    const inSkip = secondsRemaining > 0;
+    const minutesRemaining = Math.ceil(secondsRemaining / 60);
+
+    console.log(`[SKIP] Comparing times: now=${now.toISOString()}, skipUntil=${skipUntil.toISOString()}`);
+    console.log(`[SKIP] Seconds remaining: ${secondsRemaining}, Minutes remaining: ${minutesRemaining}, inSkip: ${inSkip}`);
 
     if (inSkip) {
-      const minutesRemaining = Math.ceil((skipUntil - now) / 60000)
       console.log(`[SKIP] ✅ USER IS IN SKIP PERIOD: ${minutesRemaining} minutes remaining`)
     } else {
       console.log(`[SKIP] ❌ Skip period has expired`);
@@ -182,7 +190,7 @@ export async function isUserInSkipPeriod(userId) {
       success: true,
       inSkip: inSkip,
       skipUntil: skipUntil,
-      minutesRemaining: inSkip ? Math.ceil((skipUntil - now) / 60000) : 0
+      minutesRemaining: inSkip ? minutesRemaining : 0
     }
   } catch (err) {
     console.error('[SKIP] Error checking skip period:', err)
