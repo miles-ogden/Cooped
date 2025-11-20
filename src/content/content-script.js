@@ -13,6 +13,7 @@ let updateTabVisibility, updateMediaPauseState, setActivityState, ACTIVITY_STATE
 let detectPlatform, isOnYouTubeShorts, handleYouTubeShortsDetection, handleYouTubeLongFormDetection;
 let recordYouTubeProductivityResponse, handleMediaPauseChange, handleTabVisibilityChange;
 let showInterruptSequence;
+let applyXpEvent, getCurrentUser;
 
 // Set up message listener BEFORE modules load, store message for when ready
 let pendingMessages = [];
@@ -22,16 +23,35 @@ let modulesReady = false;
 let interruptOverlayElement = null;
 let currentInterruptPage = 1;
 let currentGameType = 'math'; // Track which game is being played (vocabulary, math, etc.)
+let interruptSequenceUserId = null; // User ID for this interrupt session
+let stimPenaltyApplied = false; // Track if -50 XP penalty was applied for this visit
+let challengeAnsweredCorrectly = false; // Track if user answered challenge correctly
 
 /**
  * Show the interrupt sequence overlay (inline implementation)
  */
-function showInterruptSequenceInline() {
+async function showInterruptSequenceInline() {
   console.log('[INTERRUPT] showInterruptSequenceInline called');
 
   if (interruptOverlayElement && interruptOverlayElement.isConnected) {
     console.log('[INTERRUPT] Overlay already showing, returning');
     return;
+  }
+
+  // Apply -50 XP stim penalty when blocked site is visited
+  if (!stimPenaltyApplied && getCurrentUser && applyXpEvent) {
+    try {
+      const user = await getCurrentUser(true);
+      if (user) {
+        interruptSequenceUserId = user.id;
+        stimPenaltyApplied = true;
+        console.log('[INTERRUPT] Applying -50 XP stim penalty for user:', user.id);
+        await applyXpEvent(user.id, 'stim_penalty', {});
+        console.log('[INTERRUPT] Stim penalty applied successfully');
+      }
+    } catch (err) {
+      console.error('[INTERRUPT] Error applying stim penalty:', err);
+    }
   }
 
   if (!document.body) {
@@ -1412,6 +1432,15 @@ function renderHistoryGameUI(headerEl, contentEl, question) {
     submitBtn.disabled = true;
 
     if (selectedAnswer === question.correctAnswer) {
+      // Mark that user answered correctly
+      challengeAnsweredCorrectly = true;
+
+      // Apply +20 XP for correct answer
+      if (interruptSequenceUserId && applyXpEvent) {
+        applyXpEvent(interruptSequenceUserId, 'manual_adjustment', { delta: 20 })
+          .catch(err => console.error('[INTERRUPT] Error applying challenge win XP:', err));
+      }
+
       submitBtn.style.backgroundColor = '#4CAF50';
       submitBtn.style.color = '#fff';
       submitBtn.textContent = 'Correct!';
@@ -1619,7 +1648,17 @@ function renderPage3Inline(headerEl, contentEl) {
     safetyBtn.style.backgroundColor = '#4CAF50';
   });
 
-  safetyBtn.addEventListener('click', () => {
+  safetyBtn.addEventListener('click', async () => {
+    // Apply +20 XP safety bonus only if user answered challenge correctly
+    if (interruptSequenceUserId && applyXpEvent && challengeAnsweredCorrectly) {
+      try {
+        console.log('[INTERRUPT] Applying +20 XP safety bonus for user:', interruptSequenceUserId);
+        await applyXpEvent(interruptSequenceUserId, 'manual_adjustment', { delta: 20 });
+        console.log('[INTERRUPT] Safety bonus applied successfully');
+      } catch (err) {
+        console.error('[INTERRUPT] Error applying safety bonus XP:', err);
+      }
+    }
     // Close the current tab
     chrome.runtime.sendMessage({ action: 'closeTab' });
   });
@@ -1696,6 +1735,11 @@ function closeInterruptSequenceInline() {
     interruptOverlayElement = null;
     currentInterruptPage = 1;
 
+    // Reset state variables for next interrupt
+    stimPenaltyApplied = false;
+    challengeAnsweredCorrectly = false;
+    interruptSequenceUserId = null;
+
     console.log('[INTERRUPT] Overlay closed and grayscale filter removed');
   }
 }
@@ -1716,8 +1760,10 @@ Promise.all([
   import('../utils/mascot.js'),
   import('../utils/time-tracking.js'),
   import('../utils/platform-detection.js'),
-  import('./interrupt-sequence.js')
-]).then(([challengeBank, storageModule, mascotModule, timeTrackingModule, platformDetectionModule, interruptModule]) => {
+  import('./interrupt-sequence.js'),
+  import('../logic/xpEngine.js'),
+  import('../logic/supabaseClient.js')
+]).then(([challengeBank, storageModule, mascotModule, timeTrackingModule, platformDetectionModule, interruptModule, xpEngineModule, supabaseModule]) => {
   getRandomChallenge = challengeBank.getRandomChallenge;
   checkAnswer = challengeBank.checkAnswer;
   CHALLENGE_TYPES = challengeBank.CHALLENGE_TYPES;
@@ -1757,6 +1803,9 @@ Promise.all([
   handleTabVisibilityChange = platformDetectionModule.handleTabVisibilityChange;
 
   showInterruptSequence = interruptModule.showInterruptSequence;
+
+  applyXpEvent = xpEngineModule.applyXpEvent;
+  getCurrentUser = supabaseModule.getCurrentUser;
 
   // Mark modules as ready
   modulesReady = true;
