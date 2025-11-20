@@ -6,7 +6,7 @@
 import { initializeStorage, getSettings } from '../utils/storage.js';
 import { applyXpEvent } from '../logic/xpEngine.js';
 import { getCurrentUser, initializeAuth } from '../logic/supabaseClient.js';
-import { getSkipStatus, useHeart } from '../logic/skipSystem.js';
+import { getSkipStatus, useHeart, isUserInSkipPeriod } from '../logic/skipSystem.js';
 
 // Initialize storage and auth on extension install
 chrome.runtime.onInstalled.addListener(async () => {
@@ -200,6 +200,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Content script requesting to use a heart
     handleUseHeart(message.userId, sendResponse);
     return true; // Keep message channel open for async response
+  } else if (message.action === 'checkSkipPeriod') {
+    // Content script checking if user has an active skip period
+    handleCheckSkipPeriod(sendResponse);
+    return true; // Keep message channel open for async response
   }
 });
 
@@ -358,11 +362,45 @@ async function handleUseHeart(userId, sendResponse) {
   try {
     console.log('[SERVICE-WORKER] Using heart for user:', userId);
     const result = await useHeart(userId);
+
+    if (result.success) {
+      console.log('[SERVICE-WORKER] Heart used successfully, applying XP refund...');
+      // Apply +50 XP refund for using skip (cancels out the -50 stim penalty)
+      const xpRefundResult = await applyXpEvent(userId, 'skip_used');
+      console.log('[SERVICE-WORKER] XP refund result:', xpRefundResult);
+
+      // Include refund info in response
+      result.xpRefund = xpRefundResult;
+    }
+
     console.log('[SERVICE-WORKER] Heart used:', result);
     sendResponse(result);
   } catch (err) {
     console.error('[SERVICE-WORKER] Error using heart:', err);
     sendResponse({ success: false, error: err.message });
+  }
+}
+
+/**
+ * Handle check skip period request from content script
+ */
+async function handleCheckSkipPeriod(sendResponse) {
+  try {
+    console.log('[SERVICE-WORKER] Checking skip period for user');
+    const user = await getCurrentUser(true);
+
+    if (!user) {
+      console.log('[SERVICE-WORKER] No user authenticated, skip period check failed');
+      sendResponse({ success: false, inSkip: false });
+      return;
+    }
+
+    const skipPeriodCheck = await isUserInSkipPeriod(user.id);
+    console.log('[SERVICE-WORKER] Skip period check result:', skipPeriodCheck);
+    sendResponse(skipPeriodCheck);
+  } catch (err) {
+    console.error('[SERVICE-WORKER] Error checking skip period:', err);
+    sendResponse({ success: false, inSkip: false, error: err.message });
   }
 }
 

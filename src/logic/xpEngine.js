@@ -13,6 +13,7 @@ const CLEAN_DAY_XP = 150 // No stimming events today
 const CLEAN_STREAK_XP = 200 // Streak of 3+ days (bonus on top of clean day)
 const STIM_PENALTY_XP = -50 // User stims and continues
 const CHALLENGE_WIN_XP = 100 // Complete a challenge successfully
+const SKIP_REFUND_XP = 50 // Refund the stim penalty when user skips
 const PLACEMENT_REWARDS = {
   3: 150, // 3rd place (bronze)
   2: 200, // 2nd place (silver)
@@ -135,6 +136,10 @@ function getXpDelta(eventType, user, metadata) {
     case 'stim_penalty':
       // User stims but continues (doesn't fully block)
       return STIM_PENALTY_XP
+
+    case 'skip_used':
+      // User used a heart to skip (refund the stim penalty)
+      return SKIP_REFUND_XP
 
     case 'challenge_win':
       // Challenge completed successfully
@@ -349,6 +354,7 @@ export const XP_RULES = {
   CLEAN_STREAK_XP,
   STIM_PENALTY_XP,
   CHALLENGE_WIN_XP,
+  SKIP_REFUND_XP,
   PLACEMENT_REWARDS,
   XP_PER_LEVEL
 }

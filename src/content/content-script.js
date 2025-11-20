@@ -1837,9 +1837,10 @@ function createSkipButton(container) {
           chrome.runtime.sendMessage({ action: 'useHeart', userId: interruptSequenceUserId }, (result) => {
             if (result && result.success) {
               console.log('[INTERRUPT] Heart used! Skip activated for 20 minutes');
-              alert(`✅ Skip activated! You have ${result.heartsRemaining} hearts left.`);
-              // Close the overlay
-              chrome.runtime.sendMessage({ action: 'closeTab' });
+              console.log('[INTERRUPT] XP refund result:', result.xpRefund);
+              alert(`✅ Skip activated! You have ${result.heartsRemaining} hearts left.\n💰 +50 XP refund applied!`);
+              // Close the overlay (not the tab!) - this keeps the site open
+              closeInterruptSequenceInline();
             } else {
               alert(`❌ ${result?.error || 'Error using heart'}`);
             }
@@ -2002,6 +2003,18 @@ async function checkAndShowChallenge() {
     if (doNotBotherCheck.active) {
       console.log(`Cooped: Do Not Bother Me active for ${doNotBotherCheck.minutesRemaining} more minutes`);
       // Don't show challenges during this period
+      return;
+    }
+
+    // Check if user has an active skip period (universal 20-min timer)
+    const skipCheckResult = await new Promise((resolve) => {
+      chrome.runtime.sendMessage({ action: 'checkSkipPeriod' }, (response) => {
+        resolve(response);
+      });
+    });
+
+    if (skipCheckResult && skipCheckResult.inSkip) {
+      console.log(`[SKIP] User in skip period - ${skipCheckResult.minutesRemaining} minutes remaining. Not showing challenge.`);
       return;
     }
 
