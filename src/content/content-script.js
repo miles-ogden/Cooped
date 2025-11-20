@@ -37,6 +37,19 @@ async function showInterruptSequenceInline() {
     return;
   }
 
+  // FIRST: Check if user is in skip period - if so, don't show anything
+  console.log('[INTERRUPT] Checking if user is in skip period before showing interrupt...');
+  const skipCheckResponse = await new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: 'CHECK_BLOCKED_SITE' }, (response) => {
+      resolve(response);
+    });
+  });
+
+  if (skipCheckResponse && skipCheckResponse.skipActive) {
+    console.log(`[INTERRUPT] ✅ User in SKIP PERIOD - NOT showing interrupt. ${skipCheckResponse.minutesRemaining} minutes remaining`);
+    return;
+  }
+
   // Apply -50 XP stim penalty when blocked site is visited (via service worker)
   if (!stimPenaltyApplied) {
     try {

@@ -40,7 +40,15 @@ export async function getAvailableHearts(userId) {
       const secondsRemaining = Math.floor((skipUntil.getTime() - now.getTime()) / 1000);
       minutesRemaining = Math.ceil(secondsRemaining / 60);
 
-      if (secondsRemaining > 0) {
+      // Safety check: If skip period is way too long (> 8 hours), it's probably stale data
+      // and should be cleared
+      if (minutesRemaining > 480) {
+        console.log(`[SKIP] ⚠️ WARNING: Skip period is ${minutesRemaining} minutes (> 480 max) - likely stale. Clearing.`);
+        await resetSkipPeriod(userId);
+        skipActive = false;
+        minutesRemaining = 0;
+        skipUntil = null;
+      } else if (secondsRemaining > 0) {
         // Still in skip period
         console.log(`[SKIP] User in skip period until ${skipUntil} (${minutesRemaining} min remaining)`);
         skipActive = true;
@@ -174,8 +182,16 @@ export async function isUserInSkipPeriod(userId) {
 
     // Calculate seconds remaining
     const secondsRemaining = Math.floor((skipUntil.getTime() - now.getTime()) / 1000);
-    const inSkip = secondsRemaining > 0;
-    const minutesRemaining = Math.ceil(secondsRemaining / 60);
+    let inSkip = secondsRemaining > 0;
+    let minutesRemaining = Math.ceil(secondsRemaining / 60);
+
+    // Safety check: If skip period is way too long (> 8 hours), it's probably stale data
+    if (minutesRemaining > 480) {
+      console.log(`[SKIP] ⚠️ WARNING: Skip period is ${minutesRemaining} minutes (> 480 max) - likely stale. Clearing.`);
+      await resetSkipPeriod(userId);
+      inSkip = false;
+      minutesRemaining = 0;
+    }
 
     console.log(`[SKIP] Comparing times: now=${now.toISOString()}, skipUntil=${skipUntil.toISOString()}`);
     console.log(`[SKIP] Seconds remaining: ${secondsRemaining}, Minutes remaining: ${minutesRemaining}, inSkip: ${inSkip}`);
@@ -183,14 +199,14 @@ export async function isUserInSkipPeriod(userId) {
     if (inSkip) {
       console.log(`[SKIP] ✅ USER IS IN SKIP PERIOD: ${minutesRemaining} minutes remaining`)
     } else {
-      console.log(`[SKIP] ❌ Skip period has expired`);
+      console.log(`[SKIP] ❌ Skip period has expired or was stale`);
     }
 
     return {
       success: true,
       inSkip: inSkip,
-      skipUntil: skipUntil,
-      minutesRemaining: inSkip ? minutesRemaining : 0
+      skipUntil: inSkip ? skipUntil : null,
+      minutesRemaining: minutesRemaining
     }
   } catch (err) {
     console.error('[SKIP] Error checking skip period:', err)
