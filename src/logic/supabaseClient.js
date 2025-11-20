@@ -73,9 +73,8 @@ export async function getCurrentUser(skipValidation = false) {
  */
 export async function signUpWithEmail(email, password) {
   try {
-    // Redirect through GitHub Pages which then redirects to the extension
-    // This works on both Chrome and Brave browsers
-    const redirectUrl = `https://jasonhaug.github.io/mindflock-auth-redirect?ext=${chrome.runtime.id}`;
+    // DEV MODE: Email verification disabled for now
+    // Simply sign up without requiring email confirmation
     const response = await fetch(
       `${SUPABASE_URL}/auth/v1/signup`,
       {
@@ -88,7 +87,6 @@ export async function signUpWithEmail(email, password) {
           email,
           password,
           options: {
-            emailRedirectTo: redirectUrl,
             data: {
               signup_origin: 'extension'
             }
@@ -128,7 +126,7 @@ export async function signUpWithEmail(email, password) {
     return {
       success: true,
       user,
-      requiresConfirmation: !session?.access_token
+      requiresConfirmation: false // Email verification disabled for dev
     }
   } catch (err) {
     console.error('[SUPABASE] Sign up error:', err)

@@ -236,8 +236,10 @@ function initializeAuthHandlers() {
       if (result.success) {
         console.log('[POPUP] Signup successful');
         showAuthLoading(false);
-        // Show email confirmation screen
-        showEmailConfirmation(email);
+        // Email verification disabled for dev - go straight to main content
+        showMainContent();
+        initializeScreens();
+        showScreen('home');
       } else {
         showAuthLoading(false);
         let errorMsg = result.error || 'Signup failed';
