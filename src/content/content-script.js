@@ -2006,18 +2006,6 @@ async function checkAndShowChallenge() {
       return;
     }
 
-    // Check if user has an active skip period (universal 20-min timer)
-    const skipCheckResult = await new Promise((resolve) => {
-      chrome.runtime.sendMessage({ action: 'checkSkipPeriod' }, (response) => {
-        resolve(response);
-      });
-    });
-
-    if (skipCheckResult && skipCheckResult.inSkip) {
-      console.log(`[SKIP] User in skip period - ${skipCheckResult.minutesRemaining} minutes remaining. Not showing challenge.`);
-      return;
-    }
-
     const currentHostname = window.location.hostname;
     const isYouTube = currentHostname.includes('youtube.com');
 

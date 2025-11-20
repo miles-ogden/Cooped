@@ -141,15 +141,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'CHECK_BLOCKED_SITE') {
     // Content script is asking if its tab is blocked
-    const tabId = sender.tab.id;
-    const blockedInfo = blockedTabs.get(tabId);
+    // Also check if user is in a skip period - if so, don't show interrupt even if blocked
+    (async () => {
+      try {
+        const tabId = sender.tab.id;
+        const blockedInfo = blockedTabs.get(tabId);
 
-    if (blockedInfo) {
-      console.log('Cooped: Returning blocked site info for tab', tabId);
-      sendResponse({ isBlocked: true, ...blockedInfo });
-    } else {
-      sendResponse({ isBlocked: false });
-    }
+        if (!blockedInfo) {
+          sendResponse({ isBlocked: false });
+          return;
+        }
+
+        // Check if user has an active skip period
+        const user = await getCurrentUser(true);
+        if (user) {
+          const skipCheck = await isUserInSkipPeriod(user.id);
+          if (skipCheck.success && skipCheck.inSkip) {
+            console.log(`[SKIP] User in skip period - blocking interrupt for 20 min (${skipCheck.minutesRemaining} min remaining)`);
+            sendResponse({ isBlocked: false, skipActive: true, minutesRemaining: skipCheck.minutesRemaining });
+            return;
+          }
+        }
+
+        console.log('Cooped: Returning blocked site info for tab', tabId);
+        sendResponse({ isBlocked: true, ...blockedInfo });
+      } catch (err) {
+        console.error('[SERVICE-WORKER] Error checking blocked site:', err);
+        sendResponse({ isBlocked: false, error: err.message });
+      }
+    })();
+    return true; // Keep message channel open for async response
   } else if (message.type === 'CHALLENGE_COMPLETED') {
     handleChallengeCompleted(message.data, sender.tab);
     sendResponse({ success: true });
@@ -199,10 +220,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.action === 'useHeart') {
     // Content script requesting to use a heart
     handleUseHeart(message.userId, sendResponse);
-    return true; // Keep message channel open for async response
-  } else if (message.action === 'checkSkipPeriod') {
-    // Content script checking if user has an active skip period
-    handleCheckSkipPeriod(sendResponse);
     return true; // Keep message channel open for async response
   }
 });
@@ -378,29 +395,6 @@ async function handleUseHeart(userId, sendResponse) {
   } catch (err) {
     console.error('[SERVICE-WORKER] Error using heart:', err);
     sendResponse({ success: false, error: err.message });
-  }
-}
-
-/**
- * Handle check skip period request from content script
- */
-async function handleCheckSkipPeriod(sendResponse) {
-  try {
-    console.log('[SERVICE-WORKER] Checking skip period for user');
-    const user = await getCurrentUser(true);
-
-    if (!user) {
-      console.log('[SERVICE-WORKER] No user authenticated, skip period check failed');
-      sendResponse({ success: false, inSkip: false });
-      return;
-    }
-
-    const skipPeriodCheck = await isUserInSkipPeriod(user.id);
-    console.log('[SERVICE-WORKER] Skip period check result:', skipPeriodCheck);
-    sendResponse(skipPeriodCheck);
-  } catch (err) {
-    console.error('[SERVICE-WORKER] Error checking skip period:', err);
-    sendResponse({ success: false, inSkip: false, error: err.message });
   }
 }
 
