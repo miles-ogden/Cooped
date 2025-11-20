@@ -4,11 +4,14 @@
  */
 
 import { getCurrentUser, querySelect } from '../../logic/supabaseClient.js';
+import { getSkipStatus } from '../../logic/skipSystem.js';
 
 export class HomeScreen {
   constructor() {
     this.userProfile = null;
     this.coopInfo = null;
+    this.skipStatus = null;
+    this.timerInterval = null;
     console.log('[HOME_SCREEN] Initialized');
   }
 
@@ -39,6 +42,15 @@ export class HomeScreen {
 
       this.userProfile = userProfile;
 
+      // Get skip status (for timer display)
+      try {
+        this.skipStatus = await getSkipStatus(user.id);
+        console.log('[HOME_SCREEN] Skip status loaded:', this.skipStatus);
+      } catch (err) {
+        console.error('[HOME_SCREEN] Error loading skip status:', err);
+        this.skipStatus = null;
+      }
+
       // If in coop, load coop info
       if (userProfile.coop_id) {
         const coopInfo = await querySelect('coops', {
@@ -51,6 +63,11 @@ export class HomeScreen {
 
       // Update DOM with user data
       this.render();
+
+      // Start timer if skip is active
+      if (this.skipStatus?.skipActive) {
+        this.startSkipTimer();
+      }
     } catch (err) {
       console.error('[HOME_SCREEN] Error loading home screen:', err);
     }
@@ -70,8 +87,28 @@ export class HomeScreen {
     const level = this.userProfile.level || 1;
     const name = this.userProfile.name || 'Clucky';
 
+    // Build skip timer overlay if active
+    const skipTimerHTML = this.skipStatus?.skipActive
+      ? `
+        <div class="skip-timer-overlay" id="skip-timer-overlay">
+          <div class="skip-timer-content">
+            <div class="skip-timer-icon">✨</div>
+            <div class="skip-timer-text">FREE PASS ACTIVE</div>
+            <div class="skip-timer-countdown" id="skip-countdown">
+              ${this.formatTimeRemaining(this.skipStatus.minutesRemaining)}
+            </div>
+            <div class="skip-timer-hearts">
+              ❤️ ${this.skipStatus.hearts}/${3} skips left today
+            </div>
+          </div>
+        </div>
+      `
+      : '';
+
     const html = `
       <div class="home-screen">
+        ${skipTimerHTML}
+
         <!-- Chicken Display Section (Large Center) -->
         <div class="chicken-display-section">
           <div class="chicken-container">
@@ -291,9 +328,66 @@ export class HomeScreen {
   }
 
   /**
+   * Format time remaining in MM:SS format
+   */
+  formatTimeRemaining(minutes) {
+    const mins = Math.floor(minutes);
+    const secs = Math.floor((minutes % 1) * 60);
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+
+  /**
+   * Start skip timer countdown
+   */
+  startSkipTimer() {
+    // Clear any existing timer
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
+
+    console.log('[HOME_SCREEN] Starting skip timer');
+    let minutesRemaining = this.skipStatus.minutesRemaining;
+
+    // Update timer every second
+    this.timerInterval = setInterval(() => {
+      minutesRemaining -= 1 / 60; // Decrease by 1 second (1/60 minute)
+
+      if (minutesRemaining <= 0) {
+        // Timer expired
+        console.log('[HOME_SCREEN] Skip timer expired');
+        clearInterval(this.timerInterval);
+        this.timerInterval = null;
+        // Reload skip status and re-render
+        this.show();
+        return;
+      }
+
+      // Update the countdown display
+      const countdownElement = document.getElementById('skip-countdown');
+      if (countdownElement) {
+        countdownElement.textContent = this.formatTimeRemaining(minutesRemaining);
+      }
+    }, 1000); // Update every 1 second
+  }
+
+  /**
+   * Stop skip timer
+   */
+  stopSkipTimer() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+      console.log('[HOME_SCREEN] Skip timer stopped');
+    }
+  }
+
+  /**
    * Hide home screen
    */
   hide() {
+    // Stop timer when hiding
+    this.stopSkipTimer();
+
     // Hide main content (if using visibility toggle)
     const mainContent = document.querySelector('.main-content');
     if (mainContent) {
