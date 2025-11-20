@@ -2201,6 +2201,12 @@ function startIntervalMonitoring() {
             type: 'CHECK_BLOCKED_SITE'
           });
 
+          // Don't show challenge if user is in skip period
+          if (response && response.skipActive) {
+            console.log('[INTERVAL-MONITOR] ✅ SKIP ACTIVE - Not showing re-engagement challenge');
+            return;
+          }
+
           if (response && response.isBlocked) {
             showReEngagementChallenge(response);
           }
@@ -3241,6 +3247,13 @@ async function showFullBlockScreen() {
     console.log('Cooped: Error contacting background for YouTube challenge:', error);
     return null;
   });
+
+  // Don't show challenge if user is in skip period
+  if (response && response.skipActive) {
+    console.log('[YOUTUBE] ✅ SKIP ACTIVE - Not showing YouTube challenge, user has', response.minutesRemaining, 'minutes remaining');
+    resumeYouTubeVideo();
+    return;
+  }
 
   if (response && response.isBlocked) {
     showChallengeOverlay(response);

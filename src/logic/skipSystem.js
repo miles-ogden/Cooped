@@ -312,6 +312,25 @@ export async function shouldResetHeartsToday(userId) {
 }
 
 /**
+ * DEBUG: Manually reset skip period (for testing)
+ * This clears any active skip to test from a clean state
+ */
+export async function debugResetSkipPeriod(userId) {
+  try {
+    console.log(`[SKIP-DEBUG] Manually resetting skip period for user ${userId}`);
+    await queryUpdate('users', {
+      skip_until: null,
+      updated_at: new Date().toISOString()
+    }, { id: userId });
+    console.log(`[SKIP-DEBUG] ✅ Skip period manually reset`);
+    return { success: true };
+  } catch (err) {
+    console.error('[SKIP-DEBUG] Error resetting skip period:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
  * Export skip constants for reference
  */
 export const SKIP_CONFIG = {

@@ -6,7 +6,7 @@
 import { initializeStorage, getSettings } from '../utils/storage.js';
 import { applyXpEvent } from '../logic/xpEngine.js';
 import { getCurrentUser, initializeAuth } from '../logic/supabaseClient.js';
-import { getSkipStatus, useHeart, isUserInSkipPeriod } from '../logic/skipSystem.js';
+import { getSkipStatus, useHeart, isUserInSkipPeriod, debugResetSkipPeriod } from '../logic/skipSystem.js';
 
 // Initialize storage and auth on extension install
 chrome.runtime.onInstalled.addListener(async () => {
@@ -232,6 +232,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Content script requesting to use a heart
     handleUseHeart(message.userId, sendResponse);
     return true; // Keep message channel open for async response
+  } else if (message.action === 'debugResetSkip') {
+    // DEBUG: Manually reset skip period for testing
+    handleDebugResetSkip(message.userId, sendResponse);
+    return true; // Keep message channel open for async response
   }
 });
 
@@ -431,6 +435,32 @@ async function handleUseHeart(userId, sendResponse) {
     sendResponse({ success: false, error: err.message });
   } finally {
     console.log('[SERVICE-WORKER] ===== USE HEART END =====');
+  }
+}
+
+/**
+ * Handle debug reset skip request
+ */
+async function handleDebugResetSkip(userId, sendResponse) {
+  try {
+    console.log('[SERVICE-WORKER] ===== DEBUG RESET SKIP START =====');
+    console.log('[SERVICE-WORKER] Resetting skip period for user:', userId);
+
+    if (!userId) {
+      console.error('[SERVICE-WORKER] ❌ No userId provided');
+      sendResponse({ success: false, error: 'No userId provided' });
+      return;
+    }
+
+    const result = await debugResetSkipPeriod(userId);
+    console.log('[SERVICE-WORKER] ✅ Debug reset result:', result);
+    sendResponse(result);
+  } catch (err) {
+    console.error('[SERVICE-WORKER] ❌ Error in debug reset:', err);
+    console.error('[SERVICE-WORKER] Error message:', err.message);
+    sendResponse({ success: false, error: err.message });
+  } finally {
+    console.log('[SERVICE-WORKER] ===== DEBUG RESET SKIP END =====');
   }
 }
 
