@@ -71,6 +71,7 @@
         "src/utils/time-tracking.js",
         "src/utils/platform-detection.js",
         "src/types/types.js",
+        "src/logic/skipSystem.js",
         "src/content/interrupt-sequence.js",
         "src/content/interrupt-overlay.css",
         "src/content/vocabulary-questions.js",
