@@ -26,6 +26,9 @@ let interruptSequenceUserId = null; // User ID for this interrupt session
 let stimPenaltyApplied = false; // Track if -50 XP penalty was applied for this visit
 let challengeAnsweredCorrectly = false; // Track if user answered challenge correctly
 
+// Current site blocking level (set when site is checked)
+let currentBlockingLevel = 'some'; // Default to 'some', updated when site is checked
+
 /**
  * Show the interrupt sequence overlay (inline implementation)
  */
@@ -2086,6 +2089,12 @@ async function checkAndShowChallenge() {
 
     console.log('[CONTENT-SCRIPT] CHECK_BLOCKED_SITE response:', response);
 
+    // Store blocking level for use in YouTube tracking
+    if (response && response.blockingLevel) {
+      currentBlockingLevel = response.blockingLevel;
+      console.log(`[CONTENT-SCRIPT] Set blocking level to: ${currentBlockingLevel}`);
+    }
+
     // If site is in skip period, don't show any challenge
     if (response && response.skipActive) {
       console.log(`[CONTENT-SCRIPT] ✅ SKIP ACTIVE - User has ${response.minutesRemaining} minutes remaining. Not showing challenge.`);
@@ -2185,44 +2194,6 @@ function initializeContentScript() {
     setupYouTubeTracking();
   }
 
-  // If on TikTok, Facebook, Instagram, or X - set up social media monitoring
-  const hostname = new URL(window.location.href).hostname;
-  const platform = detectPlatform(hostname);
-  if (platform && ['tiktok.com', 'facebook.com', 'instagram.com', 'x.com'].includes(platform)) {
-    setupSocialMediaMonitoring(platform);
-  }
-}
-
-/**
- * Set up monitoring for social media platforms (immediate interrupt for debugging)
- */
-function setupSocialMediaMonitoring(platform) {
-  console.log(`[SOCIAL-MEDIA] Setting up monitoring for ${platform}`);
-  const trigger = async () => {
-    if (!document.hidden) {
-      // CRITICAL: Check if user is in skip period BEFORE showing interrupt
-      console.log('[SOCIAL-MEDIA] Checking skip period before showing interrupt...');
-      const skipCheckResponse = await new Promise((resolve) => {
-        chrome.runtime.sendMessage({ type: 'CHECK_BLOCKED_SITE' }, (response) => {
-          resolve(response);
-        });
-      });
-
-      if (skipCheckResponse && skipCheckResponse.skipActive) {
-        console.log(`[SOCIAL-MEDIA] ✅ User in SKIP PERIOD - NOT showing interrupt. ${skipCheckResponse.minutesRemaining} minutes remaining`);
-        return; // Don't show the interrupt!
-      }
-
-      console.log('[SOCIAL-MEDIA] No active skip - showing interrupt');
-      await showInterruptSequenceInline();
-    }
-  };
-
-  if (document.body) {
-    setTimeout(trigger, 500);
-  } else {
-    document.addEventListener('DOMContentLoaded', () => setTimeout(trigger, 200), { once: true });
-  }
 }
 
 /**
@@ -3209,8 +3180,8 @@ function setupYouTubeTracking() {
 
         console.log('[SHORTS CHECK RESULT]', shortsCheck);
 
-        // Update time tracking based on Shorts detection
-        await handleYouTubeShortsDetection(shortsCheck.shortsCount, '7 minutes');
+        // Update time tracking based on Shorts detection with blocking level
+        await handleYouTubeShortsDetection(shortsCheck.shortsCount, currentBlockingLevel);
 
         if (shortsCheck.watchingShortsIndicator) {
           triggerInfo = {
@@ -3229,8 +3200,8 @@ function setupYouTubeTracking() {
         !longWatchChallengeTriggered &&
         currentWatchVideoId
       ) {
-        // Update time tracking: long watch detected
-        await handleYouTubeLongFormDetection(watchedMinutes);
+        // Update time tracking: long watch detected with blocking level
+        await handleYouTubeLongFormDetection(watchedMinutes, currentBlockingLevel);
 
         triggerInfo = {
           type: 'youtube_mini',
