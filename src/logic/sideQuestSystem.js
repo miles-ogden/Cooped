@@ -6,8 +6,9 @@
  * - Quest generation based on coop frequency settings
  * - Same 10 questions per quest (randomized order per user)
  * - 4-hour completion window (configurable by frequency)
- * - Scoring based on placement (1st: 250 XP, 2nd: 200 XP, 3rd: 150 XP, others: 100 XP)
- * - Speed and accuracy-based ranking
+ * - Composite scoring: 80% accuracy + 20% speed
+ * - Ranking based on composite score (not just accuracy)
+ * - XP rewards based on placement (1st: 250 XP, 2nd: 200 XP, 3rd: 150 XP, others: 100 XP)
  * - One attempt per quest per user
  */
 
@@ -367,7 +368,7 @@ export async function submitQuestAttempt(questId, userId, answers, startTime, en
     })
 
     const accuracy = Math.round((correctCount / questions.length) * 100)
-    const timeTakenSeconds = (new Date(endTime) - new Date(startTime)) / 1000
+    const timeTakenSeconds = Math.round((new Date(endTime) - new Date(startTime)) / 1000)
 
     // Create attempt record
     const attemptResult = await queryInsert('side_quest_attempts', [{
@@ -434,13 +435,35 @@ export async function finalizeQuestResults(questId) {
       return { success: true, placements: [] }
     }
 
-    // Sort by accuracy (descending) then by time (ascending)
-    const sorted = attempts.sort((a, b) => {
-      if (b.accuracy_percent !== a.accuracy_percent) {
-        return b.accuracy_percent - a.accuracy_percent
+    // Calculate composite score: 80% accuracy + 20% speed
+    // Speed component: normalize time to a 0-100 scale (faster = higher score)
+    // We'll use the best time as reference (100 points) and worst as lower
+    const minTime = Math.min(...attempts.map(a => a.time_taken_seconds))
+    const maxTime = Math.max(...attempts.map(a => a.time_taken_seconds))
+    const timeRange = maxTime - minTime || 1 // Avoid division by zero
+
+    // Calculate composite scores
+    const withScores = attempts.map(attempt => {
+      const accuracyScore = attempt.accuracy_percent // 0-100
+
+      // Speed score: faster times get higher scores (0-100)
+      // Formula: faster user gets more points
+      const speedScore = minTime === maxTime
+        ? 100
+        : 100 - ((attempt.time_taken_seconds - minTime) / timeRange) * 100
+
+      // Composite score: 80% accuracy + 20% speed
+      const compositeScore = (accuracyScore * 0.8) + (speedScore * 0.2)
+
+      return {
+        ...attempt,
+        speedScore: Math.round(speedScore),
+        compositeScore: Math.round(compositeScore * 100) / 100 // Round to 2 decimals
       }
-      return a.time_taken_seconds - b.time_taken_seconds
     })
+
+    // Sort by composite score (descending)
+    const sorted = withScores.sort((a, b) => b.compositeScore - a.compositeScore)
 
     // Assign placements and calculate XP rewards
     const placements = []
@@ -463,6 +486,8 @@ export async function finalizeQuestResults(questId) {
         placement: i + 1,
         user_id: attempt.user_id,
         accuracy: attempt.accuracy_percent,
+        speed_score: attempt.speedScore,
+        composite_score: attempt.compositeScore,
         time_taken: attempt.time_taken_seconds,
         xp_earned: xpEarned
       })

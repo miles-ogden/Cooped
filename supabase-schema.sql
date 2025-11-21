@@ -14,7 +14,15 @@ CREATE TABLE coops (
   member_ids UUID[] DEFAULT ARRAY[]::UUID[] NOT NULL,
   coop_level INTEGER DEFAULT 1 NOT NULL,
   total_xp INTEGER DEFAULT 0 NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW() NOT NULL
+  created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMP DEFAULT NOW() NOT NULL,
+  blocker_question_type TEXT DEFAULT 'general' NOT NULL,
+  max_members INTEGER DEFAULT 10 NOT NULL,
+  side_quests_enabled BOOLEAN DEFAULT FALSE NOT NULL,
+  side_quest_category TEXT DEFAULT 'learning' NOT NULL,
+  side_quest_topics TEXT[] DEFAULT ARRAY[]::TEXT[] NOT NULL,
+  side_quest_frequency TEXT DEFAULT 'daily' NOT NULL,
+  side_quest_frequency_value INTEGER DEFAULT 1 NOT NULL
 );
 
 -- Index for faster queries

@@ -3,7 +3,8 @@
  * Allows creator to configure coop settings
  */
 
-import { querySelect, queryUpdate, getCurrentUser } from '../../logic/supabaseClient.js';
+import { querySelect, queryUpdate, getCurrentUser, queryInsert } from '../../logic/supabaseClient.js';
+import { generateSideQuest } from '../../logic/sideQuestSystem.js';
 
 export class CoopSettingsScreen {
   constructor() {
@@ -167,18 +168,6 @@ export class CoopSettingsScreen {
             </div>
           </section>
 
-          <!-- Privacy Settings -->
-          <section class="settings-section">
-            <h3>Privacy Settings</h3>
-            <div class="form-group">
-              <label for="coop-privacy">Visibility</label>
-              <select id="coop-privacy">
-                <option value="public" ${this.coop.is_public !== false ? 'selected' : ''}>Public (Anyone can join)</option>
-                <option value="private" ${this.coop.is_public === false ? 'selected' : ''}>Private (Invite only)</option>
-              </select>
-            </div>
-          </section>
-
           <!-- Member Limit -->
           <section class="settings-section">
             <h3>Member Limit</h3>
@@ -228,6 +217,13 @@ export class CoopSettingsScreen {
                 <span class="info-value">${this.coop.member_ids?.length || 0}</span>
               </div>
             </div>
+          </section>
+
+          <!-- Testing Section -->
+          <section class="settings-section">
+            <h3>🧪 Testing</h3>
+            <p class="help-text">Create a test side quest to see how it looks on the home screen</p>
+            <button class="btn-secondary" id="create-test-quest-btn">Create Test Side Quest</button>
           </section>
 
           <!-- Danger Zone -->
@@ -310,6 +306,11 @@ export class CoopSettingsScreen {
       this.onSaveAllSettingsClick();
     });
 
+    // Create test side quest
+    document.getElementById('create-test-quest-btn')?.addEventListener('click', () => {
+      this.onCreateTestQuestClick();
+    });
+
     // Delete coop
     document.getElementById('delete-coop-btn')?.addEventListener('click', () => {
       this.onDeleteCoopClick();
@@ -387,7 +388,6 @@ export class CoopSettingsScreen {
   async onSaveAllSettingsClick() {
     try {
       const questionType = document.getElementById('blocker-question-type')?.value;
-      const privacy = document.getElementById('coop-privacy')?.value;
       const maxMembersRadio = document.querySelector('input[name="max-members"]:checked');
       const maxMembers = maxMembersRadio ? parseInt(maxMembersRadio.value) : 10;
 
@@ -403,7 +403,6 @@ export class CoopSettingsScreen {
 
       console.log('[COOP_SETTINGS] Saving settings:', {
         questionType,
-        privacy,
         maxMembers,
         sideQuestsEnabled: this.coop.side_quests_enabled,
         sideQuestCategory: this.coop.side_quest_category,
@@ -414,7 +413,6 @@ export class CoopSettingsScreen {
 
       const updateData = {
         blocker_question_type: questionType,
-        is_public: privacy === 'public',
         max_members: maxMembers,
         side_quests_enabled: this.coop.side_quests_enabled,
         side_quest_category: this.coop.side_quest_category,
@@ -428,7 +426,6 @@ export class CoopSettingsScreen {
 
       // Update local coop data
       this.coop.blocker_question_type = questionType;
-      this.coop.is_public = privacy === 'public';
       this.coop.max_members = maxMembers;
       this.coop.side_quests_enabled = updateData.side_quests_enabled;
       this.coop.side_quest_category = updateData.side_quest_category;
@@ -489,6 +486,60 @@ export class CoopSettingsScreen {
     } catch (err) {
       console.error('[COOP_SETTINGS] Error deleting coop:', err);
       alert('Error deleting coop: ' + err.message);
+    }
+  }
+
+  /**
+   * Handle create test side quest
+   */
+  async onCreateTestQuestClick() {
+    try {
+      console.log('[COOP_SETTINGS] Creating test side quest for coop:', this.coop.id);
+
+      // Verify side quests are enabled
+      if (!this.coop.side_quests_enabled) {
+        alert('⚠️ Side Quests are disabled. Enable them first in the settings.');
+        return;
+      }
+
+      // Verify at least one topic is selected
+      if (!this.coop.side_quest_topics || this.coop.side_quest_topics.length === 0) {
+        alert('⚠️ Please select at least one topic before creating a quest.');
+        return;
+      }
+
+      // Disable button during creation
+      const btn = document.getElementById('create-test-quest-btn');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Creating...';
+      }
+
+      // Create the side quest using the coop's settings
+      const result = await generateSideQuest(this.coop.id);
+
+      if (result.success) {
+        console.log('[COOP_SETTINGS] Test side quest created:', result.questId);
+        alert('✅ Test side quest created! Check your home screen.');
+
+        // Navigate to home screen to show the quest button
+        window.dispatchEvent(new CustomEvent('navigateToScreen', {
+          detail: { screen: 'home' }
+        }));
+      } else {
+        console.error('[COOP_SETTINGS] Error creating test quest:', result.error);
+        alert('❌ Error: ' + result.error);
+      }
+    } catch (err) {
+      console.error('[COOP_SETTINGS] Error creating test side quest:', err);
+      alert('❌ Error creating test quest: ' + err.message);
+    } finally {
+      // Re-enable button
+      const btn = document.getElementById('create-test-quest-btn');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Create Test Side Quest';
+      }
     }
   }
 }
