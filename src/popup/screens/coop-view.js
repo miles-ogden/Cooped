@@ -129,8 +129,8 @@ export class CoopView {
             <span class="stat-value">${totalXP.toLocaleString()}</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">Coop Wars Won</span>
-            <span class="stat-value">${this.coop.coop_wars_won || 0}</span>
+            <span class="stat-label">Members</span>
+            <span class="stat-value">${this.coop.memberCount || 0}</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">Founded</span>
@@ -190,7 +190,7 @@ export class CoopView {
     return `
       <section class="coop-actions">
         <button class="btn-secondary" id="invite-btn" title="Invite friends">👥 Invite</button>
-        ${isCreator ? `<button class="btn-secondary" id="settings-btn" title="Coop settings">⚙️ Settings</button>` : ''}
+        ${isCreator ? `<button class="btn-secondary" id="coop-settings-btn" title="Coop settings">⚙️ Settings</button>` : ''}
         <button class="btn-danger" id="leave-btn" title="Leave this coop">🚪 Leave</button>
       </section>
     `;
@@ -200,6 +200,8 @@ export class CoopView {
    * Attach event listeners
    */
   attachEventListeners() {
+    console.log('[COOP_VIEW] Attaching event listeners');
+
     // Back button
     document.getElementById('back-btn')?.addEventListener('click', () => {
       this.onBackClick();
@@ -211,14 +213,22 @@ export class CoopView {
     });
 
     // Settings button (if creator)
-    document.getElementById('settings-btn')?.addEventListener('click', () => {
-      this.onSettingsClick();
-    });
+    const settingsBtn = document.getElementById('coop-settings-btn');
+    console.log('[COOP_VIEW] Coop settings button element:', settingsBtn ? 'found' : 'NOT FOUND');
+    if (settingsBtn) {
+      console.log('[COOP_VIEW] Attaching coop settings button listener');
+      settingsBtn.addEventListener('click', () => {
+        console.log('[COOP_VIEW] Coop settings button clicked!');
+        this.onSettingsClick();
+      });
+    }
 
     // Leave button
     document.getElementById('leave-btn')?.addEventListener('click', () => {
       this.onLeaveClick();
     });
+
+    console.log('[COOP_VIEW] Event listeners attached');
   }
 
   /**
@@ -258,8 +268,12 @@ export class CoopView {
    */
   onSettingsClick() {
     console.log('[COOP_VIEW] Settings clicked');
-    // TODO: Implement coop settings modal
-    alert('Coop settings coming soon!');
+    console.log('[COOP_VIEW] Coop ID:', this.coop.id);
+    console.log('[COOP_VIEW] Dispatching navigateToScreen event');
+    window.dispatchEvent(new CustomEvent('navigateToScreen', {
+      detail: { screen: 'coop-settings', coopId: this.coop.id }
+    }));
+    console.log('[COOP_VIEW] Event dispatched');
   }
 
   /**

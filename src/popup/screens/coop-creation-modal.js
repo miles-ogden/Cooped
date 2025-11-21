@@ -500,21 +500,10 @@ export class CoopCreationModal {
       // Create coop in database
       const coopData = {
         name: this.coopData.name,
-        description: this.coopData.description,
         creator_user_id: user.id,
         member_ids: [user.id],
-        max_members: this.coopData.maxMembers,
-        is_public: this.coopData.isPublic,
-        join_code: joinCode,
         coop_level: 1,
         total_xp: 0,
-        hardcore_mode_enabled: this.coopData.hardcoreModeEnabled,
-        blocker_question_type: this.coopData.blockerQuestionType,
-        side_quests_enabled: this.coopData.sideQuestsEnabled,
-        side_quest_category: this.coopData.sideQuestCategory,
-        side_quest_frequency: this.coopData.sideQuestFrequency,
-        side_quest_frequency_value: this.coopData.sideQuestFrequencyValue,
-        coop_wars_won: 0,
         created_at: new Date().toISOString()
       };
 

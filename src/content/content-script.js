@@ -1933,6 +1933,17 @@ chrome.runtime.onMessage.addListener(async (message) => {
     console.log('[CONTENT-SCRIPT] showInterruptSequence message received');
     // Call the inline version immediately
     await showInterruptSequenceInline();
+  } else if (message.type === 'SKIP_EXPIRED') {
+    console.log('[CONTENT-SCRIPT] Skip period expired - checking if we need to re-show blocker');
+    // Close any existing interrupt overlay since skip has expired
+    if (interruptOverlayElement && interruptOverlayElement.isConnected) {
+      console.log('[CONTENT-SCRIPT] Removing existing interrupt overlay due to skip expiration');
+      interruptOverlayElement.remove();
+      interruptOverlayElement = null;
+      stimPenaltyApplied = false; // Reset penalty flag so it can be applied again
+    }
+    // Re-check if site is blocked and show interrupt if needed
+    await showInterruptSequenceInline();
   }
 });
 
@@ -2141,6 +2152,20 @@ function initializeContentScript() {
     if (platform) {
       await handleTabVisibilityChange(platform, isVisible);
       console.log(`[TAB-VISIBILITY] ${platform}: Tab is now ${isVisible ? 'VISIBLE' : 'HIDDEN'}`);
+    }
+  });
+
+  // Check for daily login bonus (once per day)
+  console.log('[CONTENT-SCRIPT] Checking for daily login bonus...');
+  chrome.runtime.sendMessage({ action: 'checkDailyBonus' }, (response) => {
+    if (response && response.success) {
+      if (response.claimed) {
+        console.log('[CONTENT-SCRIPT] ✅ Daily bonus claimed! +150 XP');
+      } else {
+        console.log('[CONTENT-SCRIPT] Daily bonus already claimed today');
+      }
+    } else {
+      console.log('[CONTENT-SCRIPT] Could not check daily bonus:', response?.error);
     }
   });
 

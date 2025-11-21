@@ -34,7 +34,9 @@ export async function getAvailableHearts(userId) {
 
     if (user.skip_until) {
       const now = new Date()
-      skipUntil = new Date(user.skip_until)
+      // Handle both ISO format with Z (UTC) and without Z (treat as UTC)
+      const skipUntilStr = user.skip_until.endsWith('Z') ? user.skip_until : `${user.skip_until}Z`
+      skipUntil = new Date(skipUntilStr)
 
       // Calculate seconds remaining using server time perspective
       const secondsRemaining = Math.floor((skipUntil.getTime() - now.getTime()) / 1000);
@@ -191,7 +193,9 @@ export async function isUserInSkipPeriod(userId) {
     }
 
     const now = new Date()
-    const skipUntil = new Date(user.skip_until)
+    // Handle both ISO format with Z (UTC) and without Z (treat as UTC)
+    const skipUntilStr = user.skip_until.endsWith('Z') ? user.skip_until : `${user.skip_until}Z`
+    const skipUntil = new Date(skipUntilStr)
 
     // Calculate seconds remaining
     const secondsRemaining = Math.floor((skipUntil.getTime() - now.getTime()) / 1000);

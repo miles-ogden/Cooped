@@ -54,10 +54,11 @@ export async function applyXpEvent(userId, eventType, metadata = {}) {
     // 3. Calculate new XP total (don't go below 0)
     const newXpTotal = Math.max(0, (user.xp_total || 0) + delta)
 
-    // 4. Calculate new level and eggs (every 1000 XP = +1 level + +1 egg)
+    // 4. Calculate new level and eggs (every 1000 XP = +1 level, +1 egg awarded on level up)
     const newLevel = Math.floor(newXpTotal / XP_PER_LEVEL)
-    const newEggs = newLevel
     const leveledUp = newLevel > previousLevel
+    // Award +1 bonus egg only when user levels up, don't recalculate from level
+    const newEggs = leveledUp ? previousEggs + (newLevel - previousLevel) : previousEggs
     const eggsGained = newEggs - previousEggs
 
     if (leveledUp) {

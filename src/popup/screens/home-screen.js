@@ -5,13 +5,16 @@
 
 import { getCurrentUser, querySelect } from '../../logic/supabaseClient.js';
 import { getSkipStatus } from '../../logic/skipSystem.js';
+import { getActiveQuest } from '../../logic/sideQuestSystem.js';
 
 export class HomeScreen {
   constructor() {
     this.userProfile = null;
     this.coopInfo = null;
     this.skipStatus = null;
+    this.activeQuest = null;
     this.timerInterval = null;
+    this.questTimerInterval = null;
     console.log('[HOME_SCREEN] Initialized');
   }
 
@@ -46,12 +49,57 @@ export class HomeScreen {
       try {
         this.skipStatus = await getSkipStatus(user.id);
         console.log('[HOME_SCREEN] Skip status loaded:', this.skipStatus);
+        console.log('[HOME_SCREEN] Hearts from skipStatus:', this.skipStatus?.hearts);
+
+        // Always fetch fresh skip_until from DB to ensure accurate timer
+        console.log('[HOME_SCREEN] Fetching fresh skip_until from DB...');
+        const freshUser = await querySelect('users', {
+          eq: { id: user.id },
+          select: 'skip_until,hearts_remaining_today',
+          single: true
+        });
+
+        console.log('[HOME_SCREEN] Fresh user data received:', freshUser);
+
+        if (freshUser?.skip_until) {
+          // DB has a skip_until value - store it for accurate timer display
+          this.skipUntilTimestamp = freshUser.skip_until;
+          console.log('[HOME_SCREEN] ✅ Stored skip_until timestamp from DB:', this.skipUntilTimestamp);
+
+          // If skipStatus says skip is not active but DB has timestamp, re-check
+          // This can happen due to timing between DB queries
+          const now = new Date();
+          const skipUntilStr = freshUser.skip_until.endsWith('Z')
+            ? freshUser.skip_until
+            : `${freshUser.skip_until}Z`;
+          const skipUntil = new Date(skipUntilStr);
+          const secondsRemaining = Math.floor((skipUntil.getTime() - now.getTime()) / 1000);
+
+          if (secondsRemaining > 0) {
+            // Skip is still active!
+            console.log('[HOME_SCREEN] ✅ Skip is STILL ACTIVE - updating skipStatus');
+            this.skipStatus.skipActive = true;
+            this.skipStatus.minutesRemaining = Math.ceil(secondsRemaining / 60);
+          } else {
+            console.log('[HOME_SCREEN] Skip timestamp exists but expired - will show no timer');
+            this.skipUntilTimestamp = null;
+          }
+        } else {
+          console.log('[HOME_SCREEN] No skip_until in DB - skip is not active');
+          this.skipUntilTimestamp = null;
+        }
+
+        // Always update hearts from fresh data
+        if (freshUser?.hearts_remaining_today !== undefined) {
+          this.skipStatus.hearts = freshUser.hearts_remaining_today;
+          console.log('[HOME_SCREEN] Updated hearts from DB:', this.skipStatus.hearts);
+        }
       } catch (err) {
         console.error('[HOME_SCREEN] Error loading skip status:', err);
         this.skipStatus = null;
       }
 
-      // If in coop, load coop info
+      // If in coop, load coop info and active quest
       if (userProfile.coop_id) {
         const coopInfo = await querySelect('coops', {
           eq: { id: userProfile.coop_id },
@@ -59,6 +107,19 @@ export class HomeScreen {
         });
         this.coopInfo = coopInfo;
         console.log('[HOME_SCREEN] Loaded coop:', coopInfo?.name);
+
+        // Load active quest if side quests are enabled
+        if (coopInfo?.side_quests_enabled) {
+          try {
+            const questResult = await getActiveQuest(userProfile.coop_id);
+            if (questResult.success && questResult.quest) {
+              this.activeQuest = questResult.quest;
+              console.log('[HOME_SCREEN] Loaded active quest:', this.activeQuest.id);
+            }
+          } catch (err) {
+            console.warn('[HOME_SCREEN] Error loading active quest:', err);
+          }
+        }
       }
 
       // Update DOM with user data
@@ -88,6 +149,27 @@ export class HomeScreen {
     const name = this.userProfile.name || 'Clucky';
 
     // Build skip timer overlay if active
+    // Calculate initial time from timestamp if available
+    let initialSecondsRemaining = 0;
+    console.log('[HOME_SCREEN] render() - skipUntilTimestamp:', this.skipUntilTimestamp);
+    console.log('[HOME_SCREEN] render() - skipStatus.minutesRemaining:', this.skipStatus?.minutesRemaining);
+
+    if (this.skipUntilTimestamp) {
+      const now = new Date();
+      const skipUntilStr = this.skipUntilTimestamp.endsWith('Z')
+        ? this.skipUntilTimestamp
+        : `${this.skipUntilTimestamp}Z`;
+      const skipUntil = new Date(skipUntilStr);
+      initialSecondsRemaining = Math.floor((skipUntil.getTime() - now.getTime()) / 1000);
+      console.log('[HOME_SCREEN] Calculated from timestamp - secondsRemaining:', initialSecondsRemaining);
+    } else {
+      console.log('[HOME_SCREEN] ⚠️ skipUntilTimestamp is NOT set! Using cached minutesRemaining');
+      // Fallback: use cached minutes and convert to seconds
+      initialSecondsRemaining = (this.skipStatus?.minutesRemaining || 0) * 60;
+    }
+
+    // Don't show calculated time initially - let startSkipTimer() update it on first interval
+    // to avoid displaying stale/incorrect initial value
     const skipTimerHTML = this.skipStatus?.skipActive
       ? `
         <div class="skip-timer-overlay" id="skip-timer-overlay">
@@ -95,7 +177,7 @@ export class HomeScreen {
             <div class="skip-timer-icon">✨</div>
             <div class="skip-timer-text">FREE PASS ACTIVE</div>
             <div class="skip-timer-countdown" id="skip-countdown">
-              ${this.formatTimeRemaining(this.skipStatus.minutesRemaining)}
+              --:--
             </div>
             <div class="skip-timer-hearts">
               ❤️ ${this.skipStatus.hearts}/${3} skips left today
@@ -257,10 +339,24 @@ export class HomeScreen {
       });
     } else {
       // In a coop - show coop name and view button
+      let sideQuestButtonHTML = '';
+      if (this.activeQuest) {
+        const timeRemaining = this.getQuestTimeRemaining();
+        const timeString = this.formatQuestTimeRemaining(timeRemaining);
+        sideQuestButtonHTML = `
+          <button id="side-quest-btn" class="btn-side-quest" title="Participate in side quest">
+            <span class="quest-icon">🎯</span>
+            <span class="quest-text">Side Quest Available</span>
+            <span class="quest-timer" id="quest-timer-display">${timeString}</span>
+          </button>
+        `;
+      }
+
       coopButtonsContainer.innerHTML = `
         <div class="coop-info">
           <span class="coop-label">Coop: ${this.coopInfo.name}</span>
         </div>
+        ${sideQuestButtonHTML}
         <button id="view-coop-btn" class="btn-primary" title="View coop details">
           👥 View Coop
         </button>
@@ -277,6 +373,15 @@ export class HomeScreen {
       document.getElementById('coop-settings-btn')?.addEventListener('click', () => {
         this.onCoopSettingsClick();
       });
+
+      document.getElementById('side-quest-btn')?.addEventListener('click', () => {
+        this.onSideQuestClick();
+      });
+
+      // Start quest timer if active
+      if (this.activeQuest) {
+        this.startQuestTimer();
+      }
     }
 
     console.log('[HOME_SCREEN] Updated coop buttons');
@@ -328,6 +433,80 @@ export class HomeScreen {
   }
 
   /**
+   * Handle side quest button click
+   */
+  onSideQuestClick() {
+    console.log('[HOME_SCREEN] Side quest clicked');
+    window.dispatchEvent(new CustomEvent('navigateToScreen', {
+      detail: { screen: 'side-quest', coopId: this.coopInfo.id }
+    }));
+  }
+
+  /**
+   * Get remaining time on active quest in milliseconds
+   */
+  getQuestTimeRemaining() {
+    if (!this.activeQuest) return 0;
+    const expiresAt = new Date(this.activeQuest.expires_at);
+    const now = new Date();
+    return Math.max(0, expiresAt - now);
+  }
+
+  /**
+   * Format quest time remaining as HH:MM:SS
+   */
+  formatQuestTimeRemaining(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  /**
+   * Start quest timer countdown
+   */
+  startQuestTimer() {
+    // Clear any existing timer
+    if (this.questTimerInterval) {
+      clearInterval(this.questTimerInterval);
+    }
+
+    console.log('[HOME_SCREEN] Starting quest timer');
+
+    // Update timer every second
+    this.questTimerInterval = setInterval(() => {
+      const timeRemaining = this.getQuestTimeRemaining();
+      const timerEl = document.getElementById('quest-timer-display');
+
+      if (timerEl) {
+        if (timeRemaining <= 0) {
+          timerEl.textContent = '00:00:00';
+          timerEl.classList.add('expired');
+          clearInterval(this.questTimerInterval);
+          this.questTimerInterval = null;
+          // Reload to remove expired quest button
+          this.show();
+        } else {
+          timerEl.textContent = this.formatQuestTimeRemaining(timeRemaining);
+        }
+      }
+    }, 1000);
+  }
+
+  /**
+   * Stop quest timer
+   */
+  stopQuestTimer() {
+    if (this.questTimerInterval) {
+      clearInterval(this.questTimerInterval);
+      this.questTimerInterval = null;
+      console.log('[HOME_SCREEN] Quest timer stopped');
+    }
+  }
+
+  /**
    * Format time remaining in MM:SS format
    */
   formatTimeRemaining(minutes) {
@@ -345,27 +524,66 @@ export class HomeScreen {
       clearInterval(this.timerInterval);
     }
 
-    console.log('[HOME_SCREEN] Starting skip timer');
-    let minutesRemaining = this.skipStatus.minutesRemaining;
+    console.log('[HOME_SCREEN] Starting skip timer with raw timestamp:', this.skipUntilTimestamp);
 
-    // Update timer every second
+    // Update timer every second, calculating from database timestamp
     this.timerInterval = setInterval(() => {
-      minutesRemaining -= 1 / 60; // Decrease by 1 second (1/60 minute)
-
-      if (minutesRemaining <= 0) {
-        // Timer expired
-        console.log('[HOME_SCREEN] Skip timer expired');
+      if (!this.skipUntilTimestamp) {
+        console.error('[HOME_SCREEN] skipUntilTimestamp is missing!');
         clearInterval(this.timerInterval);
         this.timerInterval = null;
+        return;
+      }
+
+      const now = new Date();
+      // Parse timestamp - handle both ISO format with Z (UTC) and without Z (treat as UTC)
+      const skipUntilStr = this.skipUntilTimestamp.endsWith('Z')
+        ? this.skipUntilTimestamp
+        : `${this.skipUntilTimestamp}Z`;
+      const skipUntil = new Date(skipUntilStr);
+
+      // Calculate seconds remaining using current time
+      const secondsRemaining = Math.floor((skipUntil.getTime() - now.getTime()) / 1000);
+      const minutesRemaining = Math.ceil(secondsRemaining / 60);
+
+      console.log(`[HOME_SCREEN] Timer update: now=${now.toISOString()}, skipUntil=${skipUntilStr}, ${secondsRemaining}s remaining (${minutesRemaining}m)`);
+
+      if (secondsRemaining <= 0) {
+        // Timer expired
+        console.log('[HOME_SCREEN] Skip timer expired - notifying content scripts');
+        clearInterval(this.timerInterval);
+        this.timerInterval = null;
+
+        // Notify all tabs that skip has expired so they can re-show the blocker
+        chrome.tabs.query({}, (tabs) => {
+          tabs.forEach(tab => {
+            chrome.tabs.sendMessage(tab.id, {
+              type: 'SKIP_EXPIRED',
+              message: 'Skip period has expired, re-check blocking'
+            }).catch(() => {
+              // Tab might not have content script, ignore
+            });
+          });
+        });
+
+        // Focus the popup window so user sees the blocker came back
+        chrome.windows.getCurrent((window) => {
+          if (window && window.id) {
+            chrome.windows.update(window.id, { focused: true });
+            console.log('[HOME_SCREEN] Focused popup window');
+          }
+        });
+
         // Reload skip status and re-render
         this.show();
         return;
       }
 
-      // Update the countdown display
+      // Update the countdown display with accurate time from database
+      // Convert seconds to minutes for formatTimeRemaining (passes minutes, function handles conversion)
       const countdownElement = document.getElementById('skip-countdown');
       if (countdownElement) {
-        countdownElement.textContent = this.formatTimeRemaining(minutesRemaining);
+        countdownElement.textContent = this.formatTimeRemaining(secondsRemaining / 60);
       }
     }, 1000); // Update every 1 second
   }
@@ -385,8 +603,9 @@ export class HomeScreen {
    * Hide home screen
    */
   hide() {
-    // Stop timer when hiding
+    // Stop timers when hiding
     this.stopSkipTimer();
+    this.stopQuestTimer();
 
     // Hide main content (if using visibility toggle)
     const mainContent = document.querySelector('.main-content');

@@ -242,6 +242,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // DEBUG: Manually reset skip period for testing
     handleDebugResetSkip(message.userId, sendResponse);
     return true; // Keep message channel open for async response
+  } else if (message.action === 'checkDailyBonus') {
+    // Content script is asking if user should get daily login bonus
+    handleCheckDailyBonus(sendResponse);
+    return true; // Keep message channel open for async response
   }
 });
 
@@ -485,6 +489,64 @@ async function handleDebugResetSkip(userId, sendResponse) {
     sendResponse({ success: false, error: err.message });
   } finally {
     console.log('[SERVICE-WORKER] ===== DEBUG RESET SKIP END =====');
+  }
+}
+
+/**
+ * Handle daily login bonus check
+ * Called when user first loads any page in a new day
+ * Awards +150 XP if not already claimed today
+ */
+async function handleCheckDailyBonus(sendResponse) {
+  try {
+    console.log('[SERVICE-WORKER] ===== CHECK DAILY BONUS START =====');
+
+    const user = await getCurrentUser(true);
+    if (!user) {
+      console.log('[SERVICE-WORKER] ⚠️ No authenticated user, skipping daily bonus');
+      sendResponse({ success: false, error: 'No authenticated user' });
+      return;
+    }
+
+    console.log('[SERVICE-WORKER] User:', user.id);
+
+    // Check if user already claimed bonus today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStart = today.toISOString();
+
+    // Get last_stim_date to compare with today
+    const lastStimDate = user.last_stim_date ? new Date(user.last_stim_date) : null;
+    lastStimDate?.setHours(0, 0, 0, 0);
+
+    // If last_stim_date is today, they already got the bonus
+    if (lastStimDate && lastStimDate.getTime() === today.getTime()) {
+      console.log('[SERVICE-WORKER] ✅ Daily bonus already claimed today');
+      sendResponse({ success: true, claimed: false, reason: 'Already claimed today' });
+      return;
+    }
+
+    // Award daily login bonus
+    console.log('[SERVICE-WORKER] 🎁 Awarding daily login bonus +150 XP');
+    const result = await applyXpEvent(user.id, 'clean_day');
+
+    if (result && result.success !== false) {
+      console.log('[SERVICE-WORKER] ✅ Daily bonus applied successfully');
+      console.log('[SERVICE-WORKER] Result:', result);
+      sendResponse({ success: true, claimed: true, result });
+
+      // Notify popup of XP change
+      notifyPopupOfXpChange(user.id, result);
+    } else {
+      console.error('[SERVICE-WORKER] ❌ Failed to apply daily bonus');
+      sendResponse({ success: false, error: result?.error || 'Failed to apply bonus' });
+    }
+  } catch (err) {
+    console.error('[SERVICE-WORKER] ❌ Error checking daily bonus:', err);
+    console.error('[SERVICE-WORKER] Error message:', err.message);
+    sendResponse({ success: false, error: err.message });
+  } finally {
+    console.log('[SERVICE-WORKER] ===== CHECK DAILY BONUS END =====');
   }
 }
 

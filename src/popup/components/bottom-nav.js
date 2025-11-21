@@ -74,6 +74,13 @@ export class BottomNav {
       return;
     }
 
+    // Check if we're currently on a sub-screen - don't allow navigation away
+    const subScreens = ['coop-settings', 'side-quest'];
+    if (subScreens.includes(this.activeTab)) {
+      console.log('[BOTTOM_NAV] Cannot switch tabs while on sub-screen:', this.activeTab);
+      return;
+    }
+
     // Update active tab styling
     const tabs = document.querySelectorAll('.nav-tab');
     tabs.forEach(tab => {

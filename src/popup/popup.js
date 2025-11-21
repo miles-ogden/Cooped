@@ -9,6 +9,8 @@ import { SettingsScreen } from './screens/settings-screen.js';
 import { CosmeticsScreen } from './screens/cosmetics-screen.js';
 import { CoopCreationModal } from './screens/coop-creation-modal.js';
 import { CoopView } from './screens/coop-view.js';
+import { CoopSettingsScreen } from './screens/coop-settings-screen.js';
+import { SideQuestScreen } from './screens/side-quest-screen.js';
 import { BottomNav } from './components/bottom-nav.js';
 
 /**
@@ -19,6 +21,8 @@ let settingsScreen;
 let cosmeticsScreen;
 let coopCreationModal;
 let coopView;
+let coopSettingsScreen;
+let sideQuestScreen;
 let bottomNav;
 let currentScreen = 'home';
 
@@ -84,6 +88,8 @@ function initializeScreens() {
   cosmeticsScreen = new CosmeticsScreen();
   coopCreationModal = new CoopCreationModal();
   coopView = new CoopView();
+  coopSettingsScreen = new CoopSettingsScreen();
+  sideQuestScreen = new SideQuestScreen();
   bottomNav = new BottomNav();
 
   // Render bottom navigation
@@ -92,7 +98,8 @@ function initializeScreens() {
   // Listen for screen navigation events
   window.addEventListener('navigateToScreen', (event) => {
     const screenName = event.detail.screen;
-    showScreen(screenName);
+    const data = event.detail;
+    showScreen(screenName, data);
   });
 
   // Listen for logout events
@@ -104,6 +111,8 @@ function initializeScreens() {
     cosmeticsScreen = null;
     coopCreationModal = null;
     coopView = null;
+    coopSettingsScreen = null;
+    sideQuestScreen = null;
     bottomNav = null;
     showAuthScreen();
     initializeAuthHandlers();
@@ -115,12 +124,16 @@ function initializeScreens() {
 /**
  * Show a specific screen
  */
-async function showScreen(screenName) {
+async function showScreen(screenName, data = {}) {
   console.log('[POPUP] Switching to screen:', screenName);
+  console.log('[POPUP] Data received:', JSON.stringify(data));
   currentScreen = screenName;
 
-  // Update bottom nav active tab
-  if (bottomNav) {
+  // Define sub-screens that shouldn't update bottom nav
+  const subScreens = ['coop-settings', 'side-quest'];
+
+  // Update bottom nav active tab only for main screens
+  if (bottomNav && !subScreens.includes(screenName)) {
     bottomNav.setActiveTab(screenName);
   }
 
@@ -140,8 +153,17 @@ async function showScreen(screenName) {
       case 'coop-creation':
         await coopCreationModal.show();
         break;
+      case 'coop':
       case 'coop-view':
         await coopView.show();
+        break;
+      case 'coop-settings':
+        console.log('[POPUP] Loading coop settings with coopId:', data.coopId);
+        await coopSettingsScreen.show(data.coopId);
+        break;
+      case 'side-quest':
+        console.log('[POPUP] Loading side quest with coopId:', data.coopId);
+        await sideQuestScreen.show(data.coopId);
         break;
       default:
         console.warn('[POPUP] Unknown screen:', screenName);
