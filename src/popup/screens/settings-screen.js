@@ -5,12 +5,14 @@
 
 import { querySelect, queryUpdate, getCurrentUser } from '../../logic/supabaseClient.js';
 import { getSettings, addBlockedSite, removeBlockedSite, updateBlockingLevel } from '../../utils/storage.js';
+import { getUserTimezone, setUserTimezone } from '../../utils/time-tracking.js';
 
 export class SettingsScreen {
   constructor() {
     this.userProfile = null;
     this.userCoops = [];
     this.blockedSites = [];
+    this.currentTimezone = 'UTC';
     console.log('[SETTINGS_SCREEN] Initialized');
   }
 
@@ -47,6 +49,9 @@ export class SettingsScreen {
       // Load blocked sites from local storage
       const settings = await getSettings();
       this.blockedSites = settings.blockedSites || [];
+
+      // Load user timezone
+      this.currentTimezone = await getUserTimezone();
 
       this.render();
     } catch (err) {
@@ -146,6 +151,42 @@ export class SettingsScreen {
                 <option value="auto">Auto (System)</option>
               </select>
             </div>
+
+            <div class="setting-item">
+              <label for="timezone-preference">Timezone</label>
+              <select id="timezone-preference">
+                <optgroup label="US">
+                  <option value="America/New_York" ${this.currentTimezone === 'America/New_York' ? 'selected' : ''}>Eastern Time</option>
+                  <option value="America/Chicago" ${this.currentTimezone === 'America/Chicago' ? 'selected' : ''}>Central Time</option>
+                  <option value="America/Denver" ${this.currentTimezone === 'America/Denver' ? 'selected' : ''}>Mountain Time</option>
+                  <option value="America/Los_Angeles" ${this.currentTimezone === 'America/Los_Angeles' ? 'selected' : ''}>Pacific Time</option>
+                  <option value="America/Anchorage" ${this.currentTimezone === 'America/Anchorage' ? 'selected' : ''}>Alaska</option>
+                  <option value="Pacific/Honolulu" ${this.currentTimezone === 'Pacific/Honolulu' ? 'selected' : ''}>Hawaii</option>
+                </optgroup>
+                <optgroup label="Europe">
+                  <option value="Europe/London" ${this.currentTimezone === 'Europe/London' ? 'selected' : ''}>London</option>
+                  <option value="Europe/Paris" ${this.currentTimezone === 'Europe/Paris' ? 'selected' : ''}>Central European</option>
+                  <option value="Europe/Moscow" ${this.currentTimezone === 'Europe/Moscow' ? 'selected' : ''}>Moscow</option>
+                </optgroup>
+                <optgroup label="Asia">
+                  <option value="Asia/Dubai" ${this.currentTimezone === 'Asia/Dubai' ? 'selected' : ''}>Dubai</option>
+                  <option value="Asia/Kolkata" ${this.currentTimezone === 'Asia/Kolkata' ? 'selected' : ''}>India</option>
+                  <option value="Asia/Bangkok" ${this.currentTimezone === 'Asia/Bangkok' ? 'selected' : ''}>Bangkok</option>
+                  <option value="Asia/Hong_Kong" ${this.currentTimezone === 'Asia/Hong_Kong' ? 'selected' : ''}>Hong Kong</option>
+                  <option value="Asia/Tokyo" ${this.currentTimezone === 'Asia/Tokyo' ? 'selected' : ''}>Tokyo</option>
+                  <option value="Asia/Seoul" ${this.currentTimezone === 'Asia/Seoul' ? 'selected' : ''}>Seoul</option>
+                  <option value="Asia/Singapore" ${this.currentTimezone === 'Asia/Singapore' ? 'selected' : ''}>Singapore</option>
+                </optgroup>
+                <optgroup label="Australia">
+                  <option value="Australia/Perth" ${this.currentTimezone === 'Australia/Perth' ? 'selected' : ''}>Perth</option>
+                  <option value="Australia/Sydney" ${this.currentTimezone === 'Australia/Sydney' ? 'selected' : ''}>Sydney</option>
+                </optgroup>
+                <optgroup label="Other">
+                  <option value="UTC" ${this.currentTimezone === 'UTC' ? 'selected' : ''}>UTC</option>
+                </optgroup>
+              </select>
+              <p class="setting-description">Changes how daily/weekly boundaries are calculated</p>
+            </div>
           </section>
 
           <!-- Blocklist Section -->
@@ -227,6 +268,11 @@ export class SettingsScreen {
     // Hardcore mode toggle
     document.getElementById('hardcore-mode')?.addEventListener('change', (e) => {
       this.onHardcoreModeChange(e.target.checked);
+    });
+
+    // Timezone preference change
+    document.getElementById('timezone-preference')?.addEventListener('change', (e) => {
+      this.onTimezoneChange(e.target.value);
     });
 
     // Add blocked site
@@ -500,6 +546,24 @@ export class SettingsScreen {
     } catch (err) {
       console.error('[SETTINGS_SCREEN] Error logging out:', err);
       alert('Error logging out');
+    }
+  }
+
+  /**
+   * Handle timezone change
+   */
+  async onTimezoneChange(timezone) {
+    try {
+      console.log('[SETTINGS_SCREEN] Changing timezone to:', timezone);
+
+      // Save timezone to local storage
+      await setUserTimezone(timezone);
+      this.currentTimezone = timezone;
+
+      console.log('[SETTINGS_SCREEN] Timezone updated successfully');
+    } catch (err) {
+      console.error('[SETTINGS_SCREEN] Error updating timezone:', err);
+      alert('Error updating timezone');
     }
   }
 
