@@ -146,10 +146,10 @@ export const DEFAULT_STATE = {
   },
   settings: {
     blockedSites: [
-      '*://www.youtube.com/*',
-      '*://www.instagram.com/*',
-      '*://www.facebook.com/*',
-      '*://www.tiktok.com/*'
+      { domain: 'youtube.com', blockingLevel: 'some' },
+      { domain: 'instagram.com', blockingLevel: 'some' },
+      { domain: 'facebook.com', blockingLevel: 'some' },
+      { domain: 'tiktok.com', blockingLevel: 'some' }
     ],
     challengeDifficulty: 'medium',
     enabledChallengeTypes: ['trivia', 'math', 'word'],

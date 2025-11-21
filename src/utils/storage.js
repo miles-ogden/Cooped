@@ -27,15 +27,22 @@ export async function initializeStorage() {
       return initialState;
     }
 
-    // Check if blocked sites contain old sites (Twitter, Reddit) and update if needed
+    // Check if blocked sites are in old string format and convert to object format
     const currentState = existing[STORAGE_KEYS.APP_STATE];
-    const hasOldSites = currentState.settings.blockedSites?.some(site =>
-      site.includes('twitter.com') || site.includes('reddit.com')
+    const needsConversion = currentState.settings.blockedSites?.some(site =>
+      typeof site === 'string'
     );
 
-    if (hasOldSites) {
-      console.log('Cooped: Detected old blocked sites, resetting to default');
-      currentState.settings.blockedSites = DEFAULT_STATE.settings.blockedSites;
+    if (needsConversion) {
+      console.log('Cooped: Converting blocked sites from string format to object format');
+      currentState.settings.blockedSites = currentState.settings.blockedSites.map(site => {
+        if (typeof site === 'string') {
+          // Convert old string format to object format
+          let domain = site.replace(/^\*:\/\//, '').replace(/\/\*$/, '').replace(/^www\./, '');
+          return { domain, blockingLevel: 'some' };
+        }
+        return site;
+      });
       await chrome.storage.local.set({ [STORAGE_KEYS.APP_STATE]: currentState });
     }
 
