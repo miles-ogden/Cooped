@@ -15,7 +15,7 @@ import {
 } from './time-tracking.js';
 
 const THREE_MINUTES_MS = 1 * 60 * 1000; // TESTING: Changed from 3 minutes to 1 minute for easier testing
-const SEVEN_MINUTES_MS = 7 * 60 * 1000;
+const SEVEN_MINUTES_MS = 1 * 60 * 1000; // TESTING: Changed from 7 minutes to 1 minute for easier testing
 
 /**
  * Detect platform from hostname
