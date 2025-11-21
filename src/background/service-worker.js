@@ -7,6 +7,7 @@ import { initializeStorage, getSettings } from '../utils/storage.js';
 import { applyXpEvent } from '../logic/xpEngine.js';
 import { getCurrentUser, initializeAuth } from '../logic/supabaseClient.js';
 import { getSkipStatus, useHeart, isUserInSkipPeriod, debugResetSkipPeriod } from '../logic/skipSystem.js';
+import { initializeTimeSyncService } from './time-sync-service.js';
 
 // Initialize storage and auth on extension install
 chrome.runtime.onInstalled.addListener(async () => {
@@ -15,11 +16,14 @@ chrome.runtime.onInstalled.addListener(async () => {
   await initializeAuth();
 });
 
-// Initialize auth when service worker starts
+// Initialize auth and time sync when service worker starts
 (async () => {
   console.log('[SERVICE-WORKER] Starting service worker - initializing auth');
   await initializeAuth();
   console.log('[SERVICE-WORKER] Auth initialization complete');
+
+  // Initialize time sync service for periodic Supabase syncing
+  initializeTimeSyncService();
 })();
 
 /**
