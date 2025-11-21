@@ -108,9 +108,10 @@ async function syncDailyTimeData(userId, domain, timeData) {
     if (existingRecords && existingRecords.id) {
       // Update existing record
       await queryUpdate('daily_time_tracking', {
-        id: existingRecords.id,
         total_minutes: totalMinutes,
         updated_at: new Date().toISOString()
+      }, {
+        id: existingRecords.id
       });
       console.log(`[TIME-SYNC] ✅ Updated daily record for ${domain} on ${date}`);
     } else {
@@ -151,9 +152,10 @@ async function syncWeeklyTimeData(userId, domain, timeData) {
     if (existingRecords && existingRecords.id) {
       // Update existing record with accumulated time for the week
       await queryUpdate('weekly_time_tracking', {
-        id: existingRecords.id,
         total_minutes: totalMinutes,
         updated_at: new Date().toISOString()
+      }, {
+        id: existingRecords.id
       });
       console.log(`[TIME-SYNC] ✅ Updated weekly record for ${domain} week of ${weekStart}`);
     } else {
