@@ -335,6 +335,9 @@ export async function signUpWithEmail(email, password) {
  */
 export async function signInWithEmail(email, password) {
   try {
+    console.log('[SUPABASE] ===== SIGN IN START =====')
+    console.log('[SUPABASE] Attempting sign in with email:', email)
+
     const response = await fetch(
       `${SUPABASE_URL}/auth/v1/token?grant_type=password`,
       {
@@ -352,14 +355,22 @@ export async function signInWithEmail(email, password) {
 
     const data = await response.json()
 
+    console.log('[SUPABASE] Sign in response status:', response.status)
+    console.log('[SUPABASE] Sign in response data keys:', Object.keys(data))
+
     if (!response.ok) {
-      console.error('[SUPABASE] Sign in response not ok:', response.status, data)
+      console.error('[SUPABASE] ❌ Sign in response not ok:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorMessage: data.message || data.error_description
+      })
       throw new Error(data.message || 'Sign in failed')
     }
 
     console.log('[SUPABASE] Sign in response received:', {
       hasAccessToken: !!data.access_token,
       hasRefreshToken: !!data.refresh_token,
+      hasUser: !!data.user,
       userId: data.user?.id
     })
 
@@ -372,16 +383,25 @@ export async function signInWithEmail(email, password) {
       console.warn('[SUPABASE] ⚠️ No refresh token in sign in response - session may not persist')
     }
 
+    const userId = data.user?.id
+    console.log('[SUPABASE] Extracted user ID:', userId)
+
+    if (!userId) {
+      console.warn('[SUPABASE] ⚠️ No user ID in response - will try to extract from token')
+    }
+
     await persistSession({
       access_token: data.access_token,
       refresh_token: data.refresh_token,
-      user_id: data.user?.id
+      user_id: userId
     }, 'email')
 
-    console.log('[SUPABASE] ✅ Sign in successful and session persisted:', data.user?.id)
+    console.log('[SUPABASE] ✅ Sign in successful and session persisted:', userId)
+    console.log('[SUPABASE] ===== SIGN IN END =====')
     return { success: true, user: data.user, session: data }
   } catch (err) {
-    console.error('[SUPABASE] Sign in error:', err)
+    console.error('[SUPABASE] ❌ Sign in error:', err)
+    console.error('[SUPABASE] ===== SIGN IN END (ERROR) =====')
     return { success: false, error: err.message }
   }
 }
@@ -813,20 +833,31 @@ async function persistSession(session, provider = 'email') {
     userId: session?.user_id
   })
 
-  if (!session?.access_token || !session?.user_id) {
-    console.error('[SUPABASE] ❌ Cannot persist session - missing required data:', {
-      hasAccessToken: !!session?.access_token,
-      hasUserId: !!session?.user_id
-    })
+  if (!session?.access_token) {
+    console.error('[SUPABASE] ❌ Cannot persist session - no access token')
     return
+  }
+
+  // If user_id is missing, try to extract from token
+  let userId = session.user_id
+  if (!userId && session.access_token) {
+    console.log('[SUPABASE] user_id missing, attempting to extract from JWT token...')
+    userId = extractUserIdFromToken(session.access_token)
+    if (userId) {
+      console.log('[SUPABASE] ✅ Extracted user_id from token:', userId)
+      session.user_id = userId
+    } else {
+      console.error('[SUPABASE] ❌ Could not extract user_id from token')
+      return
+    }
   }
 
   currentSession = session
   await chrome.storage.local.set({ supabase_session: currentSession })
-  console.log('[SUPABASE] ✅ Session persisted to Chrome storage')
+  console.log('[SUPABASE] ✅ Session persisted to Chrome storage with user_id:', userId)
 
   try {
-    await ensureUserProfile(session.user_id, provider)
+    await ensureUserProfile(userId, provider)
   } catch (err) {
     console.error('[SUPABASE] Failed ensuring user profile:', err)
   }
