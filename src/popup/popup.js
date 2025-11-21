@@ -11,6 +11,7 @@ import { CoopCreationModal } from './screens/coop-creation-modal.js';
 import { CoopView } from './screens/coop-view.js';
 import { CoopSettingsScreen } from './screens/coop-settings-screen.js';
 import { SideQuestScreen } from './screens/side-quest-screen.js';
+import { AnalyticsScreen } from './screens/analytics-screen.js';
 import { BottomNav } from './components/bottom-nav.js';
 
 /**
@@ -23,6 +24,7 @@ let coopCreationModal;
 let coopView;
 let coopSettingsScreen;
 let sideQuestScreen;
+let analyticsScreen;
 let bottomNav;
 let currentScreen = 'home';
 
@@ -90,6 +92,7 @@ function initializeScreens() {
   coopView = new CoopView();
   coopSettingsScreen = new CoopSettingsScreen();
   sideQuestScreen = new SideQuestScreen();
+  analyticsScreen = new AnalyticsScreen();
   bottomNav = new BottomNav();
 
   // Render bottom navigation
@@ -113,6 +116,7 @@ function initializeScreens() {
     coopView = null;
     coopSettingsScreen = null;
     sideQuestScreen = null;
+    analyticsScreen = null;
     bottomNav = null;
     showAuthScreen();
     initializeAuthHandlers();
@@ -145,6 +149,9 @@ async function showScreen(screenName, data = {}) {
         break;
       case 'settings':
         await settingsScreen.show();
+        break;
+      case 'analytics':
+        await analyticsScreen.show();
         break;
       case 'skins':
       case 'cosmetics':

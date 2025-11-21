@@ -6,7 +6,7 @@
 export class BottomNav {
   constructor() {
     this.activeTab = 'home';
-    this.tabs = ['home', 'skins', 'settings'];
+    this.tabs = ['home', 'analytics', 'skins', 'settings'];
     console.log('[BOTTOM_NAV] Initialized');
   }
 
@@ -24,6 +24,9 @@ export class BottomNav {
       <nav class="bottom-nav">
         <button class="nav-tab active" data-tab="home" title="Home">
           🏠 Home
+        </button>
+        <button class="nav-tab" data-tab="analytics" title="Time Analytics">
+          📊 Analytics
         </button>
         <button class="nav-tab" data-tab="skins" title="Cosmetics & Skins">
           👕 Skins
