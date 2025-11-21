@@ -1,24 +1,19 @@
 /**
  * Time Tracking System for Cooped
- * Tracks productive vs unproductive time on blocked websites
+ * Tracks total time spent on blocked websites (active vs inactive only)
  */
 
 import { getAppState } from './storage.js';
 
 const STORAGE_KEY_TIME_TRACKING = 'cooped_time_tracking';
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-const THREE_MINUTES_MS = 3 * 60 * 1000;
-const SEVEN_MINUTES_MS = 7 * 60 * 1000;
 
 /**
- * Activity state enum
+ * Activity state enum - simplified to just ACTIVE/INACTIVE
  */
 export const ACTIVITY_STATE = {
-  INACTIVE: 'INACTIVE',      // Tab not focused
-  PAUSED: 'PAUSED',          // Media paused but tab active
-  PRODUCTIVE: 'PRODUCTIVE',  // Engaging with content productively
-  UNPRODUCTIVE: 'UNPRODUCTIVE', // Stimming/mindless consumption
-  UNKNOWN: 'UNKNOWN'         // (YouTube only) awaiting user response
+  INACTIVE: 'INACTIVE',  // Tab not focused
+  ACTIVE: 'ACTIVE'       // Tab is active and user is on site
 };
 
 /**
@@ -53,11 +48,9 @@ function initializeTimeTrackingRecord(domain) {
     domain,
     sessionStartTime: Date.now(),
     lastResetTime: Date.now(),
-    timeInProductiveState: 0,
-    timeInUnproductiveState: 0,
+    totalActiveTimeMs: 0,        // Total time in milliseconds while ACTIVE
     lastTabActiveTime: Date.now(),
     currentState: ACTIVITY_STATE.INACTIVE,
-    contentMetadata: {},
     events: []
   };
 }
@@ -90,103 +83,43 @@ export async function updateTabVisibility(domain, isVisible) {
   const oldState = record.currentState;
 
   if (isVisible) {
-    // Tab became active - resume previous state or mark as ACTIVE
+    // Tab became active
     if (oldState === ACTIVITY_STATE.INACTIVE) {
-      record.currentState = ACTIVITY_STATE.PRODUCTIVE; // Default to productive when returning
+      record.currentState = ACTIVITY_STATE.ACTIVE;
       record.lastTabActiveTime = Date.now();
-      console.log(`[TIME-TRACKING] ${domain}: Tab active, resuming PRODUCTIVE state`);
+      console.log(`[TIME-TRACKING] ${domain}: Tab active`);
     }
   } else {
     // Tab became inactive
-    if (oldState !== ACTIVITY_STATE.PAUSED) {
+    if (oldState === ACTIVITY_STATE.ACTIVE) {
+      // Accumulate time before marking inactive
+      const timeElapsed = Date.now() - record.lastTabActiveTime;
+      record.totalActiveTimeMs += timeElapsed;
       record.currentState = ACTIVITY_STATE.INACTIVE;
-      console.log(`[TIME-TRACKING] ${domain}: Tab inactive, paused tracking`);
+      console.log(`[TIME-TRACKING] ${domain}: Tab inactive, accumulated ${Math.round(timeElapsed / 1000)}s`);
     }
-  }
-
-  await saveTimeTrackingRecord(domain, record);
-}
-
-/**
- * Handle media pause/play state change
- * @param {string} domain - Current domain
- * @param {boolean} isPaused - Is media paused
- * @returns {Promise<void>}
- */
-export async function updateMediaPauseState(domain, isPaused) {
-  const record = await getTimeTrackingRecord(domain);
-
-  if (isPaused) {
-    if (record.currentState !== ACTIVITY_STATE.INACTIVE) {
-      record.currentState = ACTIVITY_STATE.PAUSED;
-      console.log(`[TIME-TRACKING] ${domain}: Media paused, state = PAUSED`);
-    }
-  } else {
-    // Media playing - need to determine if productive or unproductive
-    // This is determined by platform-specific logic elsewhere
-    if (record.currentState === ACTIVITY_STATE.PAUSED) {
-      record.currentState = ACTIVITY_STATE.PRODUCTIVE; // Default resume to productive
-      record.lastTabActiveTime = Date.now();
-      console.log(`[TIME-TRACKING] ${domain}: Media playing, resumed PRODUCTIVE state`);
-    }
-  }
-
-  await saveTimeTrackingRecord(domain, record);
-}
-
-/**
- * Set explicit productivity state for a domain
- * @param {string} domain - Domain to update
- * @param {string} state - New state (PRODUCTIVE, UNPRODUCTIVE, PAUSED, INACTIVE)
- * @param {Object} [metadata={}] - Additional metadata (videoId, title, etc)
- * @returns {Promise<void>}
- */
-export async function setActivityState(domain, state, metadata = {}) {
-  const record = await getTimeTrackingRecord(domain);
-  const oldState = record.currentState;
-
-  record.currentState = state;
-  if (Object.keys(metadata).length > 0) {
-    record.contentMetadata = { ...record.contentMetadata, ...metadata };
   }
 
   record.events.push({
     timestamp: Date.now(),
     fromState: oldState,
-    toState: state,
-    metadata
+    toState: record.currentState,
+    type: 'tab_visibility'
   });
 
-  console.log(`[TIME-TRACKING] ${domain}: State transition ${oldState} -> ${state}`);
   await saveTimeTrackingRecord(domain, record);
 }
 
 /**
- * Update accumulated time for a state
+ * Accumulate time for a domain
  * @param {string} domain - Domain being tracked
- * @param {string} state - State to update (PRODUCTIVE or UNPRODUCTIVE)
  * @param {number} milliseconds - Time to add
  * @returns {Promise<void>}
  */
-export async function accumulateTime(domain, state, milliseconds) {
+export async function accumulateTime(domain, milliseconds) {
   const record = await getTimeTrackingRecord(domain);
-
-  if (state === ACTIVITY_STATE.PRODUCTIVE) {
-    record.timeInProductiveState += milliseconds;
-  } else if (state === ACTIVITY_STATE.UNPRODUCTIVE) {
-    record.timeInUnproductiveState += milliseconds;
-  }
-
+  record.totalActiveTimeMs += milliseconds;
   await saveTimeTrackingRecord(domain, record);
-
-  // Also update global stats
-  const appState = await getAppState();
-  if (state === ACTIVITY_STATE.PRODUCTIVE) {
-    appState.user.stats.totalProductiveTime += milliseconds;
-  } else if (state === ACTIVITY_STATE.UNPRODUCTIVE) {
-    appState.user.stats.totalUnproductiveTime += milliseconds;
-  }
-  await chrome.storage.local.set({ ['cooped_app_state']: appState });
 }
 
 /**
@@ -201,10 +134,8 @@ export async function shouldResetSocialMediaTimer(domain) {
   if (timeSinceReset >= TWO_HOURS_MS) {
     // Reset the timer
     record.lastResetTime = Date.now();
-    // Reset productive/unproductive counters for this session
-    record.timeInProductiveState = 0;
-    record.timeInUnproductiveState = 0;
-    record.currentState = ACTIVITY_STATE.PRODUCTIVE; // Start fresh as productive
+    record.totalActiveTimeMs = 0;
+    record.currentState = ACTIVITY_STATE.ACTIVE;
 
     console.log(`[TIME-TRACKING] ${domain}: 2-hour timer reset`);
     await saveTimeTrackingRecord(domain, record);
@@ -215,7 +146,7 @@ export async function shouldResetSocialMediaTimer(domain) {
 }
 
 /**
- * Get time since session start for social media (for 3-minute threshold)
+ * Get time since session start for social media (for threshold checking)
  * @param {string} domain - Domain to check
  * @returns {Promise<number>} Milliseconds since the 2-hour window started
  */
@@ -227,20 +158,16 @@ export async function getTimeSinceSocialMediaReset(domain) {
 /**
  * Get summary of time spent on a domain
  * @param {string} domain - Domain to summarize
- * @returns {Promise<Object>} Summary with productive/unproductive times
+ * @returns {Promise<Object>} Summary with total time
  */
 export async function getTimeTrackingSummary(domain) {
   const record = await getTimeTrackingRecord(domain);
 
   return {
     domain,
-    productiveTime: record.timeInProductiveState,
-    unproductiveTime: record.timeInUnproductiveState,
-    totalTime: record.timeInProductiveState + record.timeInUnproductiveState,
-    currentState: record.currentState,
-    productivityPercent: record.timeInProductiveState + record.timeInUnproductiveState > 0
-      ? Math.round((record.timeInProductiveState / (record.timeInProductiveState + record.timeInUnproductiveState)) * 100)
-      : 0
+    totalTimeMs: record.totalActiveTimeMs,
+    totalTimeMinutes: Math.round(record.totalActiveTimeMs / 60000),
+    currentState: record.currentState
   };
 }
 
