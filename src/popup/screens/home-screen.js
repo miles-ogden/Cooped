@@ -6,6 +6,7 @@
 import { getCurrentUser, querySelect } from '../../logic/supabaseClient.js';
 import { getSkipStatus } from '../../logic/skipSystem.js';
 import { getActiveQuest } from '../../logic/sideQuestSystem.js';
+import { getCoopByJoinCode, joinCoop } from '../../logic/coopManager.js';
 
 export class HomeScreen {
   constructor() {
@@ -401,13 +402,82 @@ export class HomeScreen {
   /**
    * Handle join coop button click
    */
-  onJoinCoopClick() {
-    console.log('[HOME_SCREEN] Join coop clicked');
-    // TODO: Show modal for join code input
+  async onJoinCoopClick() {
+    console.log('[HOME_SCREEN] 🔗 Join coop clicked');
     const code = prompt('Enter coop join code:');
-    if (code) {
-      console.log('[HOME_SCREEN] Attempting to join coop with code:', code);
-      // TODO: Call coopManager.joinCoop(code)
+    if (!code) {
+      console.log('[HOME_SCREEN] ⚠️ Join code entry cancelled by user');
+      return;
+    }
+
+    try {
+      console.log('[HOME_SCREEN] 📝 User entered code:', code);
+      console.log('[HOME_SCREEN] 👤 Current user ID:', this.userProfile?.id);
+
+      // Step 1: Find the coop by join code
+      console.log('[HOME_SCREEN] 🔍 Step 1: Looking up coop by join code...');
+      const coopResult = await getCoopByJoinCode(code);
+
+      console.log('[HOME_SCREEN] 📊 getCoopByJoinCode returned:', {
+        success: coopResult.success,
+        error: coopResult.error,
+        coopId: coopResult.coop?.id,
+        coopName: coopResult.coop?.name,
+        coopJoinCode: coopResult.coop?.join_code
+      });
+
+      if (!coopResult.success) {
+        console.error('[HOME_SCREEN] ❌ Failed to find coop:', coopResult.error);
+        alert(coopResult.error || 'Failed to find coop');
+        return;
+      }
+
+      const coop = coopResult.coop;
+      console.log('[HOME_SCREEN] ✅ Found coop:', {
+        id: coop.id,
+        name: coop.name,
+        join_code: coop.join_code,
+        creator_user_id: coop.creator_user_id,
+        member_ids: coop.member_ids
+      });
+
+      // Step 2: Join the coop
+      console.log('[HOME_SCREEN] 🔗 Step 2: Joining coop...');
+      console.log('[HOME_SCREEN] 📋 Join parameters:', {
+        userId: this.userProfile.id,
+        coopId: coop.id
+      });
+
+      const joinResult = await joinCoop(this.userProfile.id, coop.id);
+
+      console.log('[HOME_SCREEN] 📊 joinCoop returned:', {
+        success: joinResult.success,
+        error: joinResult.error,
+        coopId: joinResult.coop?.id,
+        memberCount: joinResult.coop?.member_ids?.length
+      });
+
+      if (!joinResult.success) {
+        console.error('[HOME_SCREEN] ❌ Failed to join coop:', joinResult.error);
+        alert(joinResult.error || 'Failed to join coop');
+        return;
+      }
+
+      console.log('[HOME_SCREEN] ✅ Successfully joined coop:', coop.name);
+      alert(`Successfully joined "${coop.name}"!`);
+
+      // Step 3: Refresh the screen to show updated coop info
+      console.log('[HOME_SCREEN] 🔄 Step 3: Refreshing UI...');
+      this.coopInfo = joinResult.coop;
+      this.render();
+      console.log('[HOME_SCREEN] ✅ UI refreshed');
+    } catch (err) {
+      console.error('[HOME_SCREEN] ❌ Error joining coop:', err);
+      console.error('[HOME_SCREEN] Error details:', {
+        message: err.message,
+        stack: err.stack
+      });
+      alert('Error joining coop: ' + err.message);
     }
   }
 

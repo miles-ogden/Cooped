@@ -98,6 +98,8 @@ async function showInterruptSequenceInline() {
   console.log('[INTERRUPT] Creating new interrupt overlay');
   currentInterruptPage = 1;
   currentGameType = 'random'; // Reset game type to pick a new random one
+  currentAttempt = 1; // Reset attempt counter for new challenge
+  challengeAnsweredCorrectly = false; // Reset challenge state
 
   // Create overlay container
   interruptOverlayElement = document.createElement('div');
@@ -2018,6 +2020,7 @@ let currentWatchVideoId = null; // Track current video ID to detect video change
 let longWatchAccumulatedMs = 0; // Total continuous watch time
 let longWatchPlayingSince = null; // Timestamp when current uninterrupted segment started
 let lastKnownShortsState = null; // Track if we were on Shorts page to detect transitions
+let currentAttempt = 1; // Track which attempt (1, 2, or 3) user is on
 
 /**
  * Check if current tab is blocked and show challenge if needed
@@ -2121,7 +2124,8 @@ async function checkAndShowChallenge() {
       }
 
       console.log('Cooped: This is a blocked site, showing challenge');
-      showChallengeOverlay(response);
+      console.log('[DELAY-DEBUG] About to call showChallengeOverlay with blockingLevel:', response.blockingLevel);
+      showChallengeOverlay(response, response.blockingLevel);
     }
   } catch (error) {
     console.log('Cooped: Error checking if site is blocked:', error);
@@ -2163,19 +2167,8 @@ function initializeContentScript() {
     }
   });
 
-  // Check for daily login bonus (once per day)
-  console.log('[CONTENT-SCRIPT] Checking for daily login bonus...');
-  chrome.runtime.sendMessage({ action: 'checkDailyBonus' }, (response) => {
-    if (response && response.success) {
-      if (response.claimed) {
-        console.log('[CONTENT-SCRIPT] ✅ Daily bonus claimed! +150 XP');
-      } else {
-        console.log('[CONTENT-SCRIPT] Daily bonus already claimed today');
-      }
-    } else {
-      console.log('[CONTENT-SCRIPT] Could not check daily bonus:', response?.error);
-    }
-  });
+  // NOTE: Daily login bonus check is now handled by service worker on startup only
+  // This ensures it only triggers once per day when browser opens, not on every page load
 
   // Check on page load if this is a blocked site
   if (document.readyState === 'loading') {
@@ -2188,6 +2181,44 @@ function initializeContentScript() {
   // Start monitoring for interval expiry
   startIntervalMonitoring();
 
+  // Start accumulating time periodically (every 30 seconds)
+  const timeAccumulationInterval = setInterval(async () => {
+    try {
+      const hostname = new URL(window.location.href).hostname;
+      const platform = detectPlatform(hostname);
+      const isHidden = document.hidden;
+      const isBlocked = isOverlayActive;
+
+      console.log(`[TIME-TRACKING] === 30s Time check ===`);
+      console.log(`[TIME-TRACKING] Platform: ${platform}`);
+      console.log(`[TIME-TRACKING] Document hidden: ${isHidden}`);
+      console.log(`[TIME-TRACKING] Overlay active: ${isBlocked}`);
+
+      // Only accumulate time if:
+      // 1. Platform is detected
+      // 2. Tab is visible (not hidden)
+      // 3. Overlay is NOT active (user is not being challenged)
+      if (platform && !isHidden && !isBlocked) {
+        console.log(`[TIME-TRACKING] ✅ ACCUMULATING 30 seconds for ${platform}`);
+        // Accumulate 30 seconds of time for this platform
+        await accumulateTime(platform, 30000); // 30 seconds in milliseconds
+        console.log(`[TIME-TRACKING] ✅ Accumulated 30 seconds for ${platform}`);
+      } else {
+        if (!platform) {
+          console.log(`[TIME-TRACKING] ❌ SKIPPING: No platform detected`);
+        }
+        if (isHidden) {
+          console.log(`[TIME-TRACKING] ❌ SKIPPING: Tab is hidden`);
+        }
+        if (isBlocked) {
+          console.log(`[TIME-TRACKING] ❌ SKIPPING: Overlay is active (challenge showing)`);
+        }
+      }
+    } catch (error) {
+      console.error('[TIME-TRACKING] Error accumulating time:', error);
+    }
+  }, 30 * 1000); // Run every 30 seconds
+
 }
 
 
@@ -2198,7 +2229,11 @@ function initializeContentScript() {
 function startIntervalMonitoring() {
   // Check every 30 seconds if an interval has expired
   intervalCheckTimer = setInterval(async () => {
-    if (isOverlayActive) return; // Don't check while overlay is showing
+    console.log('[INTERVAL-MONITOR] === 30-second interval check running ===');
+    if (isOverlayActive) {
+      console.log('[INTERVAL-MONITOR] isOverlayActive is true, skipping check');
+      return;
+    }
 
     try {
       // Check if extension is enabled
@@ -2206,32 +2241,39 @@ function startIntervalMonitoring() {
       const isExtensionEnabled = extensionStateResult.extensionEnabled !== false;
 
       if (!isExtensionEnabled) {
-        console.log('Cooped: Extension is disabled - skipping re-engagement check');
+        console.log('[INTERVAL-MONITOR] Extension is disabled - skipping re-engagement check');
         return;
       }
 
       const hostname = new URL(window.location.href).hostname;
+      console.log('[INTERVAL-MONITOR] Current hostname:', hostname);
 
       // YouTube uses custom triggers, skip re-engagement polling
       if (hostname.includes('youtube.com')) {
+        console.log('[INTERVAL-MONITOR] YouTube detected, skipping re-engagement polling');
         return;
       }
       const intervalCheck = await checkSiteInterval(hostname);
+      console.log('[INTERVAL-MONITOR] Interval check result - isActive:', intervalCheck.isActive, 'minutesRemaining:', intervalCheck.minutesRemaining);
 
       // If interval was active but is now expired
       if (!intervalCheck.isActive) {
+        console.log('[INTERVAL-MONITOR] ⚠️  Interval HAS EXPIRED');
         // Check if user has been active recently (within last 5 minutes)
         const timeSinceLastActivity = Date.now() - lastActivityTime;
         const fiveMinutesInMs = 5 * 60 * 1000;
+        console.log('[INTERVAL-MONITOR] Time since last activity:', Math.round(timeSinceLastActivity / 1000), 'seconds');
 
         if (timeSinceLastActivity < fiveMinutesInMs) {
           // User is still active! Show re-engagement challenge
-          console.log('Cooped: Interval expired and user is still active, showing re-engagement challenge');
+          console.log('[INTERVAL-MONITOR] 🔥 User is still active! Preparing to show re-engagement challenge');
 
           // Get the blocked site info
           const response = await chrome.runtime.sendMessage({
             type: 'CHECK_BLOCKED_SITE'
           });
+
+          console.log('[INTERVAL-MONITOR] Response from CHECK_BLOCKED_SITE:', response);
 
           // Don't show challenge if user is in skip period
           if (response && response.skipActive) {
@@ -2240,12 +2282,17 @@ function startIntervalMonitoring() {
           }
 
           if (response && response.isBlocked) {
-            showReEngagementChallenge(response);
+            console.log('[INTERVAL-MONITOR] Site is blocked, calling showReEngagementChallenge with blockingLevel:', response.blockingLevel);
+            showReEngagementChallenge(response, response.blockingLevel);
           }
+        } else {
+          console.log('[INTERVAL-MONITOR] User has been inactive for more than 5 minutes, not showing re-engagement challenge');
         }
+      } else {
+        console.log('[INTERVAL-MONITOR] Interval is still active, not showing re-engagement challenge');
       }
     } catch (error) {
-      console.log('Cooped: Error in interval monitoring:', error);
+      console.log('[INTERVAL-MONITOR] Error in interval monitoring:', error);
     }
   }, 30000); // Check every 30 seconds
 }
@@ -2253,19 +2300,71 @@ function startIntervalMonitoring() {
 /**
  * Show a re-engagement challenge when user is still on blocked site after interval
  * Now uses the new 3-slide interrupt sequence instead of old overlay
+ * IMPORTANT: This also respects blocking level delays like showChallengeOverlay
  */
-async function showReEngagementChallenge(messageData) {
-  // Use the new 3-slide interrupt sequence
-  await showInterruptSequenceInline();
+async function showReEngagementChallenge(messageData, blockingLevel) {
+  console.log('[RE-ENGAGEMENT-CHALLENGE] ===== showReEngagementChallenge CALLED =====');
+  console.log('[RE-ENGAGEMENT-CHALLENGE] blockingLevel parameter:', blockingLevel);
 
-  isOverlayActive = true;
-  challengeStartTime = Date.now();
+  // Apply delay based on blocking level (from stimTracker.js thresholds)
+  // Re-engagement challenges should also respect the user's blocking preference
+  let delayMs = 0;
+  const level = blockingLevel || 'some';
+  console.log('[RE-ENGAGEMENT-CHALLENGE] Resolved level:', level);
 
-  // Focus on the modal (interrupt sequence takes care of itself)
-  setTimeout(() => {
-    const input = document.getElementById('cooped-answer-input');
-    if (input) input.focus();
-  }, 100);
+  if (level === 'fully') {
+    delayMs = 0; // Fully block: instant re-engagement challenge
+    console.log('[RE-ENGAGEMENT-CHALLENGE] Blocking level: FULLY - showing re-engagement immediately');
+  } else if (level === 'some') {
+    delayMs = 3 * 60 * 1000; // Some leeway: 3 minutes
+    console.log('[RE-ENGAGEMENT-CHALLENGE] Blocking level: SOME - delaying 3 minutes (180000ms)');
+  } else if (level === 'a_lot') {
+    delayMs = 10 * 60 * 1000; // A lot of leeway: 10 minutes
+    console.log('[RE-ENGAGEMENT-CHALLENGE] Blocking level: A_LOT - delaying 10 minutes (600000ms)');
+  } else {
+    console.log('[RE-ENGAGEMENT-CHALLENGE] Unknown blocking level, defaulting to 3 minutes');
+    delayMs = 3 * 60 * 1000;
+  }
+
+  console.log('[RE-ENGAGEMENT-CHALLENGE] Calculated delayMs:', delayMs, 'milliseconds');
+  if (delayMs > 0) {
+    const showTime = new Date(Date.now() + delayMs);
+    console.log('[RE-ENGAGEMENT-CHALLENGE] Re-engagement challenge will show at:', showTime.toLocaleTimeString());
+  }
+
+  // Helper function to show the re-engagement overlay
+  const showOverlay = async () => {
+    console.log('[RE-ENGAGEMENT-CHALLENGE] ===== showOverlay EXECUTING =====');
+    console.log('[RE-ENGAGEMENT-CHALLENGE] Calling showInterruptSequenceInline()');
+    // Use the new 3-slide interrupt sequence
+    await showInterruptSequenceInline();
+    console.log('[RE-ENGAGEMENT-CHALLENGE] showInterruptSequenceInline() returned');
+
+    isOverlayActive = true;
+    challengeStartTime = Date.now();
+    console.log('[RE-ENGAGEMENT-CHALLENGE] isOverlayActive set to true');
+
+    // Focus on the modal (interrupt sequence takes care of itself)
+    setTimeout(() => {
+      const input = document.getElementById('cooped-answer-input');
+      if (input) {
+        input.focus();
+        console.log('[RE-ENGAGEMENT-CHALLENGE] Input focused');
+      }
+    }, 100);
+  };
+
+  if (delayMs > 0) {
+    console.log('[RE-ENGAGEMENT-CHALLENGE] Setting setTimeout for', delayMs, 'ms');
+    const timeoutId = setTimeout(() => {
+      console.log('[RE-ENGAGEMENT-CHALLENGE] ===== setTimeout CALLBACK EXECUTING =====');
+      showOverlay();
+    }, delayMs);
+    console.log('[RE-ENGAGEMENT-CHALLENGE] setTimeout ID:', timeoutId);
+  } else {
+    console.log('[RE-ENGAGEMENT-CHALLENGE] No delay (0ms), calling showOverlay immediately');
+    await showOverlay();
+  }
 }
 
 /**
@@ -2335,12 +2434,12 @@ function createReEngagementOverlay(challenge, blockedUrl) {
   const tellMeBtn = overlay.querySelector('#cooped-tellme-btn');
   const input = overlay.querySelector('#cooped-answer-input');
 
-  submitBtn.addEventListener('click', () => handleAnswerSubmit(overlay));
+  submitBtn.addEventListener('click', () => handleAnswerSubmit());
   skipBtn.addEventListener('click', () => handleSkip(overlay));
   tellMeBtn.addEventListener('click', () => handleTellMe(overlay));
   input.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
-      handleAnswerSubmit(overlay);
+      handleAnswerSubmit();
     }
   });
 
@@ -2350,19 +2449,68 @@ function createReEngagementOverlay(challenge, blockedUrl) {
 /**
  * Create and show challenge overlay
  */
-async function showChallengeOverlay(messageData) {
-  // Use the new 3-slide interrupt sequence instead of old challenge overlay
-  await showInterruptSequenceInline();
+async function showChallengeOverlay(messageData, blockingLevel) {
+  console.log('[DELAY-DEBUG] ===== showChallengeOverlay CALLED =====');
+  console.log('[DELAY-DEBUG] blockingLevel parameter:', blockingLevel);
 
-  isOverlayActive = true;
-  challengeStartTime = Date.now();
+  // Apply delay based on blocking level (from stimTracker.js thresholds)
+  let delayMs = 0;
+  const level = blockingLevel || 'some';
+  console.log('[DELAY-DEBUG] Resolved level:', level);
 
-  // Prevent page scrolling
-  document.body.style.overflow = 'hidden';
+  if (level === 'fully') {
+    delayMs = 0; // Fully block: instant wall
+    console.log('[DELAY-DEBUG] Blocking level: FULLY - showing challenge immediately');
+  } else if (level === 'some') {
+    delayMs = 3 * 60 * 1000; // Some leeway: 3 minutes
+    console.log('[DELAY-DEBUG] Blocking level: SOME - delaying 3 minutes (180000ms)');
+  } else if (level === 'a_lot') {
+    delayMs = 10 * 60 * 1000; // A lot of leeway: 10 minutes
+    console.log('[DELAY-DEBUG] Blocking level: A_LOT - delaying 10 minutes (600000ms)');
+  } else {
+    console.log('[DELAY-DEBUG] Unknown blocking level, defaulting to 3 minutes');
+    delayMs = 3 * 60 * 1000;
+  }
 
-  // If we're on YouTube, pause any playing videos so the popup doesn't run over the audio
-  if (window.location.hostname.includes('youtube.com')) {
-    pauseYouTubeVideo();
+  console.log('[DELAY-DEBUG] Calculated delayMs:', delayMs, 'milliseconds');
+  if (delayMs > 0) {
+    const showTime = new Date(Date.now() + delayMs);
+    console.log('[DELAY-DEBUG] Popup will show at:', showTime.toLocaleTimeString());
+  }
+
+  // Helper function to show the overlay
+  const showOverlay = async () => {
+    console.log('[DELAY-DEBUG] ===== showOverlay EXECUTING =====');
+    console.log('[DELAY-DEBUG] Calling showInterruptSequenceInline()');
+    // Use the new 3-slide interrupt sequence instead of old challenge overlay
+    await showInterruptSequenceInline();
+    console.log('[DELAY-DEBUG] showInterruptSequenceInline() returned');
+
+    isOverlayActive = true;
+    challengeStartTime = Date.now();
+    console.log('[DELAY-DEBUG] isOverlayActive set to true');
+
+    // Prevent page scrolling
+    document.body.style.overflow = 'hidden';
+    console.log('[DELAY-DEBUG] Page scrolling disabled');
+
+    // If we're on YouTube, pause any playing videos so the popup doesn't run over the audio
+    if (window.location.hostname.includes('youtube.com')) {
+      console.log('[DELAY-DEBUG] YouTube detected, pausing video');
+      pauseYouTubeVideo();
+    }
+  };
+
+  if (delayMs > 0) {
+    console.log('[DELAY-DEBUG] Setting setTimeout for', delayMs, 'ms');
+    const timeoutId = setTimeout(() => {
+      console.log('[DELAY-DEBUG] ===== setTimeout CALLBACK EXECUTING =====');
+      showOverlay();
+    }, delayMs);
+    console.log('[DELAY-DEBUG] setTimeout ID:', timeoutId);
+  } else {
+    console.log('[DELAY-DEBUG] No delay (0ms), calling showOverlay immediately');
+    await showOverlay();
   }
 }
 
@@ -2459,7 +2607,7 @@ function createOverlayElement(challenge) {
 /**
  * Handle answer submission
  */
-async function handleAnswerSubmit(overlay) {
+async function handleAnswerSubmit() {
   const input = document.getElementById('cooped-answer-input');
   const feedback = document.getElementById('cooped-feedback');
   const userAnswer = input.value.trim();
@@ -2478,21 +2626,18 @@ async function handleAnswerSubmit(overlay) {
   const timeSpent = Date.now() - challengeStartTime;
 
   if (isCorrect) {
-    await handleCorrectAnswer(overlay, feedback, timeSpent);
+    await handleCorrectAnswer(feedback, timeSpent);
   } else {
-    await handleIncorrectAnswer(overlay, feedback, input);
+    await handleIncorrectAnswer(feedback, input);
   }
 }
 
 /**
  * Handle correct answer
  */
-async function handleCorrectAnswer(overlay, feedback, timeSpent) {
-  const state = await getAppState();
-  const oldExperience = state.user.stats.experience;
-
-  // Calculate XP reward
-  const xpGained = calculateXPReward(currentChallenge.difficulty, true, timeSpent);
+async function handleCorrectAnswer(feedback, timeSpent) {
+  // Award +20 XP for correct answer
+  const xpGained = 20;
 
   // Record session
   const session = {
@@ -2507,19 +2652,17 @@ async function handleCorrectAnswer(overlay, feedback, timeSpent) {
 
   await recordSession(session);
 
+  // Apply XP to user
+  const state = await getAppState();
+  const oldExperience = state.user.stats.experience;
+  state.user.stats.experience += xpGained;
+  await saveAppState(state);
+
   // Check for level up
-  const newState = await getAppState();
-  const levelUpInfo = checkLevelUp(oldExperience, newState.user.stats.experience);
-  const mascotMsg = getMascotMessage(levelUpInfo.leveledUp ? 'levelup' : 'success', newState.mascot.currentStage);
+  const levelUpInfo = checkLevelUp(oldExperience, state.user.stats.experience);
+  const mascotMsg = getMascotMessage(levelUpInfo.leveledUp ? 'levelup' : 'success', state.mascot.currentStage);
 
-  let feedbackMsg = '';
-  if (xpGained > 0) {
-    const speedText = timeSpent < 30000 ? ' ⚡ Lightning fast!' : '';
-    feedbackMsg = `🎉 Correct! +${xpGained} XP${speedText}<br><small>${mascotMsg}</small>`;
-  } else {
-    feedbackMsg = `✅ Correct, but too slow. +${xpGained} XP<br><small>Try to answer faster next time!</small>`;
-  }
-
+  const feedbackMsg = `🎉 Correct! +${xpGained} XP<br><small>${mascotMsg}</small>`;
   showFeedback(feedback, feedbackMsg, 'success');
 
   // Show level up message if applicable
@@ -2536,46 +2679,32 @@ async function handleCorrectAnswer(overlay, feedback, timeSpent) {
   // Clear saved challenge since it's been completed
   await clearCurrentChallenge();
 
-  // DISABLED: Show interval selection popup after a brief delay
-  // TODO: If this feature is not re-enabled within 2 release cycles, remove the showIntervalSelectionOverlay function entirely
-  // (Keep the function in code for now but don't call it)
-  // setTimeout(() => {
-  //   showIntervalSelectionOverlay(overlay);
-  // }, 2000);
-
-  // For now, just close the overlay after success
-  await removeOverlay(overlay);
+  // Show "return to safety" screen after short delay
+  setTimeout(() => {
+    showReturnToSafetyScreen();
+  }, 2000);
 }
 
 /**
  * Handle incorrect answer
  */
-async function handleIncorrectAnswer(overlay, feedback, input) {
+async function handleIncorrectAnswer(feedback, input) {
   const state = await getAppState();
   const mascotMsg = getMascotMessage('failure', state.mascot.currentStage);
 
-  const xpChange = calculateXPReward(currentChallenge.difficulty, false, Date.now() - challengeStartTime);
-
-  let feedbackMsg = '';
-  if (xpChange < 0) {
-    feedbackMsg = `❌ Not quite right. ${xpChange} XP<br><small>${mascotMsg} Try again!</small>`;
-  } else {
-    feedbackMsg = `❌ Not quite right. ${mascotMsg}<br><small>Try again!</small>`;
+  // Determine XP penalty based on attempt
+  let xpPenalty = 0;
+  if (currentAttempt === 1 || currentAttempt === 2) {
+    xpPenalty = -10; // -10 XP for attempts 1 and 2
+  } else if (currentAttempt === 3) {
+    xpPenalty = -20; // -20 XP for attempt 3
   }
 
-  showFeedback(
-    feedback,
-    feedbackMsg,
-    'error'
-  );
+  // Apply XP penalty
+  state.user.stats.experience += xpPenalty;
+  await saveAppState(state);
 
-  // Re-enable input
-  input.disabled = false;
-  input.value = '';
-  input.focus();
-  document.getElementById('cooped-submit-btn').disabled = false;
-
-  // Record failed attempt (but don't remove overlay)
+  // Record failed attempt
   const session = {
     id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     timestamp: Date.now(),
@@ -2583,7 +2712,7 @@ async function handleIncorrectAnswer(overlay, feedback, input) {
     challengeType: currentChallenge.type,
     success: false,
     timeSpent: Date.now() - challengeStartTime,
-    experienceGained: xpChange
+    experienceGained: xpPenalty
   };
 
   await recordSession(session);
@@ -2592,6 +2721,63 @@ async function handleIncorrectAnswer(overlay, feedback, input) {
     type: 'CHALLENGE_FAILED',
     data: session
   });
+
+  // Check if this was the third attempt
+  if (currentAttempt === 3) {
+    // Show "three strikes" screen with Continue/Return buttons
+    const headerEl = document.getElementById('cooped-interrupt-header');
+    const contentEl = document.getElementById('cooped-interrupt-content');
+
+    if (headerEl && contentEl) {
+      // Clear existing content
+      headerEl.innerHTML = '';
+      contentEl.innerHTML = '';
+
+      // Mark that user got this challenge wrong (not correctly answered)
+      challengeAnsweredCorrectly = false;
+
+      // Render the three strikes screen
+      renderPage3Inline(headerEl, contentEl);
+      console.log('[INTERRUPT] Three strikes screen rendered after 3 failed attempts');
+    } else {
+      console.error('[INTERRUPT] Could not find header or content elements for three strikes screen');
+    }
+  } else {
+    // Show error feedback and allow retry
+    currentAttempt++;
+    const feedbackMsg = `❌ Not quite right. ${xpPenalty} XP<br><small>${mascotMsg} Try again! (Attempt ${currentAttempt}/3)</small>`;
+    showFeedback(feedback, feedbackMsg, 'error');
+
+    // Re-enable input for next attempt
+    input.disabled = false;
+    input.value = '';
+    input.focus();
+    document.getElementById('cooped-submit-btn').disabled = false;
+  }
+}
+
+/**
+ * Show "Return to Safety" screen after correct answer
+ * Displays page 3 with "Continue into Danger" and "Return to Safety" buttons
+ */
+function showReturnToSafetyScreen() {
+  const headerEl = document.getElementById('cooped-interrupt-header');
+  const contentEl = document.getElementById('cooped-interrupt-content');
+
+  if (headerEl && contentEl) {
+    // Clear existing content
+    headerEl.innerHTML = '';
+    contentEl.innerHTML = '';
+
+    // Mark that user answered correctly
+    challengeAnsweredCorrectly = true;
+
+    // Render the return to safety screen (page 3)
+    renderPage3Inline(headerEl, contentEl);
+    console.log('[INTERRUPT] Return to Safety screen rendered after correct answer');
+  } else {
+    console.error('[INTERRUPT] Could not find header or content elements for return to safety screen');
+  }
 }
 
 /**

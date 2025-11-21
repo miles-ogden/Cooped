@@ -72,13 +72,21 @@ export async function applyXpEvent(userId, eventType, metadata = {}) {
     await logXpEvent(userId, eventType, delta, metadata)
 
     // 7. Update user in database
-    await queryUpdate('users', {
+    const updateData = {
       xp_total: newXpTotal,
       level: newLevel,
       eggs: newEggs,
       streak_days: newStreak,
       updated_at: new Date().toISOString()
-    }, { id: userId })
+    }
+
+    // If this is a stim penalty, update last_stim_date to prevent duplicate daily bonuses
+    if (eventType === 'stim_penalty') {
+      updateData.last_stim_date = new Date().toISOString()
+      console.log('[XP_ENGINE] Updated last_stim_date to prevent duplicate daily bonus')
+    }
+
+    await queryUpdate('users', updateData, { id: userId })
 
     // 8. Fetch updated user to return
     const updatedUser = await querySelect('users', {

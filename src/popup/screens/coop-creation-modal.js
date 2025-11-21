@@ -22,7 +22,8 @@ export class CoopCreationModal {
       sideQuestCategory: 'learning', // learning, fun, random
       sideQuestTopics: [], // selected topics
       sideQuestFrequency: 'daily',
-      sideQuestFrequencyValue: 1
+      sideQuestFrequencyValue: 1,
+      joinCode: null // Generated once and reused throughout creation
     };
 
     // Topic definitions
@@ -269,7 +270,12 @@ export class CoopCreationModal {
    * STEP 3: Invite Friends
    */
   renderStep3() {
-    const joinCode = this.generateJoinCode(this.coopData.name);
+    // Generate join code once and reuse it (don't regenerate on each render)
+    if (!this.coopData.joinCode) {
+      this.coopData.joinCode = this.generateJoinCode(this.coopData.name);
+      console.log('[COOP_CREATION] Generated join code:', this.coopData.joinCode);
+    }
+    const joinCode = this.coopData.joinCode;
 
     return `
       <div class="coop-creation-modal">
@@ -495,13 +501,22 @@ export class CoopCreationModal {
         return;
       }
 
-      const joinCode = this.generateJoinCode(this.coopData.name);
+      // Use the join code that was generated in renderStep3 (don't regenerate!)
+      const joinCode = this.coopData.joinCode;
+      if (!joinCode) {
+        console.error('[COOP_CREATION] ❌ No join code generated - this should never happen!');
+        alert('Error: No join code was generated. Please try again.');
+        return;
+      }
+
+      console.log('[COOP_CREATION] Using join code:', joinCode);
 
       // Create coop in database
       const coopData = {
         name: this.coopData.name,
         creator_user_id: user.id,
         member_ids: [user.id],
+        join_code: joinCode,
         coop_level: 1,
         total_xp: 0,
         created_at: new Date().toISOString()
@@ -511,6 +526,7 @@ export class CoopCreationModal {
       const createdCoop = result[0] || result;
 
       console.log('[COOP_CREATION] Coop created:', createdCoop);
+      console.log('[COOP_CREATION] ✅ Join code saved to database:', joinCode);
 
       // Update user's coop_id
       await queryUpdate('users',

@@ -604,6 +604,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+// Debug functions exposed to console
+window.debugCoops = async () => {
+  const { debugGetAllCoops } = await import('../logic/coopManager.js');
+  return await debugGetAllCoops();
+};
+
+window.debugMemberVisibility = async (coopId) => {
+  if (!coopId) {
+    console.error('❌ Usage: window.debugMemberVisibility("coop-id-here")');
+    return;
+  }
+  const { debugTestMemberVisibility } = await import('../logic/coopManager.js');
+  return await debugTestMemberVisibility(coopId);
+};
+
 // Also initialize immediately in case DOM is already ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initializePopup);
@@ -612,3 +627,6 @@ if (document.readyState === 'loading') {
 }
 
 console.log('[POPUP] Module loaded - Popup orchestrator initialized');
+console.log('[POPUP] 🐛 Debug commands available in console:');
+console.log('  - window.debugCoops() - See all coops and member_ids in database');
+console.log('  - window.debugMemberVisibility("coop-id") - Test RLS policies and member visibility');

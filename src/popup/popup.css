@@ -1996,6 +1996,226 @@ body.night-mode .empty-state .small-text {
 }
 
 /* ========================================
+   ANALYTICS BAR CHART STYLES (Apple Screen Time inspired)
+   ======================================== */
+
+/* Main view bar chart */
+.analytics-main-view .bars-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  height: 180px;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 20px;
+}
+
+.analytics-main-view .bar-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 35px;
+}
+
+.analytics-main-view .bar {
+  width: 100%;
+  min-height: 4px;
+  background: transparent;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.analytics-main-view .bar:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.analytics-main-view .bar-segment {
+  flex: 1;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+  opacity: 0.85;
+  cursor: pointer;
+}
+
+.analytics-main-view .bar-segment:hover {
+  opacity: 1;
+}
+
+.analytics-main-view .bar-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2d3748;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.analytics-main-view .bar-time {
+  font-size: 13px;
+  font-weight: 700;
+  color: #667eea;
+  min-height: 20px;
+}
+
+/* Weekly total section */
+.analytics-main-view .weekly-total {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.analytics-main-view .total-label {
+  font-size: 14px;
+  color: #718096;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.analytics-main-view .total-time {
+  font-size: 36px;
+  font-weight: 700;
+  color: #667eea;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Chart container */
+.analytics-main-view .chart-container {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.analytics-main-view .chart-hint {
+  text-align: center;
+  margin: 12px 0 0 0;
+  font-size: 12px;
+  color: #a0aec0;
+  font-style: italic;
+}
+
+/* Top sites section */
+.analytics-main-view .top-sites {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.analytics-main-view .top-sites h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+.analytics-main-view .sites-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Detail view bar chart */
+.analytics-detail-view .detail-bars-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.analytics-detail-view .detail-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f7fafc;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.analytics-detail-view .detail-bar-wrapper:hover {
+  background: #edf2f7;
+}
+
+.analytics-detail-view .detail-bar-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2d3748;
+  min-width: 70px;
+}
+
+.analytics-detail-view .detail-bar {
+  flex: 1;
+  display: flex;
+  gap: 2px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: transparent;
+  min-height: 32px;
+}
+
+.analytics-detail-view .detail-bar-time {
+  font-size: 13px;
+  font-weight: 700;
+  color: #667eea;
+  min-width: 50px;
+  text-align: right;
+}
+
+/* Night mode for bar charts */
+body.night-mode .analytics-main-view .bars-container,
+body.night-mode .analytics-main-view .weekly-total,
+body.night-mode .analytics-main-view .chart-container,
+body.night-mode .analytics-main-view .top-sites,
+body.night-mode .analytics-detail-view .detail-bars-container {
+  background: #2d3748;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.night-mode .analytics-main-view .bar-label {
+  color: #e2e8f0;
+}
+
+body.night-mode .analytics-main-view .total-label,
+body.night-mode .analytics-main-view .chart-hint,
+body.night-mode .analytics-detail-view .detail-bar-label {
+  color: #cbd5e0;
+}
+
+body.night-mode .analytics-main-view .top-sites h3 {
+  color: #e2e8f0;
+}
+
+body.night-mode .analytics-detail-view .detail-bar-wrapper {
+  background: #374151;
+}
+
+body.night-mode .analytics-detail-view .detail-bar-wrapper:hover {
+  background: #4a5568;
+}
+
+/* ========================================
    BLOCKING LEVEL DROPDOWN STYLES
    ======================================== */
 

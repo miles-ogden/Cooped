@@ -188,7 +188,9 @@ export async function addBlockedSite(domain, blockingLevel = 'some') {
  * @param {string} blockingLevel - 'fully', 'some', or 'a_lot'
  */
 export async function updateBlockingLevel(domain, blockingLevel) {
+  console.log('[STORAGE] updateBlockingLevel called - domain:', domain, 'blockingLevel:', blockingLevel);
   const state = await getAppState();
+  console.log('[STORAGE] Current blockedSites before update:', JSON.stringify(state.settings.blockedSites));
 
   const site = state.settings.blockedSites.find(s => {
     if (typeof s === 'string') return s === domain;
@@ -196,6 +198,7 @@ export async function updateBlockingLevel(domain, blockingLevel) {
   });
 
   if (site) {
+    console.log('[STORAGE] Found site to update:', JSON.stringify(site));
     if (typeof site === 'string') {
       // Migrate old format to new format
       const index = state.settings.blockedSites.indexOf(site);
@@ -203,10 +206,15 @@ export async function updateBlockingLevel(domain, blockingLevel) {
         domain: site,
         blockingLevel
       };
+      console.log('[STORAGE] Migrated old format, new site:', JSON.stringify(state.settings.blockedSites[index]));
     } else {
       site.blockingLevel = blockingLevel;
+      console.log('[STORAGE] Updated blocking level for existing object, new blockingLevel:', site.blockingLevel);
     }
     await chrome.storage.local.set({ [STORAGE_KEYS.APP_STATE]: state });
+    console.log('[STORAGE] Saved state to storage, blockedSites now:', JSON.stringify(state.settings.blockedSites));
+  } else {
+    console.log('[STORAGE] ⚠️  Site not found! domain:', domain, 'available sites:', state.settings.blockedSites.map(s => typeof s === 'string' ? s : s.domain));
   }
 
   return state.settings.blockedSites;

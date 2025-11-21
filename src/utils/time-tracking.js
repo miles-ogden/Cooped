@@ -67,6 +67,22 @@ export async function getTimeTrackingRecord(domain) {
     if (!allRecords[domain]) {
       allRecords[domain] = initializeTimeTrackingRecord(domain);
       await chrome.storage.local.set({ [STORAGE_KEY_TIME_TRACKING]: allRecords });
+      console.log(`[TIME-TRACKING] Initialized new record for ${domain}`);
+    } else {
+      // Ensure all required fields exist (defensive initialization)
+      const record = allRecords[domain];
+      if (record.totalActiveTimeMs === undefined) {
+        console.log(`[TIME-TRACKING] ⚠️ totalActiveTimeMs was undefined for ${domain}, initializing to 0`);
+        record.totalActiveTimeMs = 0;
+      }
+      if (record.currentState === undefined) {
+        record.currentState = ACTIVITY_STATE.INACTIVE;
+      }
+      if (record.events === undefined) {
+        record.events = [];
+      }
+      // Save the fixed record
+      await chrome.storage.local.set({ [STORAGE_KEY_TIME_TRACKING]: allRecords });
     }
 
     return allRecords[domain];
@@ -155,9 +171,13 @@ export async function updateTabVisibility(domain, isVisible) {
  * @returns {Promise<void>}
  */
 export async function accumulateTime(domain, milliseconds) {
+  console.log(`[TIME-TRACKING-ACCUM] Accumulating ${milliseconds}ms (${Math.round(milliseconds / 60000)} minutes) for ${domain}`);
   const record = await getTimeTrackingRecord(domain);
+  console.log(`[TIME-TRACKING-ACCUM] Previous totalActiveTimeMs: ${record.totalActiveTimeMs} (${Math.round(record.totalActiveTimeMs / 60000)} min)`);
   record.totalActiveTimeMs += milliseconds;
+  console.log(`[TIME-TRACKING-ACCUM] New totalActiveTimeMs: ${record.totalActiveTimeMs} (${Math.round(record.totalActiveTimeMs / 60000)} min total)`);
   await saveTimeTrackingRecord(domain, record);
+  console.log(`[TIME-TRACKING-ACCUM] ✅ Saved to storage`);
 }
 
 /**

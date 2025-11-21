@@ -53,14 +53,25 @@ export class CoopView {
       }
 
       // Get all coop members
-      this.members = await querySelect('users', {
+      console.log(`[COOP_VIEW] 👥 Coop has ${this.coop.member_ids?.length || 0} members`)
+      console.log(`[COOP_VIEW] 📋 Member IDs:`, this.coop.member_ids)
+
+      console.log(`[COOP_VIEW] 🔍 Querying users table...`)
+      const allUsers = await querySelect('users', {
         select: 'id, name, level, xp_total, equipped_skin'
       });
+      console.log(`[COOP_VIEW] 📊 querySelect returned ${allUsers?.length || 0} users`)
+      console.log(`[COOP_VIEW] ⚠️ RLS Limitation: Each user can only see their own data in the users table`)
+      console.log(`[COOP_VIEW] Current user ID: ${this.currentUser.id}`)
 
-      // Filter to only members of this coop
-      this.members = this.members.filter(member =>
+      this.members = (allUsers || []).filter(member =>
         this.coop.member_ids && this.coop.member_ids.includes(member.id)
       );
+
+      console.log(`[COOP_VIEW] ✅ After filtering: ${this.members.length} members found`)
+      if (this.members.length !== (this.coop.member_ids?.length || 0)) {
+        console.error(`[COOP_VIEW] ❌ RLS POLICY ISSUE: Expected ${this.coop.member_ids?.length} members but only got ${this.members.length}`)
+      }
 
       // Sort by XP (highest first)
       this.members.sort((a, b) => (b.xp_total || 0) - (a.xp_total || 0));

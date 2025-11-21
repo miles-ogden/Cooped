@@ -6,7 +6,6 @@
 
 import {
   updateTabVisibility,
-  updateMediaPauseState,
   ACTIVITY_STATE,
   accumulateTime,
   getTimeTrackingRecord,

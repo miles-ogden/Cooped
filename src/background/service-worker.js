@@ -24,6 +24,16 @@ chrome.runtime.onInstalled.addListener(async () => {
 
   // Initialize time sync service for periodic Supabase syncing
   initializeTimeSyncService();
+
+  // Check for daily bonus once when service worker starts (browser startup)
+  console.log('[SERVICE-WORKER] Checking daily bonus on startup');
+  handleCheckDailyBonus((response) => {
+    if (response?.claimed) {
+      console.log('[SERVICE-WORKER] ✅ Daily bonus claimed on startup');
+    } else {
+      console.log('[SERVICE-WORKER] Daily bonus already claimed or error:', response);
+    }
+  });
 })();
 
 /**
@@ -37,11 +47,14 @@ function isBlockedSite(url, blockedSites) {
   try {
     const urlObj = new URL(url);
     const hostname = urlObj.hostname.toLowerCase();
+    console.log('[SERVICE-WORKER-BLOCK-CHECK] Checking URL:', url, 'hostname:', hostname);
+    console.log('[SERVICE-WORKER-BLOCK-CHECK] blockedSites:', JSON.stringify(blockedSites));
 
     for (const siteConfig of blockedSites) {
       // Handle both old string format and new object format
       const domain = typeof siteConfig === 'string' ? siteConfig : siteConfig.domain;
       const blockingLevel = typeof siteConfig === 'string' ? 'some' : (siteConfig.blockingLevel || 'some');
+      console.log('[SERVICE-WORKER-BLOCK-CHECK] Checking site:', domain, 'blockingLevel from config:', blockingLevel, 'siteConfig:', JSON.stringify(siteConfig));
 
       // Extract domain from pattern like *://www.youtube.com/*
       let domainToCheck = domain.replace(/^\*:\/\//, '');
@@ -51,6 +64,7 @@ function isBlockedSite(url, blockedSites) {
 
       // Check for exact match or subdomain match
       if (hostname === domainToCheck || hostname.endsWith('.' + domainToCheck)) {
+        console.log('[SERVICE-WORKER-BLOCK-CHECK] ✅ MATCH FOUND! Returning blockingLevel:', blockingLevel);
         return {
           isBlocked: true,
           domain: domainToCheck,
@@ -511,18 +525,34 @@ async function handleCheckDailyBonus(sendResponse) {
 
     console.log('[SERVICE-WORKER] User:', user.id);
 
-    // Check if user already claimed bonus today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStart = today.toISOString();
+    // Get user's timezone to calculate "today" in their timezone
+    const { cooped_user_timezone } = await chrome.storage.local.get('cooped_user_timezone');
+    const timezone = cooped_user_timezone || 'UTC';
+    console.log('[SERVICE-WORKER] User timezone:', timezone);
 
-    // Get last_stim_date to compare with today
+    // Get today's date in user's timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const todayInTz = formatter.format(new Date());
+    const [month, day, year] = todayInTz.split('/');
+    const todayString = `${year}-${month}-${day}`;
+    console.log('[SERVICE-WORKER] Today in user timezone:', todayString);
+
+    // Get last_stim_date from user
     const lastStimDate = user.last_stim_date ? new Date(user.last_stim_date) : null;
-    lastStimDate?.setHours(0, 0, 0, 0);
 
-    // If last_stim_date is today, they already got the bonus
-    if (lastStimDate && lastStimDate.getTime() === today.getTime()) {
-      console.log('[SERVICE-WORKER] ✅ Daily bonus already claimed today');
+    // Get last_bonus_date from storage (for tracking per-timezone day)
+    const { cooped_last_bonus_date } = await chrome.storage.local.get('cooped_last_bonus_date');
+    console.log('[SERVICE-WORKER] Last bonus date in storage:', cooped_last_bonus_date);
+    console.log('[SERVICE-WORKER] Last stim date from DB:', lastStimDate?.toISOString());
+
+    // If we already gave bonus today (in user's timezone), skip
+    if (cooped_last_bonus_date === todayString) {
+      console.log('[SERVICE-WORKER] ✅ Daily bonus already claimed today in user timezone');
       sendResponse({ success: true, claimed: false, reason: 'Already claimed today' });
       return;
     }
@@ -532,7 +562,10 @@ async function handleCheckDailyBonus(sendResponse) {
     const result = await applyXpEvent(user.id, 'clean_day');
 
     if (result && result.success !== false) {
+      // Record that bonus was given today
+      await chrome.storage.local.set({ cooped_last_bonus_date: todayString });
       console.log('[SERVICE-WORKER] ✅ Daily bonus applied successfully');
+      console.log('[SERVICE-WORKER] Saved bonus date:', todayString);
       console.log('[SERVICE-WORKER] Result:', result);
       sendResponse({ success: true, claimed: true, result });
 

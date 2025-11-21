@@ -25,7 +25,8 @@ export class AnalyticsScreen {
    */
   async show(viewType = 'main') {
     try {
-      console.log(`[ANALYTICS_SCREEN] Loading analytics data - view: ${viewType}`);
+      console.log(`[ANALYTICS_SCREEN] 🔵 show() called with viewType: ${viewType}`);
+      console.log(`[ANALYTICS_SCREEN] DOM ready? document.readyState:`, document.readyState);
 
       // Get authenticated user
       const user = await getCurrentUser(true);
@@ -35,31 +36,39 @@ export class AnalyticsScreen {
         return;
       }
 
+      console.log('[ANALYTICS_SCREEN] User found:', user.id);
       this.userProfile = user;
 
       // Get user's timezone
       this.timezone = await getUserTimezone();
+      console.log('[ANALYTICS_SCREEN] Timezone set to:', this.timezone);
 
       // Initialize domain colors
       this.initializeDomainColors();
+      console.log('[ANALYTICS_SCREEN] Domain colors initialized');
 
       // Load appropriate data based on view
       if (viewType === 'detail') {
+        console.log('[ANALYTICS_SCREEN] Loading DETAIL view...');
         this.currentView = 'detail';
         await this.loadDetailedAnalyticsData(user.id);
+        console.log('[ANALYTICS_SCREEN] Detail data loaded, about to render...');
         this.renderDetailAnalytics();
       } else {
+        console.log('[ANALYTICS_SCREEN] Loading MAIN view...');
         this.currentView = 'main';
         await this.loadMainAnalyticsData(user.id);
+        console.log('[ANALYTICS_SCREEN] Main data loaded, about to render...');
         this.renderMainAnalytics();
       }
 
       // Setup event listeners
+      console.log('[ANALYTICS_SCREEN] Setting up event listeners...');
       this.setupEventListeners();
 
-      console.log('[ANALYTICS_SCREEN] Analytics data loaded and rendered');
+      console.log('[ANALYTICS_SCREEN] ✅ Analytics data loaded and rendered completely');
     } catch (error) {
-      console.error('[ANALYTICS_SCREEN] Error loading analytics:', error);
+      console.error('[ANALYTICS_SCREEN] ❌ Error loading analytics:', error);
       this.renderError(`Error loading analytics: ${error.message}`);
     }
   }
@@ -210,11 +219,17 @@ export class AnalyticsScreen {
    * Render main analytics view (current week summary)
    */
   renderMainAnalytics() {
-    const container = document.getElementById('app');
-    if (!container) return;
+    console.log('[ANALYTICS_SCREEN] renderMainAnalytics() called');
+    const container = document.getElementById('screen-container');
+    console.log('[ANALYTICS_SCREEN] Container found:', !!container, 'element:', container);
+    if (!container) {
+      console.error('[ANALYTICS_SCREEN] ❌ No #screen-container found!');
+      return;
+    }
 
     // Calculate weekly totals
     const weeklyStats = this.calculateWeeklyStats();
+    console.log('[ANALYTICS_SCREEN] Weekly stats calculated:', weeklyStats);
 
     const html = `
       <div class="analytics-screen analytics-main-view">
@@ -250,16 +265,27 @@ export class AnalyticsScreen {
       </div>
     `;
 
+    console.log('[ANALYTICS_SCREEN] HTML to be set (length:', html.length, 'chars)');
+    console.log('[ANALYTICS_SCREEN] Setting container.innerHTML...');
     container.innerHTML = html;
+    console.log('[ANALYTICS_SCREEN] ✅ HTML set successfully, container now has', container.children.length, 'children');
+    console.log('[ANALYTICS_SCREEN] Container display:', window.getComputedStyle(container).display);
+    console.log('[ANALYTICS_SCREEN] Container visibility:', window.getComputedStyle(container).visibility);
   }
 
   /**
    * Render detailed analytics view
    */
   renderDetailAnalytics() {
-    const container = document.getElementById('app');
-    if (!container) return;
+    console.log('[ANALYTICS_SCREEN] renderDetailAnalytics() called');
+    const container = document.getElementById('screen-container');
+    console.log('[ANALYTICS_SCREEN] Container found:', !!container, 'element:', container);
+    if (!container) {
+      console.error('[ANALYTICS_SCREEN] ❌ No #screen-container found!');
+      return;
+    }
 
+    console.log('[ANALYTICS_SCREEN] Creating detail analytics HTML...');
     const html = `
       <div class="analytics-screen analytics-detail-view">
         <div class="analytics-header">
@@ -303,7 +329,11 @@ export class AnalyticsScreen {
       </div>
     `;
 
+    console.log('[ANALYTICS_SCREEN] Setting detail analytics HTML...');
     container.innerHTML = html;
+    console.log('[ANALYTICS_SCREEN] ✅ Detail HTML set, container now has', container.children.length, 'children');
+    console.log('[ANALYTICS_SCREEN] Container display:', window.getComputedStyle(container).display);
+    console.log('[ANALYTICS_SCREEN] Container visibility:', window.getComputedStyle(container).visibility);
   }
 
   /**
@@ -311,18 +341,33 @@ export class AnalyticsScreen {
    */
   renderDailyBarChart(dailyData) {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const dates = Object.keys(dailyData).sort();
+
+    // Find max to scale bars properly
+    let maxMinutes = 0;
+    dates.forEach(date => {
+      const dayTotal = Object.values(dailyData[date]).reduce((a, b) => a + b, 0);
+      maxMinutes = Math.max(maxMinutes, dayTotal);
+    });
+
+    // Ensure reasonable minimum height
+    if (maxMinutes === 0) maxMinutes = 60;
+
     let html = '<div class="bars-container">';
 
-    const dates = Object.keys(dailyData).sort();
     dates.forEach((date, index) => {
       const domainData = dailyData[date];
       const dayTotal = Object.values(domainData).reduce((a, b) => a + b, 0);
       const dayLabel = days[index] || '?';
 
+      // Scale height proportionally (max bar is ~170px, accounts for padding/gap in container)
+      const barHeight = (dayTotal / maxMinutes) * 170;
+
       html += `
         <div class="bar-wrapper" data-date="${date}">
-          <div class="bar" style="height: ${Math.min(dayTotal / 60 * 5, 100)}px;">
+          <div class="bar" style="height: ${barHeight}px;">
             ${Object.entries(domainData)
+              .filter(([domain, minutes]) => minutes > 0)
               .map(([domain, minutes]) => {
                 const percentage = dayTotal > 0 ? (minutes / dayTotal) * 100 : 0;
                 return `<div class="bar-segment" style="background-color: ${this.domainColors[domain]}; flex: ${percentage};" title="${domain}: ${this.formatTimeDisplay(minutes)}"></div>`;
@@ -816,7 +861,7 @@ export class AnalyticsScreen {
    * Render error message
    */
   renderError(message) {
-    const container = document.getElementById('app');
+    const container = document.getElementById('screen-container');
     if (!container) return;
 
     container.innerHTML = `

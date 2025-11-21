@@ -12,6 +12,7 @@ CREATE TABLE coops (
   name TEXT NOT NULL,
   creator_user_id UUID NOT NULL,
   member_ids UUID[] DEFAULT ARRAY[]::UUID[] NOT NULL,
+  join_code TEXT UNIQUE NOT NULL,
   coop_level INTEGER DEFAULT 1 NOT NULL,
   total_xp INTEGER DEFAULT 0 NOT NULL,
   created_at TIMESTAMP DEFAULT NOW() NOT NULL,
@@ -25,8 +26,9 @@ CREATE TABLE coops (
   side_quest_frequency_value INTEGER DEFAULT 1 NOT NULL
 );
 
--- Index for faster queries
+-- Indexes for faster queries
 CREATE INDEX idx_coops_creator_user_id ON coops(creator_user_id);
+CREATE INDEX idx_coops_join_code ON coops(join_code);
 
 -- RLS: Anyone authenticated can view coops, creators can update
 ALTER TABLE coops ENABLE ROW LEVEL SECURITY;
@@ -65,12 +67,26 @@ CREATE TABLE users (
 -- Index for faster queries
 CREATE INDEX idx_users_coop_id ON users(coop_id);
 
--- RLS: Users can only see/update their own data
+-- RLS: Users can see their own data and other coop members' data
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view own profile"
   ON users FOR SELECT
   USING (auth.uid() = id);
+
+CREATE POLICY "Users can view coop members"
+  ON users FOR SELECT
+  USING (
+    -- Can see other users who are in the same coop
+    EXISTS (
+      SELECT 1 FROM coops
+      WHERE (
+        -- Find coops that contain both the current user and the target user
+        (coops.member_ids @> ARRAY[auth.uid()]) AND
+        (coops.member_ids @> ARRAY[id])
+      )
+    )
+  );
 
 CREATE POLICY "Users can update own profile"
   ON users FOR UPDATE

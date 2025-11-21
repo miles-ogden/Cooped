@@ -46,15 +46,62 @@ export async function createCoop(coopName, creatorUserId) {
 }
 
 /**
+ * Get a coop by its join code
+ */
+export async function getCoopByJoinCode(joinCode) {
+  try {
+    console.log(`[COOP] getCoopByJoinCode called with code: "${joinCode}"`)
+
+    if (!joinCode || joinCode.trim().length === 0) {
+      console.error('[COOP] ❌ Join code is empty')
+      return { success: false, error: 'Join code is required' }
+    }
+
+    const upperCode = joinCode.toUpperCase()
+    console.log(`[COOP] 🔍 Searching for coop with join_code: "${upperCode}"`)
+
+    const coop = await querySelect('coops', {
+      eq: { join_code: upperCode },
+      single: true
+    })
+
+    console.log(`[COOP] 📊 querySelect returned:`, coop)
+
+    if (!coop) {
+      console.error(`[COOP] ❌ No coop found with code: "${upperCode}"`)
+      console.log('[COOP] 💡 Debugging tip: Check if join_code column exists and has data')
+      return { success: false, error: 'Coop not found. Check your join code.' }
+    }
+
+    console.log(`[COOP] ✅ Found coop by code: ${joinCode} -> ${coop.id} (name: ${coop.name})`)
+
+    return { success: true, coop }
+  } catch (err) {
+    console.error('[COOP] ❌ Error finding coop by join code:', err)
+    console.error('[COOP] Error details:', {
+      message: err.message,
+      stack: err.stack,
+      code: err.code
+    })
+    return { success: false, error: err.message }
+  }
+}
+
+/**
  * Join an existing coop
  */
 export async function joinCoop(userId, coopId) {
   try {
+    console.log(`\n========== JOINING COOP ==========`)
+    console.log(`[COOP] 👤 User ID: ${userId}`)
+    console.log(`[COOP] 🏘️ Coop ID: ${coopId}`)
+
     if (!userId || !coopId) {
       return { success: false, error: 'User ID and Coop ID are required' }
     }
 
     // 1. Get the coop
+    console.log(`[COOP] 📖 Step 1: Fetching coop from database...`)
     const coop = await querySelect('coops', {
       eq: { id: coopId },
       single: true
@@ -62,33 +109,56 @@ export async function joinCoop(userId, coopId) {
 
     if (!coop) throw new Error('Coop not found')
 
+    console.log(`[COOP] ✅ Found coop: "${coop.name}"`)
+    console.log(`[COOP] 👥 Current members before join: ${coop.member_ids?.length || 0}`)
+    console.log(`[COOP] 📋 Current member_ids: [${coop.member_ids?.join(', ') || 'empty'}]`)
+
     // 2. Check if user already in coop
     if (coop.member_ids && coop.member_ids.includes(userId)) {
+      console.warn(`[COOP] ⚠️ User ${userId} already in coop`)
       return { success: false, error: 'User already in this coop' }
     }
 
     // 3. Add user to member_ids array
+    console.log(`[COOP] 🔗 Step 2: Adding user to member_ids...`)
     const updatedMemberIds = coop.member_ids ? [...coop.member_ids, userId] : [userId]
+    console.log(`[COOP] 📝 New member_ids array: [${updatedMemberIds.join(', ')}]`)
+    console.log(`[COOP] 👥 New member count: ${updatedMemberIds.length}`)
 
+    console.log(`[COOP] 💾 Step 3: Updating coops table...`)
     await queryUpdate('coops', {
       member_ids: updatedMemberIds,
       updated_at: new Date().toISOString()
     }, { id: coopId })
+    console.log(`[COOP] ✅ Coops table updated`)
 
-    // 4. Fetch updated coop
+    // 4. Fetch updated coop to verify
+    console.log(`[COOP] 🔍 Step 4: Fetching updated coop to verify...`)
     const updatedCoop = await querySelect('coops', {
       eq: { id: coopId },
       single: true
     })
+    console.log(`[COOP] 📋 Updated member_ids in database: [${updatedCoop.member_ids?.join(', ') || 'empty'}]`)
+    console.log(`[COOP] 👥 Updated member count: ${updatedCoop.member_ids?.length || 0}`)
+
+    if (updatedCoop.member_ids?.includes(userId)) {
+      console.log(`[COOP] ✅ Verified: User ${userId} is in updated coop`)
+    } else {
+      console.error(`[COOP] ❌ ERROR: User ${userId} not found in updated member_ids!`)
+    }
 
     // 5. Update user's coop_id
+    console.log(`[COOP] 👤 Step 5: Updating user's coop_id...`)
     await queryUpdate('users', { coop_id: coopId }, { id: userId })
+    console.log(`[COOP] ✅ User's coop_id updated`)
 
-    console.log(`[COOP] User ${userId} joined coop ${coopId}`)
+    console.log(`[COOP] ✅ Successfully joined coop!`)
+    console.log(`=================================\n`)
 
     return { success: true, coop: updatedCoop }
   } catch (err) {
-    console.error('[COOP] Error joining coop:', err)
+    console.error(`[COOP] ❌ Error joining coop:`, err)
+    console.error(`[COOP] Error message: ${err.message}`)
     return { success: false, error: err.message }
   }
 }
@@ -162,14 +232,24 @@ export async function getCoopData(coopId) {
 
     // Get full user details for members
     let members = []
+    console.log(`[COOP] 👥 Member IDs in coop: ${coop.member_ids?.length || 0} members`)
+    console.log(`[COOP] 📋 Member IDs:`, coop.member_ids)
+
     if (coop.member_ids && coop.member_ids.length > 0) {
       // Query all members and sort by level
+      console.log(`[COOP] 🔍 Querying users table for member details...`)
       const allUsers = await querySelect('users', {
         select: 'id,level,xp_total,eggs,streak_days'
       })
-      members = allUsers
+      console.log(`[COOP] 📊 querySelect returned ${allUsers?.length || 0} users`)
+      console.log(`[COOP] ⚠️ NOTE: RLS policies restrict each user to seeing only their own data`)
+
+      members = (allUsers || [])
         .filter(u => coop.member_ids.includes(u.id))
         .sort((a, b) => (b.level || 0) - (a.level || 0))
+
+      console.log(`[COOP] ✅ After filtering by member_ids: ${members.length} members found`)
+      console.log(`[COOP] 🔐 RLS Issue: If this is less than expected, check RLS policies`)
     }
 
     // Calculate coop stats
@@ -178,7 +258,7 @@ export async function getCoopData(coopId) {
     const coopLevel = members.reduce((sum, m) => sum + (m.level || 0), 0)
     const avgLevel = members.length > 0 ? Math.round(coopLevel / members.length) : 0
 
-    console.log(`[COOP] Fetched coop ${coopId}: ${members.length} members, rank ${coopLevel}`)
+    console.log(`[COOP] ✅ Fetched coop ${coopId}: ${members.length} members, rank ${coopLevel}`)
 
     return {
       success: true,
@@ -297,6 +377,77 @@ export async function getUserCoop(userId) {
   } catch (err) {
     console.error('[COOP] Error getting user coop:', err)
     return { success: false, error: err.message }
+  }
+}
+
+/**
+ * DEBUG: Get all coops to inspect their data
+ */
+export async function debugGetAllCoops() {
+  try {
+    console.log('[COOP_DEBUG] Fetching all coops...')
+    const coops = await querySelect('coops', {
+      select: 'id,name,join_code,creator_user_id,member_ids'
+    })
+    console.log('[COOP_DEBUG] ✅ All coops in database:')
+    if (!coops || coops.length === 0) {
+      console.log('[COOP_DEBUG] ⚠️ No coops found in database')
+      return []
+    }
+    coops.forEach(coop => {
+      console.log(`[COOP_DEBUG] - Coop: "${coop.name}" (ID: ${coop.id})`)
+      console.log(`  join_code: "${coop.join_code}"`)
+      console.log(`  creator: ${coop.creator_user_id}`)
+      console.log(`  member_ids array: [${coop.member_ids?.join(', ') || 'empty'}]`)
+      console.log(`  members count: ${coop.member_ids?.length || 0}`)
+    })
+    return coops
+  } catch (err) {
+    console.error('[COOP_DEBUG] Error fetching coops:', err)
+    return []
+  }
+}
+
+/**
+ * DEBUG: Test RLS and member visibility
+ */
+export async function debugTestMemberVisibility(coopId) {
+  try {
+    console.log('\n========== RLS & MEMBER VISIBILITY TEST ==========')
+    const { getCurrentUser } = await import('./supabaseClient.js')
+
+    const currentUser = await getCurrentUser(true)
+    console.log(`[RLS_TEST] Current user ID: ${currentUser?.id}`)
+
+    // Get the coop
+    const coop = await querySelect('coops', {
+      eq: { id: coopId },
+      single: true
+    })
+    console.log(`[RLS_TEST] Coop: "${coop.name}"`)
+    console.log(`[RLS_TEST] member_ids in database: [${coop.member_ids?.join(', ') || 'empty'}]`)
+
+    // Try to get all users
+    console.log(`[RLS_TEST] Attempting to query users table...`)
+    const allUsers = await querySelect('users', {
+      select: 'id,level,xp_total'
+    })
+    console.log(`[RLS_TEST] querySelect('users') returned ${allUsers?.length || 0} users`)
+
+    if (allUsers && allUsers.length > 0) {
+      console.log(`[RLS_TEST] Users returned:`)
+      allUsers.forEach(u => {
+        const isMember = coop.member_ids?.includes(u.id)
+        const isCurrentUser = u.id === currentUser?.id
+        console.log(`  - ID: ${u.id}${isCurrentUser ? ' (YOU)' : ''}${isMember ? ' ✅ MEMBER' : ''}`)
+      })
+    }
+
+    console.log('================================================\n')
+    return { coop, allUsers, currentUser }
+  } catch (err) {
+    console.error('[RLS_TEST] Error:', err)
+    return null
   }
 }
 
