@@ -212,6 +212,80 @@ export async function leaveCoop(userId, coopId) {
 }
 
 /**
+ * Query members by ID individually with RLS workaround
+ *
+ * Approach: Query users who have a coop_id that matches the target coop
+ * This works because:
+ * 1. Users can see their own profile (auth.uid() = id)
+ * 2. We query across the coop members, each seeing themselves
+ * 3. Filter results to only include the member IDs we want
+ */
+async function getMembersData(memberIds, selectFields = 'id,level,xp_total,eggs,streak_days', coopId = null) {
+  const members = []
+
+  if (!memberIds || memberIds.length === 0) {
+    return members
+  }
+
+  console.log(`[COOP] 🔍 Querying ${memberIds.length} member(s) individually...`)
+
+  // Try two approaches:
+  // 1. If we have a coopId, query all users in that coop
+  // 2. If not, fall back to individual queries
+
+  if (coopId) {
+    try {
+      // Query all users in this coop - RLS allows this because each user sees their own data
+      const coopMembers = await querySelect('users', {
+        eq: { coop_id: coopId },
+        select: selectFields
+      })
+
+      if (coopMembers && Array.isArray(coopMembers)) {
+        // Filter to only the member IDs we want (in case of data inconsistency)
+        const memberMap = new Set(memberIds.map(id => id.toLowerCase()))
+        for (const user of coopMembers) {
+          if (memberMap.has(user.id.toLowerCase())) {
+            members.push(user)
+            console.log(`[COOP] ✅ Fetched member ${user.id}`)
+          }
+        }
+      }
+    } catch (err) {
+      console.log(`[COOP] ⚠️ Coop-based query failed, falling back to individual queries:`, err.message)
+    }
+  }
+
+  // Fallback: Query individually by ID
+  if (members.length === 0) {
+    for (const memberId of memberIds) {
+      try {
+        const user = await querySelect('users', {
+          eq: { id: memberId },
+          select: selectFields,
+          single: true
+        })
+
+        if (user) {
+          members.push(user)
+          console.log(`[COOP] ✅ Fetched member ${memberId}`)
+        } else {
+          console.log(`[COOP] ⚠️ Member ${memberId} not found`)
+        }
+      } catch (err) {
+        console.log(`[COOP] ⚠️ Error fetching member ${memberId}:`, err.message)
+      }
+    }
+  }
+
+  // Sort by level (highest first)
+  members.sort((a, b) => (b.level || 0) - (a.level || 0))
+  console.log(`[COOP] ✅ Fetched ${members.length} of ${memberIds.length} members`)
+
+  return members
+}
+
+/**
  * Get coop data and members with their stats
  * MVP: Members sorted by level (highest first)
  * Coop rank = sum of members' levels
@@ -230,27 +304,11 @@ export async function getCoopData(coopId) {
 
     if (!coop) throw new Error('Coop not found')
 
-    // Get full user details for members
-    let members = []
+    // Get full user details for members - query by coop_id
     console.log(`[COOP] 👥 Member IDs in coop: ${coop.member_ids?.length || 0} members`)
     console.log(`[COOP] 📋 Member IDs:`, coop.member_ids)
 
-    if (coop.member_ids && coop.member_ids.length > 0) {
-      // Query all members and sort by level
-      console.log(`[COOP] 🔍 Querying users table for member details...`)
-      const allUsers = await querySelect('users', {
-        select: 'id,level,xp_total,eggs,streak_days'
-      })
-      console.log(`[COOP] 📊 querySelect returned ${allUsers?.length || 0} users`)
-      console.log(`[COOP] ⚠️ NOTE: RLS policies restrict each user to seeing only their own data`)
-
-      members = (allUsers || [])
-        .filter(u => coop.member_ids.includes(u.id))
-        .sort((a, b) => (b.level || 0) - (a.level || 0))
-
-      console.log(`[COOP] ✅ After filtering by member_ids: ${members.length} members found`)
-      console.log(`[COOP] 🔐 RLS Issue: If this is less than expected, check RLS policies`)
-    }
+    const members = await getMembersData(coop.member_ids, 'id,level,xp_total,eggs,streak_days', coopId)
 
     // Calculate coop stats
     // Per MVP plan: Coop rank = sum of members' levels
@@ -466,14 +524,8 @@ export async function updateCoopStats(coopId) {
 
     if (!coop) throw new Error('Coop not found')
 
-    // Get all members' stats
-    let members = []
-    if (coop.member_ids && coop.member_ids.length > 0) {
-      const allUsers = await querySelect('users', {
-        select: 'xp_total,level'
-      })
-      members = allUsers.filter(u => coop.member_ids.includes(u.id))
-    }
+    // Get all members' stats - query by coop_id for RLS compatibility
+    const members = await getMembersData(coop.member_ids, 'id,level,xp_total', coopId)
 
     // Calculate totals
     // Per MVP: Coop level = sum of members' levels

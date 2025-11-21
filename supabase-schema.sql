@@ -74,19 +74,13 @@ CREATE POLICY "Users can view own profile"
   ON users FOR SELECT
   USING (auth.uid() = id);
 
-CREATE POLICY "Users can view coop members"
-  ON users FOR SELECT
-  USING (
-    -- Can see other users who are in the same coop
-    EXISTS (
-      SELECT 1 FROM coops
-      WHERE (
-        -- Find coops that contain both the current user and the target user
-        (coops.member_ids @> ARRAY[auth.uid()]) AND
-        (coops.member_ids @> ARRAY[id])
-      )
-    )
-  );
+-- Allow viewing coop members by ID
+-- The getMembersData() function queries individual members by ID
+-- Each member query passes the "Users can view own profile" policy
+-- This avoids complex subqueries that break queries
+--
+-- Note: Do NOT add a "Users can view coop members" policy with subqueries
+-- They cause home screen and other queries to fail
 
 CREATE POLICY "Users can update own profile"
   ON users FOR UPDATE

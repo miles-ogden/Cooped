@@ -13,6 +13,7 @@ let updateTabVisibility, setActivityState, ACTIVITY_STATE, accumulateTime, getTi
 let detectPlatform, isOnYouTubeShorts, handleYouTubeShortsDetection, handleYouTubeLongFormDetection;
 let recordYouTubeProductivityResponse, handleMediaPauseChange, handleTabVisibilityChange;
 let showInterruptSequence;
+let checkDomainAccessState, markDomainAsBlocked, getMinutesUntilReset;
 
 // Set up message listener BEFORE modules load, store message for when ready
 let pendingMessages = [];
@@ -40,6 +41,10 @@ async function showInterruptSequenceInline() {
     return;
   }
 
+  // Get current domain
+  const pageHostname = window.location.hostname;
+  const domain = pageHostname.split('.').slice(-2).join('.'); // Extract domain like "tiktok.com"
+
   // FIRST: Check if user is in skip period - if so, don't show anything
   console.log('[INTERRUPT] Checking if user is in skip period before showing interrupt...');
   const skipCheckResponse = await new Promise((resolve) => {
@@ -51,6 +56,23 @@ async function showInterruptSequenceInline() {
   if (skipCheckResponse && skipCheckResponse.skipActive) {
     console.log(`[INTERRUPT] ✅ User in SKIP PERIOD - NOT showing interrupt. ${skipCheckResponse.minutesRemaining} minutes remaining`);
     return;
+  }
+
+  // SECOND: Check hourly access state for this domain
+  console.log(`[INTERRUPT] Checking hourly access state for domain: ${domain}`);
+  const accessState = await checkDomainAccessState(domain);
+
+  if (!accessState.success) {
+    console.error('[INTERRUPT] Error checking hourly access:', accessState.error);
+    // Fall through to normal interrupt
+  } else if (accessState.isRepeatAccess) {
+    // Repeat access within hour - show INSTANT BLOCK message instead of normal interrupt
+    console.log(`[INTERRUPT] ⚠️ REPEAT ACCESS WITHIN HOUR - Showing instant block message`);
+    showInstantBlockMessage(domain, accessState.minutesUntilReset);
+    return;
+  } else {
+    // First access within hour - mark as blocked when user sees challenge
+    console.log(`[INTERRUPT] ✅ First access within hour - will show normal interrupt`);
   }
 
   // Apply -50 XP stim penalty when blocked site is visited (via service worker)
@@ -195,6 +217,13 @@ async function showInterruptSequenceInline() {
     document.body.appendChild(interruptOverlayElement);
     console.log('[INTERRUPT] Overlay appended to DOM');
     console.log('[INTERRUPT] Applied grayscale filter to background only');
+
+    // Mark domain as blocked for the rest of this hour
+    if (markDomainAsBlocked) {
+      markDomainAsBlocked(domain).catch(err => {
+        console.error('[INTERRUPT] Error marking domain as blocked:', err);
+      });
+    }
 
     // Remove any unwanted iframes that YouTube might inject
     const removeUnwantedElements = () => {
@@ -1959,8 +1988,9 @@ Promise.all([
   import('../utils/mascot.js'),
   import('../utils/time-tracking.js'),
   import('../utils/platform-detection.js'),
-  import('./interrupt-sequence.js')
-]).then(([challengeBank, storageModule, mascotModule, timeTrackingModule, platformDetectionModule, interruptModule]) => {
+  import('./interrupt-sequence.js'),
+  import('../utils/hourlyAccessTracker.js')
+]).then(([challengeBank, storageModule, mascotModule, timeTrackingModule, platformDetectionModule, interruptModule, hourlyTrackerModule]) => {
   getRandomChallenge = challengeBank.getRandomChallenge;
   checkAnswer = challengeBank.checkAnswer;
   CHALLENGE_TYPES = challengeBank.CHALLENGE_TYPES;
@@ -1999,6 +2029,10 @@ Promise.all([
   handleTabVisibilityChange = platformDetectionModule.handleTabVisibilityChange;
 
   showInterruptSequence = interruptModule.showInterruptSequence;
+
+  checkDomainAccessState = hourlyTrackerModule.checkDomainAccessState;
+  markDomainAsBlocked = hourlyTrackerModule.markDomainAsBlocked;
+  getMinutesUntilReset = hourlyTrackerModule.getMinutesUntilReset;
 
   // Mark modules as ready
   modulesReady = true;
@@ -3289,4 +3323,118 @@ async function showFullBlockScreen() {
       enabledTypes: state.settings.enabledChallengeTypes
     });
   }
+}
+
+/**
+ * Show instant block message for repeat access within hour
+ */
+function showInstantBlockMessage(domain, minutesRemaining) {
+  // Check if overlay already exists
+  const existingOverlay = document.getElementById('cooped-instant-block-overlay');
+  if (existingOverlay && existingOverlay.isConnected) {
+    console.log('[INSTANT_BLOCK] Overlay already showing');
+    return;
+  }
+
+  console.log(`[INSTANT_BLOCK] Showing instant block message for ${domain}, ${minutesRemaining} min remaining`);
+
+  // Create overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'cooped-instant-block-overlay';
+  overlay.style.position = 'fixed';
+  overlay.style.top = '0';
+  overlay.style.left = '0';
+  overlay.style.width = '100%';
+  overlay.style.height = '100%';
+  overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+  overlay.style.display = 'flex';
+  overlay.style.flexDirection = 'column';
+  overlay.style.justifyContent = 'center';
+  overlay.style.alignItems = 'center';
+  overlay.style.zIndex = '2147483647'; // High z-index to cover page
+  overlay.style.fontFamily = 'Arial, sans-serif';
+
+  // Create message box
+  const messageBox = document.createElement('div');
+  messageBox.style.backgroundColor = '#fff';
+  messageBox.style.padding = '40px';
+  messageBox.style.borderRadius = '12px';
+  messageBox.style.textAlign = 'center';
+  messageBox.style.maxWidth = '500px';
+  messageBox.style.boxShadow = '0 10px 40px rgba(0, 0, 0, 0.3)';
+
+  // Title
+  const title = document.createElement('h2');
+  title.textContent = '⏸️ Hold Up!';
+  title.style.color = '#d9534f';
+  title.style.fontSize = '28px';
+  title.style.marginTop = '0';
+  title.style.marginBottom = '20px';
+  title.style.fontWeight = 'bold';
+
+  // Message
+  const message = document.createElement('p');
+  message.textContent = `You've already visited ${domain} this hour. Come back in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`;
+  message.style.color = '#333';
+  message.style.fontSize = '16px';
+  message.style.marginBottom = '30px';
+  message.style.lineHeight = '1.6';
+
+  // Timer display
+  const timerDisplay = document.createElement('div');
+  timerDisplay.style.backgroundColor = '#f5f5f5';
+  timerDisplay.style.padding = '20px';
+  timerDisplay.style.borderRadius = '8px';
+  timerDisplay.style.marginBottom = '30px';
+
+  const timerLabel = document.createElement('div');
+  timerLabel.textContent = 'Time until reset:';
+  timerLabel.style.color = '#666';
+  timerLabel.style.fontSize = '14px';
+  timerLabel.style.marginBottom = '8px';
+
+  const timerValue = document.createElement('div');
+  timerValue.textContent = `${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}`;
+  timerValue.style.color = '#d9534f';
+  timerValue.style.fontSize = '24px';
+  timerValue.style.fontWeight = 'bold';
+
+  timerDisplay.appendChild(timerLabel);
+  timerDisplay.appendChild(timerValue);
+
+  // Close button
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'Got it, I\'ll leave';
+  closeBtn.style.padding = '12px 30px';
+  closeBtn.style.fontSize = '16px';
+  closeBtn.style.backgroundColor = '#333';
+  closeBtn.style.color = '#fff';
+  closeBtn.style.border = 'none';
+  closeBtn.style.borderRadius = '6px';
+  closeBtn.style.cursor = 'pointer';
+  closeBtn.style.fontWeight = 'bold';
+  closeBtn.style.transition = 'all 0.2s ease';
+
+  closeBtn.addEventListener('mouseenter', () => {
+    closeBtn.style.backgroundColor = '#555';
+  });
+
+  closeBtn.addEventListener('mouseleave', () => {
+    closeBtn.style.backgroundColor = '#333';
+  });
+
+  closeBtn.addEventListener('click', () => {
+    overlay.remove();
+    // Navigate away from the site
+    window.history.back();
+  });
+
+  messageBox.appendChild(title);
+  messageBox.appendChild(message);
+  messageBox.appendChild(timerDisplay);
+  messageBox.appendChild(closeBtn);
+  overlay.appendChild(messageBox);
+  document.body.appendChild(overlay);
+
+  console.log('[INSTANT_BLOCK] Instant block overlay displayed');
 }

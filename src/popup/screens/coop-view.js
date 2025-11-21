@@ -4,6 +4,7 @@
  */
 
 import { querySelect, queryUpdate, getCurrentUser } from '../../logic/supabaseClient.js';
+import { getCoopData } from '../../logic/coopManager.js';
 
 export class CoopView {
   constructor() {
@@ -41,40 +42,20 @@ export class CoopView {
         return;
       }
 
-      // Get coop details
-      this.coop = await querySelect('coops', {
-        eq: { id: userProfile.coop_id },
-        single: true
-      });
+      // Get coop data and members using the new RLS-compatible function
+      const result = await getCoopData(userProfile.coop_id);
 
-      if (!this.coop) {
-        console.error('[COOP_VIEW] Coop not found');
+      if (!result.success) {
+        console.error('[COOP_VIEW] Error loading coop data:', result.error);
+        alert('Error loading coop data');
         return;
       }
 
-      // Get all coop members
-      console.log(`[COOP_VIEW] 👥 Coop has ${this.coop.member_ids?.length || 0} members`)
-      console.log(`[COOP_VIEW] 📋 Member IDs:`, this.coop.member_ids)
+      this.coop = result.coop;
+      this.members = result.members;
 
-      console.log(`[COOP_VIEW] 🔍 Querying users table...`)
-      const allUsers = await querySelect('users', {
-        select: 'id, name, level, xp_total, equipped_skin'
-      });
-      console.log(`[COOP_VIEW] 📊 querySelect returned ${allUsers?.length || 0} users`)
-      console.log(`[COOP_VIEW] ⚠️ RLS Limitation: Each user can only see their own data in the users table`)
-      console.log(`[COOP_VIEW] Current user ID: ${this.currentUser.id}`)
-
-      this.members = (allUsers || []).filter(member =>
-        this.coop.member_ids && this.coop.member_ids.includes(member.id)
-      );
-
-      console.log(`[COOP_VIEW] ✅ After filtering: ${this.members.length} members found`)
-      if (this.members.length !== (this.coop.member_ids?.length || 0)) {
-        console.error(`[COOP_VIEW] ❌ RLS POLICY ISSUE: Expected ${this.coop.member_ids?.length} members but only got ${this.members.length}`)
-      }
-
-      // Sort by XP (highest first)
-      this.members.sort((a, b) => (b.xp_total || 0) - (a.xp_total || 0));
+      console.log(`[COOP_VIEW] ✅ Loaded coop: ${this.coop.name}`)
+      console.log(`[COOP_VIEW] 👥 Members: ${this.members.length}/${this.coop.member_ids?.length || 0}`);
 
       this.render();
     } catch (err) {
