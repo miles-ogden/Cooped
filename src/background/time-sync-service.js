@@ -36,8 +36,8 @@ async function syncTimeData() {
   try {
     console.log('[TIME-SYNC] === SYNC START ===');
 
-    // Get authenticated user
-    const user = await getCurrentUser();
+    // Get authenticated user (skip validation - we don't need to verify with server)
+    const user = await getCurrentUser(true);
     if (!user) {
       console.log('[TIME-SYNC] No authenticated user - skipping sync');
       return;
