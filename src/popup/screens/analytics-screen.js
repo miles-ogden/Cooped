@@ -5,7 +5,7 @@
  */
 
 import { getCurrentUser, querySelect } from '../../logic/supabaseClient.js';
-import { getBlockedSites } from '../../utils/storage.js';
+import { getSettings } from '../../utils/storage.js';
 import { getUserTimezone, getDateInTimezone, getMondayOfWeek } from '../../utils/time-tracking.js';
 
 export class AnalyticsScreen {
