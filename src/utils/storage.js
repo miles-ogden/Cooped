@@ -493,6 +493,19 @@ export async function getAllSiteIntervals() {
 }
 
 /**
+ * Clear all site intervals (for testing)
+ * @returns {Promise<void>}
+ */
+export async function clearAllSiteIntervals() {
+  try {
+    await chrome.storage.local.remove('cooped_site_intervals');
+    console.log('Cooped: Cleared all site intervals');
+  } catch (error) {
+    console.error('Cooped: Error clearing all site intervals:', error);
+  }
+}
+
+/**
  * Add points to user account
  * @param {number} amount - Points to add (can be negative for penalties)
  * @returns {Promise<number>} New points total

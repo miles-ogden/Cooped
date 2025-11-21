@@ -4,7 +4,7 @@
  */
 
 import { querySelect, queryUpdate, getCurrentUser } from '../../logic/supabaseClient.js';
-import { getSettings, addBlockedSite, removeBlockedSite, updateBlockingLevel } from '../../utils/storage.js';
+import { getSettings, addBlockedSite, removeBlockedSite, updateBlockingLevel, clearAllSiteIntervals } from '../../utils/storage.js';
 import { getUserTimezone, setUserTimezone } from '../../utils/time-tracking.js';
 
 export class SettingsScreen {
@@ -238,6 +238,9 @@ export class SettingsScreen {
           <!-- Account Section -->
           <section class="settings-section">
             <h3>Account</h3>
+            <button class="btn-secondary" id="clear-intervals-btn" style="margin-bottom: 10px;">
+              🔄 Clear Challenge Cooldowns
+            </button>
             <button class="btn-danger" id="logout-btn">
               🚪 Logout
             </button>
@@ -308,6 +311,11 @@ export class SettingsScreen {
     // Join coop
     document.getElementById('join-coop-submit')?.addEventListener('click', () => {
       this.onJoinCoopSubmit();
+    });
+
+    // Clear intervals button
+    document.getElementById('clear-intervals-btn')?.addEventListener('click', () => {
+      this.onClearIntervals();
     });
 
     // Logout button
@@ -524,6 +532,21 @@ export class SettingsScreen {
     } catch (err) {
       console.error('[SETTINGS_SCREEN] Error removing blocked site:', err);
       alert('Error unblocking site');
+    }
+  }
+
+  /**
+   * Clear all challenge cooldown intervals
+   */
+  async onClearIntervals() {
+    try {
+      console.log('[SETTINGS_SCREEN] Clearing all challenge cooldowns...');
+      await clearAllSiteIntervals();
+      alert('Challenge cooldowns cleared! You can now see popups on all sites.');
+      console.log('[SETTINGS_SCREEN] All intervals cleared successfully');
+    } catch (err) {
+      console.error('[SETTINGS_SCREEN] Error clearing intervals:', err);
+      alert('Error clearing cooldowns');
     }
   }
 
