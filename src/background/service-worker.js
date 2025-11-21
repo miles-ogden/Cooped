@@ -26,45 +26,40 @@ chrome.runtime.onInstalled.addListener(async () => {
  * Check if URL matches any blocked site patterns
  * STRICTLY only blocks the exact domains specified
  * @param {string} url - URL to check
- * @param {string[]} blockedSites - Array of URL patterns
- * @returns {boolean}
+ * @param {Array} blockedSites - Array of blocked site objects or strings
+ * @returns {Object} - { isBlocked: boolean, domain: string, blockingLevel: string }
  */
 function isBlockedSite(url, blockedSites) {
   try {
     const urlObj = new URL(url);
     const hostname = urlObj.hostname.toLowerCase();
 
-    return blockedSites.some(pattern => {
+    for (const siteConfig of blockedSites) {
+      // Handle both old string format and new object format
+      const domain = typeof siteConfig === 'string' ? siteConfig : siteConfig.domain;
+      const blockingLevel = typeof siteConfig === 'string' ? 'some' : (siteConfig.blockingLevel || 'some');
+
       // Extract domain from pattern like *://www.youtube.com/*
-      // Remove protocol: *:// -> ""
-      let domain = pattern.replace(/^\*:\/\//, '');
-      // Remove trailing path: /* -> ""
-      domain = domain.replace(/\/\*$/, '');
-      // Remove www. prefix if present: www.youtube.com -> youtube.com
-      domain = domain.replace(/^www\./, '');
-      domain = domain.toLowerCase();
+      let domainToCheck = domain.replace(/^\*:\/\//, '');
+      domainToCheck = domainToCheck.replace(/\/\*$/, '');
+      domainToCheck = domainToCheck.replace(/^www\./, '');
+      domainToCheck = domainToCheck.toLowerCase();
 
-      // STRICT matching: only match if hostname is exactly the domain or subdomain of it
-      // Examples:
-      // - youtube.com matches youtube.com, www.youtube.com, m.youtube.com
-      // - instagram.com matches instagram.com, www.instagram.com
-      // - Does NOT match google.com, facebook-cdn.com, etc.
-
-      if (hostname === domain) {
-        return true; // Exact match
+      // Check for exact match or subdomain match
+      if (hostname === domainToCheck || hostname.endsWith('.' + domainToCheck)) {
+        return {
+          isBlocked: true,
+          domain: domainToCheck,
+          blockingLevel: blockingLevel
+        };
       }
+    }
 
-      // Check if hostname is a subdomain of the blocked domain
-      if (hostname.endsWith('.' + domain)) {
-        return true; // Subdomain match
-      }
-
-      return false;
-    });
+    return { isBlocked: false, domain: null, blockingLevel: null };
   } catch (error) {
     // Invalid URL
     console.log('Cooped: Invalid URL:', url, error);
-    return false;
+    return { isBlocked: false, domain: null, blockingLevel: null };
   }
 }
 
@@ -87,19 +82,21 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     const settings = await getSettings();
 
     // Check if the URL is in the blocked list
-    const isBlocked = isBlockedSite(tab.url, settings.blockedSites);
+    const blockCheck = isBlockedSite(tab.url, settings.blockedSites);
 
     // Debug logging
     const urlObj = new URL(tab.url);
-    console.log(`Cooped: URL check - hostname: ${urlObj.hostname}, blocked: ${isBlocked}, enabled: ${isExtensionEnabled}, blockedSites: ${JSON.stringify(settings.blockedSites)}`);
+    console.log(`Cooped: URL check - hostname: ${urlObj.hostname}, blocked: ${blockCheck.isBlocked}, level: ${blockCheck.blockingLevel}, enabled: ${isExtensionEnabled}, blockedSites: ${JSON.stringify(settings.blockedSites)}`);
 
     // Only store blocked site if extension is enabled
-    if (isBlocked && isExtensionEnabled) {
-      console.log('Cooped: Blocked site detected (extension enabled):', tab.url);
+    if (blockCheck.isBlocked && isExtensionEnabled) {
+      console.log('Cooped: Blocked site detected (extension enabled):', tab.url, 'Blocking Level:', blockCheck.blockingLevel);
 
       // Store blocked site info for the content script to query
       blockedTabs.set(tabId, {
         url: tab.url,
+        domain: blockCheck.domain,
+        blockingLevel: blockCheck.blockingLevel,
         difficulty: settings.challengeDifficulty,
         enabledTypes: settings.enabledChallengeTypes
       });

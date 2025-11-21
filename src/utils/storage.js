@@ -150,28 +150,94 @@ export async function updateSettings(newSettings) {
 
 /**
  * Add a blocked site to the list
- * @param {string} urlPattern - URL pattern to block
+ * @param {string} domain - Domain to block (e.g., 'youtube.com')
+ * @param {string} blockingLevel - 'fully', 'some' (default), or 'a_lot'
  */
-export async function addBlockedSite(urlPattern) {
+export async function addBlockedSite(domain, blockingLevel = 'some') {
   const state = await getAppState();
-  if (!state.settings.blockedSites.includes(urlPattern)) {
-    state.settings.blockedSites.push(urlPattern);
+
+  // Check if site already exists
+  const existingIndex = state.settings.blockedSites.findIndex(s => {
+    // Handle both old string format and new object format for migration
+    if (typeof s === 'string') return s === domain;
+    return s.domain === domain;
+  });
+
+  if (existingIndex === -1) {
+    // Add new site with blocking level
+    state.settings.blockedSites.push({
+      domain,
+      blockingLevel
+    });
     await chrome.storage.local.set({ [STORAGE_KEYS.APP_STATE]: state });
   }
+
+  return state.settings.blockedSites;
+}
+
+/**
+ * Update blocking level for a site
+ * @param {string} domain - Domain to update
+ * @param {string} blockingLevel - 'fully', 'some', or 'a_lot'
+ */
+export async function updateBlockingLevel(domain, blockingLevel) {
+  const state = await getAppState();
+
+  const site = state.settings.blockedSites.find(s => {
+    if (typeof s === 'string') return s === domain;
+    return s.domain === domain;
+  });
+
+  if (site) {
+    if (typeof site === 'string') {
+      // Migrate old format to new format
+      const index = state.settings.blockedSites.indexOf(site);
+      state.settings.blockedSites[index] = {
+        domain: site,
+        blockingLevel
+      };
+    } else {
+      site.blockingLevel = blockingLevel;
+    }
+    await chrome.storage.local.set({ [STORAGE_KEYS.APP_STATE]: state });
+  }
+
   return state.settings.blockedSites;
 }
 
 /**
  * Remove a blocked site from the list
- * @param {string} urlPattern - URL pattern to unblock
+ * @param {string} domain - Domain to unblock
  */
-export async function removeBlockedSite(urlPattern) {
+export async function removeBlockedSite(domain) {
   const state = await getAppState();
-  state.settings.blockedSites = state.settings.blockedSites.filter(
-    site => site !== urlPattern
-  );
+  state.settings.blockedSites = state.settings.blockedSites.filter(site => {
+    // Handle both old string format and new object format
+    if (typeof site === 'string') return site !== domain;
+    return site.domain !== domain;
+  });
   await chrome.storage.local.set({ [STORAGE_KEYS.APP_STATE]: state });
   return state.settings.blockedSites;
+}
+
+/**
+ * Get a specific site's blocking level
+ * @param {string} domain - Domain to look up
+ * @returns {string} - 'fully', 'some', or 'a_lot'
+ */
+export async function getBlockingLevel(domain) {
+  const state = await getAppState();
+  const site = state.settings.blockedSites.find(s => {
+    if (typeof s === 'string') return s === domain;
+    return s.domain === domain;
+  });
+
+  if (!site) return null;
+
+  // Handle old string format - default to 'some'
+  if (typeof site === 'string') return 'some';
+
+  return site.blockingLevel || 'some';
 }
 
 /**

@@ -4,7 +4,7 @@
  */
 
 import { querySelect, queryUpdate, getCurrentUser } from '../../logic/supabaseClient.js';
-import { getSettings, addBlockedSite, removeBlockedSite } from '../../utils/storage.js';
+import { getSettings, addBlockedSite, removeBlockedSite, updateBlockingLevel } from '../../utils/storage.js';
 
 export class SettingsScreen {
   constructor() {
@@ -80,12 +80,25 @@ export class SettingsScreen {
 
     // Build blocklist HTML
     const blockedSitesHtml = this.blockedSites.length > 0
-      ? this.blockedSites.map((site, idx) => `
+      ? this.blockedSites.map((site, idx) => {
+          // Handle both old string format and new object format
+          const domain = typeof site === 'string' ? site : site.domain;
+          const blockingLevel = typeof site === 'string' ? 'some' : (site.blockingLevel || 'some');
+
+          return `
         <div class="blocked-site-item">
-          <span class="site-name">${site}</span>
-          <button class="btn-danger btn-sm" data-action="remove-site" data-index="${idx}" title="Unblock site">✕</button>
+          <div class="site-info">
+            <span class="site-name">${domain}</span>
+            <select class="blocking-level-select" data-domain="${domain}" title="Change blocking level">
+              <option value="fully" ${blockingLevel === 'fully' ? 'selected' : ''}>Fully Block</option>
+              <option value="some" ${blockingLevel === 'some' ? 'selected' : ''}>Some Leeway</option>
+              <option value="a_lot" ${blockingLevel === 'a_lot' ? 'selected' : ''}>A Lot of Leeway</option>
+            </select>
+          </div>
+          <button class="btn-danger btn-sm" data-action="remove-site" data-domain="${domain}" title="Unblock site">✕</button>
         </div>
-      `).join('')
+      `;
+        }).join('')
       : '<p class="text-muted">No blocked sites yet</p>';
 
     const html = `
@@ -221,11 +234,20 @@ export class SettingsScreen {
       this.onAddSiteClick();
     });
 
+    // Blocking level dropdown
+    document.querySelectorAll('.blocking-level-select').forEach(select => {
+      select.addEventListener('change', (e) => {
+        const domain = e.target.getAttribute('data-domain');
+        const level = e.target.value;
+        this.onBlockingLevelChange(domain, level);
+      });
+    });
+
     // Remove blocked sites
     document.querySelectorAll('[data-action="remove-site"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const index = e.target.getAttribute('data-index');
-        this.onRemoveSiteClick(index);
+        const domain = e.target.getAttribute('data-domain');
+        this.onRemoveSiteClick(domain);
       });
     });
 
@@ -392,15 +414,21 @@ export class SettingsScreen {
       }
 
       // Check if site is already blocked
-      if (this.blockedSites.includes(newSite)) {
+      const exists = this.blockedSites.some(s => {
+        const domain = typeof s === 'string' ? s : s.domain;
+        return domain === newSite;
+      });
+
+      if (exists) {
         alert('This site is already blocked');
         return;
       }
 
       console.log('[SETTINGS_SCREEN] Adding blocked site:', newSite);
 
-      await addBlockedSite(newSite);
-      this.blockedSites.push(newSite);
+      await addBlockedSite(newSite, 'some');  // Default to 'some' leeway
+      const settings = await getSettings();
+      this.blockedSites = settings.blockedSites || [];
 
       console.log('[SETTINGS_SCREEN] Site blocked successfully');
       input.value = '';
@@ -412,20 +440,38 @@ export class SettingsScreen {
   }
 
   /**
+   * Handle blocking level change
+   */
+  async onBlockingLevelChange(domain, blockingLevel) {
+    try {
+      console.log('[SETTINGS_SCREEN] Changing blocking level for:', domain, blockingLevel);
+
+      await updateBlockingLevel(domain, blockingLevel);
+      const settings = await getSettings();
+      this.blockedSites = settings.blockedSites || [];
+
+      console.log('[SETTINGS_SCREEN] Blocking level updated successfully');
+      this.render(); // Re-render to show updated level
+    } catch (err) {
+      console.error('[SETTINGS_SCREEN] Error updating blocking level:', err);
+      alert('Error updating blocking level');
+    }
+  }
+
+  /**
    * Handle remove blocked site
    */
-  async onRemoveSiteClick(index) {
+  async onRemoveSiteClick(domain) {
     try {
-      const site = this.blockedSites[index];
-
-      if (!confirm(`Remove ${site} from blocked sites?`)) {
+      if (!confirm(`Remove ${domain} from blocked sites?`)) {
         return;
       }
 
-      console.log('[SETTINGS_SCREEN] Removing blocked site:', site);
+      console.log('[SETTINGS_SCREEN] Removing blocked site:', domain);
 
-      await removeBlockedSite(site);
-      this.blockedSites.splice(index, 1);
+      await removeBlockedSite(domain);
+      const settings = await getSettings();
+      this.blockedSites = settings.blockedSites || [];
 
       console.log('[SETTINGS_SCREEN] Site unblocked successfully');
       this.render(); // Re-render to update list
