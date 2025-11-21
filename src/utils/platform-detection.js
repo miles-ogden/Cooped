@@ -41,53 +41,74 @@ export function isOnYouTubeShorts() {
 
 /**
  * Handle YouTube Shorts productivity detection
- * 7+ shorts in 7 minutes = unproductive (stimming)
+ * Thresholds vary by blocking level
  * @param {number} shortsCount - Number of shorts scrolled in time window
- * @param {string} timeWindow - Time window being checked (e.g., "7 minutes")
- * @returns {Promise<void>}
+ * @param {string} blockingLevel - 'fully', 'some', or 'a_lot'
+ * @returns {Promise<boolean>} - True if unproductive
  */
-export async function handleYouTubeShortsDetection(shortsCount, timeWindow = '7 minutes') {
+export async function handleYouTubeShortsDetection(shortsCount, blockingLevel = 'some') {
   const domain = 'youtube.com';
 
-  if (shortsCount >= 8) {
-    // 8+ shorts in 7 minutes = unproductive stimming
+  // Threshold depends on blocking level
+  let threshold = 8;  // Default 'some' leeway: 8 shorts in 7 min
+  if (blockingLevel === 'fully') {
+    threshold = 1;    // Fully block: even 1 short is flagged
+  } else if (blockingLevel === 'a_lot') {
+    threshold = 20;   // A lot of leeway: 20 shorts in 20 min
+  }
+
+  if (shortsCount >= threshold) {
+    // Threshold exceeded = unproductive stimming
     await setActivityState(domain, ACTIVITY_STATE.UNPRODUCTIVE, {
       reason: 'shorts_stimming',
-      shortsScrolledInTimeWindow: shortsCount
+      shortsScrolledInTimeWindow: shortsCount,
+      blockingLevel
     });
-    console.log(`[PLATFORM-DETECTION] YouTube Shorts: ${shortsCount} shorts in ${timeWindow} = UNPRODUCTIVE stimming`);
+    console.log(`[PLATFORM-DETECTION] YouTube Shorts: ${shortsCount} shorts (threshold: ${threshold}) [${blockingLevel}] = UNPRODUCTIVE`);
     return true;
   } else {
-    // Less than 8 shorts = productive viewing
+    // Under threshold = productive viewing
     await setActivityState(domain, ACTIVITY_STATE.PRODUCTIVE, {
       reason: 'shorts_browsing',
-      shortsScrolledInTimeWindow: shortsCount
+      shortsScrolledInTimeWindow: shortsCount,
+      blockingLevel
     });
-    console.log(`[PLATFORM-DETECTION] YouTube Shorts: ${shortsCount} shorts in ${timeWindow} = PRODUCTIVE`);
+    console.log(`[PLATFORM-DETECTION] YouTube Shorts: ${shortsCount} shorts (threshold: ${threshold}) [${blockingLevel}] = PRODUCTIVE`);
     return false;
   }
 }
 
 /**
  * Handle YouTube long-form video productivity detection
- * Requires user confirmation (popup asking "are you being productive?")
+ * Thresholds vary by blocking level
  * @param {number} watchTimeMinutes - Minutes watched without pause
- * @returns {Promise<void>}
+ * @param {string} blockingLevel - 'fully', 'some', or 'a_lot'
+ * @returns {Promise<boolean>} - True if should show productivity prompt
  */
-export async function handleYouTubeLongFormDetection(watchTimeMinutes) {
+export async function handleYouTubeLongFormDetection(watchTimeMinutes, blockingLevel = 'some') {
   const domain = 'youtube.com';
 
-  if (watchTimeMinutes >= 7) {
-    // 7+ minutes unpaused = transition to UNKNOWN state, waiting for user response
+  // Threshold depends on blocking level
+  let threshold = 7;  // Default 'some' leeway: 7 minutes
+  if (blockingLevel === 'fully') {
+    threshold = 0;    // Fully block: show popup instantly
+  } else if (blockingLevel === 'a_lot') {
+    threshold = 15;   // A lot of leeway: 15 minutes
+  }
+
+  if (blockingLevel === 'fully' || watchTimeMinutes >= threshold) {
+    // Threshold reached or fully blocked = show productivity prompt
     const record = await getTimeTrackingRecord(domain);
 
     if (record.currentState !== ACTIVITY_STATE.UNKNOWN) {
       await setActivityState(domain, ACTIVITY_STATE.UNKNOWN, {
         reason: 'long_watch_unpaused',
-        watchTimeMinutes
+        watchTimeMinutes,
+        blockingLevel,
+        threshold
       });
-      console.log(`[PLATFORM-DETECTION] YouTube: ${watchTimeMinutes}min unpaused watch -> showing productivity prompt`);
-      return true; // Signal that we should show the productivity prompt
+      console.log(`[PLATFORM-DETECTION] YouTube: ${watchTimeMinutes}min unpaused watch (threshold: ${threshold}min) [${blockingLevel}] -> showing productivity prompt`);
+      return true;
     }
   }
 
@@ -114,35 +135,46 @@ export async function recordYouTubeProductivityResponse(wasProductive, metadata 
 
 /**
  * Handle TikTok/Facebook/X stimming detection
- * First 3 minutes = always productive (grace period)
- * After 3 minutes = unproductive (stimming)
- * Resets every 2 hours (real-world time)
- * @param {string} domain - Platform domain (tiktok.com, facebook.com, x.com)
+ * Thresholds vary by blocking level
+ * @param {string} domain - Platform domain (tiktok.com, facebook.com, x.com, instagram.com, etc.)
+ * @param {string} blockingLevel - 'fully', 'some', or 'a_lot'
  * @returns {Promise<boolean>} True if unproductive stimming detected
  */
-export async function handleSocialMediaStimmingDetection(domain) {
+export async function handleSocialMediaStimmingDetection(domain, blockingLevel = 'some') {
   // Check if 2-hour reset should trigger
   await shouldResetSocialMediaTimer(domain);
 
   // Get time since last reset
   const timeSinceReset = await getTimeSinceSocialMediaReset(domain);
 
-  if (timeSinceReset < THREE_MINUTES_MS) {
-    // Still in grace period (first 3 minutes)
-    await setActivityState(domain, ACTIVITY_STATE.PRODUCTIVE, {
-      reason: 'grace_period',
-      timeSinceReset
-    });
-    console.log(`[PLATFORM-DETECTION] ${domain}: In grace period (${Math.round(timeSinceReset / 1000)}s / 180s)`);
-    return false;
-  } else {
-    // Past 3 minutes = unproductive stimming
+  // Threshold depends on blocking level
+  let thresholdMs = 3 * 60 * 1000;  // Default 'some' leeway: 3 minutes
+  if (blockingLevel === 'fully') {
+    thresholdMs = 0;                 // Fully block: show popup instantly
+  } else if (blockingLevel === 'a_lot') {
+    thresholdMs = 10 * 60 * 1000;    // A lot of leeway: 10 minutes
+  }
+
+  if (blockingLevel === 'fully' || timeSinceReset >= thresholdMs) {
+    // Threshold reached or fully blocked = unproductive stimming
     await setActivityState(domain, ACTIVITY_STATE.UNPRODUCTIVE, {
       reason: 'past_grace_period_stimming',
-      timeSinceReset
+      timeSinceReset,
+      blockingLevel,
+      thresholdMs
     });
-    console.log(`[PLATFORM-DETECTION] ${domain}: Past grace period (${Math.round(timeSinceReset / 1000)}s) = UNPRODUCTIVE`);
+    console.log(`[PLATFORM-DETECTION] ${domain}: Past threshold (${Math.round(timeSinceReset / 1000)}s / ${Math.round(thresholdMs / 1000)}s) [${blockingLevel}] = UNPRODUCTIVE`);
     return true;
+  } else {
+    // Still in grace period
+    await setActivityState(domain, ACTIVITY_STATE.PRODUCTIVE, {
+      reason: 'grace_period',
+      timeSinceReset,
+      blockingLevel,
+      thresholdMs
+    });
+    console.log(`[PLATFORM-DETECTION] ${domain}: In grace period (${Math.round(timeSinceReset / 1000)}s / ${Math.round(thresholdMs / 1000)}s) [${blockingLevel}]`);
+    return false;
   }
 }
 
