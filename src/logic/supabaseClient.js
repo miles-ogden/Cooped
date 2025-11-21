@@ -477,6 +477,7 @@ export async function querySelect(table, options = {}) {
 
     // Add filters
     if (options.eq) {
+      console.log('[SUPABASE] querySelect - Filters:', options.eq)
       for (const [key, value] of Object.entries(options.eq)) {
         url += `${key}=eq.${encodeURIComponent(value)}&`
       }
@@ -492,6 +493,8 @@ export async function querySelect(table, options = {}) {
       url += 'limit=1&'
     }
 
+    console.log('[SUPABASE] querySelect - Table:', table)
+    console.log('[SUPABASE] querySelect - Options:', options)
     console.log('[SUPABASE] querySelect - URL:', url)
 
     const response = await fetch(url, {
@@ -554,6 +557,23 @@ export async function querySelect(table, options = {}) {
 }
 
 /**
+ * Helper function to safely parse JSON response
+ */
+async function parseResponseBody(response) {
+  try {
+    const contentType = response.headers.get('content-type')
+    if (contentType && contentType.includes('application/json')) {
+      return await response.json()
+    } else {
+      return await response.text()
+    }
+  } catch (err) {
+    console.error('[SUPABASE] Error parsing response body:', err)
+    return null
+  }
+}
+
+/**
  * Database query helper - INSERT
  */
 export async function queryInsert(table, records) {
@@ -606,8 +626,12 @@ export async function queryInsert(table, records) {
         )
 
         if (!retryResponse.ok) {
-          const errorData = await retryResponse.json()
-          throw new Error(errorData.message || `Insert failed: ${retryResponse.statusText}`)
+          const errorBody = await parseResponseBody(retryResponse)
+          const errorMessage = (typeof errorBody === 'object' && errorBody.message)
+            ? errorBody.message
+            : (typeof errorBody === 'string' ? errorBody : `Insert failed: ${retryResponse.statusText}`)
+          console.error('[SUPABASE] Insert error (retry):', retryResponse.status, errorMessage)
+          throw new Error(errorMessage)
         }
 
         const data = await retryResponse.json()
@@ -618,8 +642,12 @@ export async function queryInsert(table, records) {
     }
 
     if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.message || `Insert failed: ${response.statusText}`)
+      const errorBody = await parseResponseBody(response)
+      const errorMessage = (typeof errorBody === 'object' && errorBody.message)
+        ? errorBody.message
+        : (typeof errorBody === 'string' ? errorBody : `Insert failed: ${response.statusText}`)
+      console.error('[SUPABASE] Insert error:', response.status, errorMessage)
+      throw new Error(errorMessage)
     }
 
     const data = await response.json()
@@ -689,10 +717,15 @@ export async function queryUpdate(table, updates, filters) {
         console.log('[SUPABASE] queryUpdate - Retry response status:', retryResponse.status)
 
         if (!retryResponse.ok) {
-          const errorData = await retryResponse.json()
-          throw new Error(errorData.message || `Update failed: ${retryResponse.statusText}`)
+          const errorBody = await parseResponseBody(retryResponse)
+          const errorMessage = (typeof errorBody === 'object' && errorBody.message)
+            ? errorBody.message
+            : (typeof errorBody === 'string' ? errorBody : `Update failed: ${retryResponse.statusText}`)
+          console.error('[SUPABASE] ❌ Retry update failed:', retryResponse.status, errorMessage)
+          throw new Error(errorMessage)
         }
 
+        console.log('[SUPABASE] queryUpdate - Success after retry')
         return { success: true }
       } else {
         throw new Error('Token refresh failed, and update returned 401 Unauthorized')
@@ -700,12 +733,16 @@ export async function queryUpdate(table, updates, filters) {
     }
 
     if (!response.ok) {
-      const errorData = await response.json()
-      console.error('[SUPABASE] queryUpdate error response:', errorData)
-      throw new Error(errorData.message || `Update failed: ${response.statusText}`)
+      const errorBody = await parseResponseBody(response)
+      const errorMessage = (typeof errorBody === 'object' && errorBody.message)
+        ? errorBody.message
+        : (typeof errorBody === 'string' ? errorBody : `Update failed: ${response.statusText}`)
+      console.error('[SUPABASE] ❌ queryUpdate error response:', response.status, errorMessage)
+      throw new Error(errorMessage)
     }
 
-    console.log('[SUPABASE] queryUpdate - Success')
+    const responseData = await response.json()
+    console.log('[SUPABASE] queryUpdate - Success, response:', responseData)
     return { success: true }
   } catch (err) {
     console.error('[SUPABASE] Update error:', err)
