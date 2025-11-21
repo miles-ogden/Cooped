@@ -66,9 +66,10 @@ export function initializeDomainTracking(domain) {
 
 /**
  * Record YouTube Shorts view
+ * @param {string} blockingLevel - 'fully', 'some', or 'a_lot'
  * @returns {Object} - { shouldTriggerWall: boolean }
  */
-export function recordYoutubeShort() {
+export function recordYoutubeShort(blockingLevel = 'some') {
   const domain = 'youtube.com';
   initializeDomainTracking(domain);
 
@@ -78,11 +79,21 @@ export function recordYoutubeShort() {
 
   const shortsInWindow = getYoutubeShortsInWindow();
 
-  console.log(`[STIM_TRACKER] YouTube Short recorded. Total in 7 min: ${shortsInWindow}`);
+  console.log(`[STIM_TRACKER] YouTube Short recorded. Total in 7 min: ${shortsInWindow} [${blockingLevel}]`);
 
-  // Check if 8+ shorts in 7 minutes
-  if (shortsInWindow >= 8) {
-    return { shouldTriggerWall: true, reason: 'YouTube Shorts binge (8+ in 7 min)' };
+  // Determine threshold based on blocking level
+  let threshold;
+  if (blockingLevel === 'fully') {
+    threshold = 1;    // Fully block: even 1 short is flagged
+  } else if (blockingLevel === 'a_lot') {
+    threshold = 20;   // A lot of leeway: 20 shorts in 7 min
+  } else {
+    threshold = 8;    // Some leeway (default): 8 shorts in 7 min
+  }
+
+  // Check if threshold exceeded
+  if (shortsInWindow >= threshold) {
+    return { shouldTriggerWall: true, reason: `YouTube Shorts binge (${shortsInWindow}/${threshold} in 7 min) [${blockingLevel}]` };
   }
 
   return { shouldTriggerWall: false };
@@ -91,9 +102,11 @@ export function recordYoutubeShort() {
 /**
  * Record activity on social media or YouTube long-form
  * Call this when detecting: scrolling, clicking, or video playing
+ * @param {string} domain - Domain name
+ * @param {string} blockingLevel - 'fully', 'some', or 'a_lot'
  * @returns {Object} - { shouldTriggerWall: boolean }
  */
-export function recordSocialMediaActivity(domain) {
+export function recordSocialMediaActivity(domain, blockingLevel = 'some') {
   const tracking = initializeDomainTracking(domain);
 
   // Update last activity time
@@ -114,14 +127,21 @@ export function recordSocialMediaActivity(domain) {
   const isSocialMedia = SOCIAL_MEDIA_DOMAINS.some(d => domain.includes(d));
 
   if (isSocialMedia) {
-    // Social media: 3 minutes per hour = 180,000 milliseconds
-    const threeMinutes = 3 * 60 * 1000;
+    // Determine threshold based on blocking level
+    let thresholdMs;
+    if (blockingLevel === 'fully') {
+      thresholdMs = 0;                 // Fully block: instant wall
+    } else if (blockingLevel === 'a_lot') {
+      thresholdMs = 10 * 60 * 1000;    // A lot of leeway: 10 minutes
+    } else {
+      thresholdMs = 3 * 60 * 1000;     // Some leeway (default): 3 minutes
+    }
 
-    if (tracking.totalActiveTime >= threeMinutes && !tracking.wallTriggered) {
+    if (tracking.totalActiveTime >= thresholdMs && !tracking.wallTriggered) {
       tracking.wallTriggered = true;
       tracking.wallTriggerTime = now;
-      console.log(`[STIM_TRACKER] Social media wall triggered for ${domain}`);
-      return { shouldTriggerWall: true, reason: `${domain}: 3 minutes active` };
+      console.log(`[STIM_TRACKER] Social media wall triggered for ${domain} [${blockingLevel}] at ${Math.round(tracking.totalActiveTime / 1000)}s`);
+      return { shouldTriggerWall: true, reason: `${domain}: threshold reached (${blockingLevel})` };
     }
   }
 
