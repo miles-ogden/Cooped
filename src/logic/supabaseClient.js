@@ -741,8 +741,12 @@ export async function queryUpdate(table, updates, filters) {
       throw new Error(errorMessage)
     }
 
-    const responseData = await response.json()
-    console.log('[SUPABASE] queryUpdate - Success, response:', responseData)
+    try {
+      const responseData = await response.json()
+      console.log('[SUPABASE] queryUpdate - Success, response:', responseData)
+    } catch (parseErr) {
+      console.log('[SUPABASE] queryUpdate - Success (no response body to parse)')
+    }
     return { success: true }
   } catch (err) {
     console.error('[SUPABASE] Update error:', err)
