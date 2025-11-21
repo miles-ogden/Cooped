@@ -9,7 +9,7 @@ let recordSession, getAppState, saveCurrentChallenge, getCurrentChallenge, clear
 let calculateXPReward, getMascotMessage, checkLevelUp, getAdaptiveDifficultyWithVariety;
 let setSiteInterval, checkSiteInterval, addEggs, startTimeTrackingSession;
 let checkDoNotBotherMe, recordYouTubeActivity, analyzeYouTubeActivity, checkYouTubeShorts;
-let updateTabVisibility, updateMediaPauseState, setActivityState, ACTIVITY_STATE, accumulateTime, getTimeTrackingRecord;
+let updateTabVisibility, setActivityState, ACTIVITY_STATE, accumulateTime, getTimeTrackingRecord;
 let detectPlatform, isOnYouTubeShorts, handleYouTubeShortsDetection, handleYouTubeLongFormDetection;
 let recordYouTubeProductivityResponse, handleMediaPauseChange, handleTabVisibilityChange;
 let showInterruptSequence;
@@ -1983,7 +1983,6 @@ Promise.all([
   getAdaptiveDifficultyWithVariety = mascotModule.getAdaptiveDifficultyWithVariety;
 
   updateTabVisibility = timeTrackingModule.updateTabVisibility;
-  updateMediaPauseState = timeTrackingModule.updateMediaPauseState;
   setActivityState = timeTrackingModule.setActivityState;
   ACTIVITY_STATE = timeTrackingModule.ACTIVITY_STATE;
   accumulateTime = timeTrackingModule.accumulateTime;

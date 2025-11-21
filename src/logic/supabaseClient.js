@@ -32,11 +32,14 @@ export async function initializeAuth() {
 async function refreshAccessToken() {
   try {
     if (!currentSession?.refresh_token) {
-      console.error('[SUPABASE] No refresh token available')
+      console.error('[SUPABASE] No refresh token available - session might be expired or corrupted')
+      // Clear the corrupted session
+      currentSession = null
+      await chrome.storage.local.remove(['supabase_session'])
       return false
     }
 
-    console.log('[SUPABASE] Refreshing access token...')
+    console.log('[SUPABASE] Refreshing access token with refresh token...')
     const response = await fetch(
       `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
       {
@@ -54,11 +57,19 @@ async function refreshAccessToken() {
     if (!response.ok) {
       const errorBody = await response.text()
       console.error('[SUPABASE] Token refresh failed:', response.statusText, 'Body:', errorBody)
+
+      // If refresh token is invalid, clear the session
+      if (response.status === 400 || response.status === 401) {
+        console.error('[SUPABASE] Refresh token is invalid or expired - clearing session')
+        currentSession = null
+        await chrome.storage.local.remove(['supabase_session'])
+      }
+
       return false
     }
 
     const data = await response.json()
-    console.log('[SUPABASE] Token refresh response:', data)
+    console.log('[SUPABASE] Token refresh response - got new access token')
 
     // Update session with new access token
     if (data.access_token) {
@@ -69,10 +80,11 @@ async function refreshAccessToken() {
 
       // Persist updated session
       await chrome.storage.local.set({ supabase_session: currentSession })
-      console.log('[SUPABASE] Access token refreshed successfully')
+      console.log('[SUPABASE] ✅ Access token refreshed successfully')
       return true
     }
 
+    console.error('[SUPABASE] Token refresh response had no access_token')
     return false
   } catch (err) {
     console.error('[SUPABASE] Error refreshing token:', err)
@@ -96,6 +108,36 @@ function extractUserIdFromToken(token) {
   } catch (err) {
     console.error('[SUPABASE] Error extracting user ID from token:', err)
     return null
+  }
+}
+
+/**
+ * Check if token is about to expire (within 5 minutes)
+ */
+function isTokenExpiringSoon(token) {
+  try {
+    if (!token) return true
+    const parts = token.split('.')
+    if (parts.length !== 3) return true
+
+    const payload = atob(parts[1])
+    const decoded = JSON.parse(payload)
+
+    if (!decoded.exp) return true
+
+    const expiryTime = decoded.exp * 1000 // Convert to milliseconds
+    const timeUntilExpiry = expiryTime - Date.now()
+    const fiveMinutes = 5 * 60 * 1000
+
+    const expiringSoon = timeUntilExpiry < fiveMinutes
+    if (expiringSoon) {
+      console.log('[SUPABASE] Token expiring soon in', Math.round(timeUntilExpiry / 1000), 'seconds')
+    }
+
+    return expiringSoon
+  } catch (err) {
+    console.error('[SUPABASE] Error checking token expiration:', err)
+    return true
   }
 }
 
@@ -149,9 +191,55 @@ export async function getCurrentUser(skipValidation = false) {
       }
     )
 
+    console.log('[SUPABASE] User validation response status:', response.status)
+
+    if (response.status === 401) {
+      // Token might be expired, try to refresh it
+      console.log('[SUPABASE] Got 401 when validating user, attempting token refresh...')
+      const refreshed = await refreshAccessToken()
+
+      if (refreshed) {
+        console.log('[SUPABASE] Token refreshed successfully, retrying user validation...')
+        // Retry the request with the new token
+        const retryResponse = await fetch(
+          `${SUPABASE_URL}/auth/v1/user`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${currentSession.access_token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+
+        if (retryResponse.ok) {
+          const data = await retryResponse.json()
+          console.log('[SUPABASE] User validation succeeded after token refresh')
+          return data
+        } else {
+          // Still failed after refresh, clear the session
+          const errorBody = await retryResponse.text()
+          console.error('[SUPABASE] User validation failed even after token refresh:', {
+            status: retryResponse.status,
+            statusText: retryResponse.statusText,
+            body: errorBody
+          })
+          currentSession = null
+          await chrome.storage.local.remove(['supabase_session'])
+          return null
+        }
+      } else {
+        // Refresh failed, clear the session
+        console.error('[SUPABASE] Token refresh failed, clearing session')
+        currentSession = null
+        await chrome.storage.local.remove(['supabase_session'])
+        return null
+      }
+    }
+
     if (!response.ok) {
-      currentSession = null
-      await chrome.storage.local.remove(['supabase_session'])
+      // For other errors, log but don't clear session (might be temporary network issue)
+      console.error('[SUPABASE] User validation failed:', response.statusText)
       return null
     }
 
@@ -159,6 +247,7 @@ export async function getCurrentUser(skipValidation = false) {
     return data
   } catch (err) {
     console.error('[SUPABASE] Error getting current user:', err)
+    // Don't clear session on network errors - they might be temporary
     return null
   }
 }
@@ -197,7 +286,7 @@ export async function signUpWithEmail(email, password) {
       throw new Error(data.message || data.error_description || 'Sign up failed')
     }
 
-    console.log('[SUPABASE] Sign up response:', data)
+    console.log('[SUPABASE] Sign up response received')
 
     const user = data.user || data
     const session = data.session || (data.access_token ? {
@@ -206,18 +295,30 @@ export async function signUpWithEmail(email, password) {
       user: data.user || data.session?.user
     } : null)
 
+    console.log('[SUPABASE] Sign up data:', {
+      hasUser: !!user,
+      hasSession: !!session,
+      hasAccessToken: !!session?.access_token,
+      hasRefreshToken: !!session?.refresh_token
+    })
+
     if (session?.access_token) {
       const userId = session.user?.id || user?.id
       if (userId) {
+        console.log('[SUPABASE] Persisting sign up session for user:', userId)
         await persistSession({
           access_token: session.access_token,
           refresh_token: session.refresh_token,
           user_id: userId
         }, 'email')
+      } else {
+        console.warn('[SUPABASE] ⚠️ Could not determine user ID from sign up response')
       }
+    } else {
+      console.warn('[SUPABASE] ⚠️ Sign up response had no access token')
     }
 
-    console.log('[SUPABASE] Sign up successful:', user?.id || 'unknown')
+    console.log('[SUPABASE] ✅ Sign up successful:', user?.id || 'unknown')
     return {
       success: true,
       user,
@@ -252,7 +353,23 @@ export async function signInWithEmail(email, password) {
     const data = await response.json()
 
     if (!response.ok) {
+      console.error('[SUPABASE] Sign in response not ok:', response.status, data)
       throw new Error(data.message || 'Sign in failed')
+    }
+
+    console.log('[SUPABASE] Sign in response received:', {
+      hasAccessToken: !!data.access_token,
+      hasRefreshToken: !!data.refresh_token,
+      userId: data.user?.id
+    })
+
+    // Validate we have required tokens
+    if (!data.access_token) {
+      throw new Error('No access token in response - authentication failed')
+    }
+
+    if (!data.refresh_token) {
+      console.warn('[SUPABASE] ⚠️ No refresh token in sign in response - session may not persist')
     }
 
     await persistSession({
@@ -261,7 +378,7 @@ export async function signInWithEmail(email, password) {
       user_id: data.user?.id
     }, 'email')
 
-    console.log('[SUPABASE] Sign in successful:', data.user?.id)
+    console.log('[SUPABASE] ✅ Sign in successful and session persisted:', data.user?.id)
     return { success: true, user: data.user, session: data }
   } catch (err) {
     console.error('[SUPABASE] Sign in error:', err)
@@ -275,28 +392,39 @@ export async function signInWithEmail(email, password) {
 export async function signOut() {
   try {
     if (!currentSession) {
+      console.log('[SUPABASE] No active session to sign out')
       return { success: true }
     }
 
-    await fetch(
-      `${SUPABASE_URL}/auth/v1/logout`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${currentSession.access_token}`,
-          'apikey': SUPABASE_ANON_KEY,
-          'Content-Type': 'application/json'
+    // Attempt to notify server of logout (but don't fail if it doesn't work)
+    try {
+      const logoutResponse = await fetch(
+        `${SUPABASE_URL}/auth/v1/logout`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${currentSession.access_token}`,
+            'apikey': SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json'
+          }
         }
-      }
-    )
+      )
+      console.log('[SUPABASE] Server logout response:', logoutResponse.status)
+    } catch (err) {
+      console.warn('[SUPABASE] Could not notify server of logout (this is OK):', err.message)
+    }
 
+    // Always clear local session, even if server notification fails
     currentSession = null
     await chrome.storage.local.remove(['supabase_session'])
-    console.log('[SUPABASE] User signed out successfully')
+    console.log('[SUPABASE] User signed out successfully - session cleared locally')
     return { success: true }
   } catch (err) {
     console.error('[SUPABASE] Error signing out:', err)
-    return { success: false, error: err.message }
+    // Force clear session even on error
+    currentSession = null
+    await chrome.storage.local.remove(['supabase_session'])
+    return { success: true } // Return success anyway since we cleared the session
   }
 }
 
@@ -314,6 +442,15 @@ export async function querySelect(table, options = {}) {
   try {
     if (!currentSession) {
       throw new Error('Not authenticated')
+    }
+
+    // Check if token is expiring soon and refresh if needed
+    if (isTokenExpiringSoon(currentSession.access_token)) {
+      console.log('[SUPABASE] Token expiring soon, proactively refreshing...')
+      const refreshed = await refreshAccessToken()
+      if (!refreshed) {
+        throw new Error('Failed to refresh session token')
+      }
     }
 
     let url = `${SUPABASE_URL}/rest/v1/${table}?`
@@ -405,6 +542,15 @@ export async function queryInsert(table, records) {
       throw new Error('Not authenticated')
     }
 
+    // Check if token is expiring soon and refresh if needed
+    if (isTokenExpiringSoon(currentSession.access_token)) {
+      console.log('[SUPABASE] Token expiring soon, proactively refreshing...')
+      const refreshed = await refreshAccessToken()
+      if (!refreshed) {
+        throw new Error('Failed to refresh session token')
+      }
+    }
+
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/${table}`,
       {
@@ -471,6 +617,15 @@ export async function queryUpdate(table, updates, filters) {
   try {
     if (!currentSession) {
       throw new Error('Not authenticated')
+    }
+
+    // Check if token is expiring soon and refresh if needed
+    if (isTokenExpiringSoon(currentSession.access_token)) {
+      console.log('[SUPABASE] Token expiring soon, proactively refreshing...')
+      const refreshed = await refreshAccessToken()
+      if (!refreshed) {
+        throw new Error('Failed to refresh session token')
+      }
     }
 
     let url = `${SUPABASE_URL}/rest/v1/${table}?`
@@ -651,13 +806,24 @@ async function exchangeCodeForSession(code, codeVerifier, provider) {
  * Persist Supabase session locally and ensure the user record exists
  */
 async function persistSession(session, provider = 'email') {
+  console.log('[SUPABASE] persistSession called with:', {
+    hasAccessToken: !!session?.access_token,
+    hasRefreshToken: !!session?.refresh_token,
+    hasUserId: !!session?.user_id,
+    userId: session?.user_id
+  })
+
   if (!session?.access_token || !session?.user_id) {
-    console.warn('[SUPABASE] Cannot persist session - missing data')
+    console.error('[SUPABASE] ❌ Cannot persist session - missing required data:', {
+      hasAccessToken: !!session?.access_token,
+      hasUserId: !!session?.user_id
+    })
     return
   }
 
   currentSession = session
   await chrome.storage.local.set({ supabase_session: currentSession })
+  console.log('[SUPABASE] ✅ Session persisted to Chrome storage')
 
   try {
     await ensureUserProfile(session.user_id, provider)

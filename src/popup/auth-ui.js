@@ -300,7 +300,9 @@ export class AuthUIManager {
    */
   async checkAuth() {
     try {
-      const user = await getCurrentUser()
+      // Use skipValidation=true to trust the stored session without making an API call
+      // This prevents logouts due to network issues or temporary server problems
+      const user = await getCurrentUser(true)
 
       if (user) {
         console.log('[AUTH_UI] User already authenticated:', user.id)
